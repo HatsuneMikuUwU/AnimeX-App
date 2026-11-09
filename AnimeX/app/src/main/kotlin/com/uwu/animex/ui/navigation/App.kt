@@ -1,7 +1,7 @@
 package com.uwu.animex.ui.navigation
 
-import android.net.Uri
 import android.content.res.Configuration
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -32,7 +32,9 @@ import androidx.navigation.navArgument
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.anilist.AniListProfileScreen
+import com.uwu.animex.ui.auth.LoginScreen
 import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
@@ -41,6 +43,7 @@ import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
+import com.uwu.animex.ui.discussion.DiscussionScreen
 import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
@@ -51,15 +54,12 @@ import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
-import com.uwu.animex.ui.auth.LoginScreen
-import com.uwu.animex.ui.discussion.DiscussionScreen
 import com.uwu.animex.ui.search.CategoryScreen
 import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
 import com.uwu.animex.ui.settings.SettingsSheet
 import com.uwu.animex.ui.tracker.TrackerEditSheet
-import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
 

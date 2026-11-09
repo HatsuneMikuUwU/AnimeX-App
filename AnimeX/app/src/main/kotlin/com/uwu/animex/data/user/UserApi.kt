@@ -36,8 +36,7 @@ object UserApi {
     private fun JsonObject.str(name: String): String? =
         get(name)?.takeIf { it.isJsonPrimitive }?.asString?.takeIf { it.isNotBlank() }
 
-    private fun dataOf(obj: JsonObject?): JsonObject? =
-        obj?.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+    private fun dataOf(obj: JsonObject?): JsonObject? = obj?.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
 
     private fun messageOf(obj: JsonObject?): String? = obj?.str("message") ?: dataOf(obj)?.str("message")
 
@@ -78,14 +77,14 @@ object UserApi {
                 when {
                     jsonBody != null -> gson.toJson(jsonBody).toRequestBody(jsonMedia)
                     multipartForm ->
-                        MultipartBody.Builder()
+                        MultipartBody
+                            .Builder()
                             .setType(MultipartBody.FORM)
                             .apply {
                                 finalForm.orEmpty().forEach { (k, v) ->
                                     addFormDataPart(k, null, v.toRequestBody(textMedia))
                                 }
-                            }
-                            .build()
+                            }.build()
                     finalForm != null ->
                         FormBody.Builder().apply { finalForm.forEach { (k, v) -> add(k, v) } }.build()
                     method == "POST" || method == "PUT" ->
@@ -94,7 +93,8 @@ object UserApi {
                 }
 
             val builder =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url(url)
                     .method(method, body)
 
@@ -184,8 +184,15 @@ object UserApi {
 
     data class Discussion(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
-        @com.google.gson.annotations.SerializedName(value = "user_id", alternate = ["id_user"]) val userId: String? = null,
-        @com.google.gson.annotations.SerializedName(value = "username", alternate = ["user_name"]) val username: String? = null,
+        @com.google.gson.annotations.SerializedName(
+            value = "user_id",
+            alternate = ["id_user"],
+        ) val userId: String? = null,
+        @com.google.gson.annotations.SerializedName(
+            value = "username",
+            alternate = ["user_name"],
+        ) val username: String? =
+            null,
         @com.google.gson.annotations.SerializedName("image") val image: String? = null,
         @com.google.gson.annotations.SerializedName("user_pokemon") val pokemon: String? = null,
         @com.google.gson.annotations.SerializedName("text") val text: String? = null,
@@ -334,7 +341,10 @@ object UserApi {
         )
     }
 
-    suspend fun episodeCommentAction(commentId: String, type: String) {
+    suspend fun episodeCommentAction(
+        commentId: String,
+        type: String,
+    ) {
         request(
             "POST",
             NativeCore.path(NativeCore.COMMENT_ACTION),
@@ -343,7 +353,11 @@ object UserApi {
         )
     }
 
-    suspend fun episodeCommentReplies(commentId: String, page: Int = 1, sort: String = "new"): List<Discussion> {
+    suspend fun episodeCommentReplies(
+        commentId: String,
+        page: Int = 1,
+        sort: String = "new",
+    ): List<Discussion> {
         val root = request(
             "GET",
             NativeCore.path(NativeCore.REPLY_LIST),
@@ -353,7 +367,10 @@ object UserApi {
         return parseList(root, Discussion::class.java)
     }
 
-    suspend fun episodeCommentReply(commentId: String, text: String) {
+    suspend fun episodeCommentReply(
+        commentId: String,
+        text: String,
+    ) {
         request(
             "POST",
             NativeCore.path(NativeCore.REPLY_POST),

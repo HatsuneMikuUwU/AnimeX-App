@@ -2,43 +2,28 @@
 
 package com.uwu.animex.ui.player
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.material.icons.automirrored.outlined.Sort
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.ui.semantics.Role
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
-import androidx.activity.compose.BackHandler
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,47 +39,56 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -105,48 +99,49 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.notification.BatteryOptimization
+import com.uwu.animex.data.api.AniZip
+import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
-import com.uwu.animex.data.download.Downloads
-import com.uwu.animex.data.api.Api
-import com.uwu.animex.data.api.AniZip
-import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.core.notification.BatteryOptimization
-import kotlinx.coroutines.launch
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
-import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
-import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OverlayChip
-import com.uwu.animex.ui.common.icon
-import com.uwu.animex.ui.common.fmtNum
-import com.uwu.animex.ui.common.rememberHideStats
+import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
@@ -154,17 +149,22 @@ import com.uwu.animex.ui.common.WaitingCardPlaceholder
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.defaultPlaceholder
+import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.icon
+import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.detail.EpisodeRow
 import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
 import com.uwu.animex.ui.discussion.ThreadState
-import com.uwu.animex.ui.detail.EpisodeRow
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerEpisodeList
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 internal data class WatchChip(
     val icon: ImageVector,
@@ -220,7 +220,10 @@ internal fun PlayerWatchPage(
     LaunchedEffect(movieId) {
         if (movieId == null) return@LaunchedEffect
         similarLoading = true
-        similar = runCatching { com.uwu.animex.data.api.SimilarRepo.loadById(movieId) }.getOrDefault(emptyList())
+        similar = runCatching {
+            com.uwu.animex.data.api.SimilarRepo
+                .loadById(movieId)
+        }.getOrDefault(emptyList())
         similarLoading = false
     }
 
@@ -233,9 +236,20 @@ internal fun PlayerWatchPage(
             total > 0 && last >= total - 4
         }
     }
-    LaunchedEffect(nearEnd, section, episodeList.hasMore, episodeList.loadingMore, episodeList.loading, episodeList.moreError) {
-        if (section == 0 && nearEnd && episodeList.hasMore && !episodeList.loadingMore &&
-            !episodeList.loading && !episodeList.moreError
+    LaunchedEffect(
+        nearEnd,
+        section,
+        episodeList.hasMore,
+        episodeList.loadingMore,
+        episodeList.loading,
+        episodeList.moreError,
+    ) {
+        if (section == 0 &&
+            nearEnd &&
+            episodeList.hasMore &&
+            !episodeList.loadingMore &&
+            !episodeList.loading &&
+            !episodeList.moreError
         ) {
             playerViewModel.loadMoreEpisodes()
         }
@@ -668,7 +682,10 @@ private fun LazyListScope.watchEpisodeItems(
                     download = epDownload,
                     malWatched = malWatched,
                     onDownload = { onDownload(ep) },
-                    meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
+                    meta = ep.index
+                        ?.trim()
+                        ?.toIntOrNull()
+                        ?.let { aniZip?.episodes?.get(it) },
                     current = ep.id == currentEpId,
                     showProgress = false,
                 ) { onPick(ep) }
@@ -1388,7 +1405,13 @@ private fun CommentInputBar(
                     .padding(start = 16.dp, end = 4.dp, top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.width(3.dp).height(28.dp).clip(CircleShape).background(cs.primary))
+                Box(
+                    Modifier
+                        .width(3.dp)
+                        .height(28.dp)
+                        .clip(CircleShape)
+                        .background(cs.primary),
+                )
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -1476,7 +1499,11 @@ private fun CommentInputBar(
             ) {
                 when {
                     sending -> AppLoadingIndicator(Modifier.size(24.dp))
-                    !loggedIn -> Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = "Login", tint = cs.onSurface)
+                    !loggedIn -> Icon(
+                        Icons.AutoMirrored.Outlined.Login,
+                        contentDescription = "Login",
+                        tint = cs.onSurface,
+                    )
                     else ->
                         Icon(
                             Icons.AutoMirrored.Outlined.Send,

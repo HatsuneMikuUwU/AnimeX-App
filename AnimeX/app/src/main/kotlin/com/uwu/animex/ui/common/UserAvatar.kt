@@ -32,7 +32,15 @@ fun UserAvatar(
         .map { it.trim() }
         .firstOrNull { value ->
             value.isNotBlank() &&
-                (value.startsWith("http://", true) || value.startsWith("https://", true) || '/' in value || '.' in value)
+                (
+                    value.startsWith(
+                        "http://",
+                        true,
+                    ) ||
+                        value.startsWith("https://", true) ||
+                        '/' in value ||
+                        '.' in value
+                )
         }
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val key = username?.trim()?.lowercase().orEmpty()

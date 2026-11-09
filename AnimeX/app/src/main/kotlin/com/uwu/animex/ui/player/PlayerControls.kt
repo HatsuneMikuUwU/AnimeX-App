@@ -40,10 +40,10 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FastForward
-import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Forward10
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
@@ -389,7 +389,15 @@ fun PlayerChrome(
             pos = player.currentPosition.coerceAtLeast(0)
             buffered = player.bufferedPosition.coerceAtLeast(0)
             dur = player.duration.coerceAtLeast(0)
-            delay(if (visible) 250 else if (compact) 500 else 1_000)
+            delay(
+                if (visible) {
+                    250
+                } else if (compact) {
+                    500
+                } else {
+                    1_000
+                },
+            )
         }
     }
 
@@ -612,7 +620,6 @@ fun PlayerChrome(
     val controlsShown = visible && !locked && !inPip
 
     Box(Modifier.fillMaxSize().then(gestures)) {
-
         if (buffering && !controlsShown) {
             LoadingIndicator(
                 color = Color.White,
@@ -752,7 +759,10 @@ fun PlayerChrome(
                         colors = overlayButtonColors(),
                     ) {
                         if (buffering) {
-                            LoadingIndicator(color = Color.White, modifier = Modifier.size(if (compact) 28.dp else 36.dp))
+                            LoadingIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(if (compact) 28.dp else 36.dp),
+                            )
                         } else {
                             Icon(
                                 imageVector =
@@ -830,10 +840,12 @@ fun PlayerChrome(
                             style = MaterialTheme.typography.labelLarge,
                         )
                         if (compact) {
-                            IconButton(onClick = hapticClick {
-                                onToggleFullscreen()
-                                poke++
-                            }) {
+                            IconButton(
+                                onClick = hapticClick {
+                                    onToggleFullscreen()
+                                    poke++
+                                },
+                            ) {
                                 Icon(
                                     Icons.Outlined.Fullscreen,
                                     contentDescription = "Layar penuh",

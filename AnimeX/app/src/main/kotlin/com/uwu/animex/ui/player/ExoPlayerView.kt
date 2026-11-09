@@ -112,7 +112,6 @@ internal fun ExoView(
     val player =
         remember(epId, url) {
             (reusedSession?.player as? ExoPlayer) ?: run {
-
                 runCatching { PlaybackSessions.current?.player?.pause() }
                 val client = NetworkModule.streamClient
                 val browserUa =
@@ -224,7 +223,10 @@ internal fun ExoView(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    if (error.isTransientNetworkError() && retries < MAX_AUTO_RETRIES && ConnectivityMonitor.isOnline()) {
+                    if (error.isTransientNetworkError() &&
+                        retries < MAX_AUTO_RETRIES &&
+                        ConnectivityMonitor.isOnline()
+                    ) {
                         retries++
                         val attempt = retries
                         scope.launch {

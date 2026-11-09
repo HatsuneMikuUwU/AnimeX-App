@@ -447,7 +447,6 @@ internal fun PlayerLoadError(
     extra: @Composable () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
-
         Column(
             Modifier
                 .fillMaxSize()

@@ -29,15 +29,15 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -194,13 +194,21 @@ fun PlayerScreen(
         if (movieId != null && curUploadDate.isNullOrBlank()) {
             curUploadDate =
                 runCatching {
-                    Api.episodes(movieId).firstOrNull { it.id == curEpId }?.key_time?.takeIf { it.isNotBlank() }
+                    Api
+                        .episodes(movieId)
+                        .firstOrNull { it.id == curEpId }
+                        ?.key_time
+                        ?.takeIf { it.isNotBlank() }
                 }.getOrNull()
         }
     }
     LaunchedEffect(curEpId, movieId, curIndex) {
         prevEp = null
-        val prevIdx = curIndex?.trim()?.toIntOrNull()?.minus(1)?.takeIf { it >= 1 }
+        val prevIdx = curIndex
+            ?.trim()
+            ?.toIntOrNull()
+            ?.minus(1)
+            ?.takeIf { it >= 1 }
         if (movieId != null && prevIdx != null) {
             prevEp = runCatching { Api.findEpisode(movieId, prevIdx.toString()) }.getOrNull()
         }
@@ -389,7 +397,12 @@ fun PlayerScreen(
     var speed by rememberSaveable {
         mutableStateOf(
             if (PlaybackSessions.episodeId == epId) {
-                runCatching { PlaybackSessions.current?.player?.playbackParameters?.speed }.getOrNull() ?: 1f
+                runCatching {
+                    PlaybackSessions.current
+                        ?.player
+                        ?.playbackParameters
+                        ?.speed
+                }.getOrNull() ?: 1f
             } else {
                 1f
             },
@@ -528,7 +541,11 @@ fun PlayerScreen(
         }
 
     val liveUrl: String? =
-        if (sel < 0 && streamError == null && !PlayerPrefs.alwaysUseExternal.value && PlaybackSessions.episodeId == epId) {
+        if (sel < 0 &&
+            streamError == null &&
+            !PlayerPrefs.alwaysUseExternal.value &&
+            PlaybackSessions.episodeId == epId
+        ) {
             val livePlayer = PlaybackSessions.current?.player
             val healthy =
                 livePlayer != null &&
@@ -640,7 +657,9 @@ fun PlayerScreen(
         when {
             liveUrl != null ->
                 ExoTarget(liveUrl, PlaybackSessions.subtitle, servers.indexOfFirst { it.link == liveUrl })
-            state is UiState.Ready && servers.isNotEmpty() && streamError == null &&
+            state is UiState.Ready &&
+                servers.isNotEmpty() &&
+                streamError == null &&
                 !PlayerPrefs.alwaysUseExternal.value -> {
                 val i = resolveSel(servers)
                 val sv = servers[i]
@@ -665,125 +684,135 @@ fun PlayerScreen(
                         .statusBarsPadding()
                         .consumeWindowInsets(WindowInsets.safeDrawing)
                         .aspectRatio(16f / 9f)
-                        .onGloballyPositioned { PipHelper.updateSourceRect(activity, it.boundsInWindow().toAndroidRect()) }
+                        .onGloballyPositioned {
+                            PipHelper.updateSourceRect(
+                                activity,
+                                it.boundsInWindow().toAndroidRect(),
+                            )
+                        }
                 }
             Box(videoModifier.background(Color.Black)) {
                 if (exoTarget != null) {
-
                     key(epId, exoTarget.url) {
                         renderExo(exoTarget.url, exoTarget.subtitle, exoTarget.idx)
                     }
-                } else when (val s = state) {
-                    UiState.Loading ->
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            if (PlayerPrefs.showLoadingCircle.value) {
-                                AppLoadingIndicator(color = Color.White)
-                            }
+                } else {
+                    when (val s = state) {
+                        UiState.Loading ->
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                if (PlayerPrefs.showLoadingCircle.value) {
+                                    AppLoadingIndicator(color = Color.White)
+                                }
 
-                            Box(
-                                Modifier
-                                    .align(Alignment.TopStart)
-                                    .safeDrawingPadding()
-                                    .padding(horizontal = 4.dp, vertical = if (fullscreen) 8.dp else 4.dp),
-                            ) {
-                                OverlayButton(backOrExit) {
-                                    Icon(
-                                        if (fullscreen) Icons.AutoMirrored.Outlined.ArrowBack else Icons.Outlined.Close,
-                                        contentDescription = if (fullscreen) "Balik" else "Tutup",
-                                        tint = Color.White,
-                                    )
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopStart)
+                                        .safeDrawingPadding()
+                                        .padding(horizontal = 4.dp, vertical = if (fullscreen) 8.dp else 4.dp),
+                                ) {
+                                    OverlayButton(backOrExit) {
+                                        Icon(
+                                            if (fullscreen) Icons.AutoMirrored.Outlined.ArrowBack else Icons.Outlined.Close,
+                                            contentDescription = if (fullscreen) "Balik" else "Tutup",
+                                            tint = Color.White,
+                                        )
+                                    }
                                 }
                             }
-                        }
-                    is UiState.Error -> {
-                        PlayerLoadError(
-                            title = title,
-                            message = "Yah gagal load: ${s.msg}",
-                            onRetry = { retryServers() },
-                            onBack = backOrExit,
-                            compact = !fullscreen,
-                        )
-                    }
-                    is UiState.Ready -> {
-                        if (servers.isEmpty()) {
+                        is UiState.Error -> {
                             PlayerLoadError(
                                 title = title,
-                                message = "Gak ada server yang bisa dipake",
+                                message = "Yah gagal load: ${s.msg}",
                                 onRetry = { retryServers() },
                                 onBack = backOrExit,
                                 compact = !fullscreen,
                             )
-                        } else {
-                            val idx = resolveSel(servers)
-                            val server = servers[idx]
-                            val loadError = streamError
-                            if (loadError != null) {
+                        }
+                        is UiState.Ready -> {
+                            if (servers.isEmpty()) {
                                 PlayerLoadError(
                                     title = title,
-                                    message = loadError,
+                                    message = "Gak ada server yang bisa dipake",
                                     onRetry = { retryServers() },
                                     onBack = backOrExit,
                                     compact = !fullscreen,
-                                    extra = {
-                                        if (servers.size > 1) {
-                                            TextButton(
-                                                onClick = hapticClick {
-                                                    streamError = null
-                                                    failedSel = emptySet()
-                                                    showDialog = true
-                                                },
-                                                shapes = ButtonDefaults.shapes(),
-                                            ) { Text("Pilih server lain") }
-                                        }
-                                    },
                                 )
-                            } else if (server.isDirect) {
-                                val alwaysExt = PlayerPrefs.alwaysUseExternal.value
-                                if (alwaysExt) {
-                                    val externalLauncher =
-                                        rememberExternalLauncher { data ->
-                                            if (ExternalPlayer.record(epId, data)?.crossedDone == true) applyResume(true)
-                                            onBack()
-                                        }
-                                    var opened by rememberSaveable(epId, idx, server.link) { mutableStateOf(false) }
-                                    LaunchedEffect(epId, idx, server.link) {
-                                        if (opened) return@LaunchedEffect
-                                        opened = true
-                                        if (!ExternalPlayer.open(
-                                                ctx,
-                                                externalLauncher,
-                                                epId,
-                                                server.link.orEmpty(),
-                                                title,
-                                            )
-                                        ) {
-                                            onBack()
-                                        }
-                                    }
-                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("Buka player eksternal dulu…", color = Color.White)
-                                    }
-                                }
                             } else {
-                                WebEmbed(server.link.orEmpty())
-                                if (locked) {
-                                    Box(
-                                        Modifier
-                                            .fillMaxSize()
-                                            .pointerInput(Unit) { detectTapGestures { } },
+                                val idx = resolveSel(servers)
+                                val server = servers[idx]
+                                val loadError = streamError
+                                if (loadError != null) {
+                                    PlayerLoadError(
+                                        title = title,
+                                        message = loadError,
+                                        onRetry = { retryServers() },
+                                        onBack = backOrExit,
+                                        compact = !fullscreen,
+                                        extra = {
+                                            if (servers.size > 1) {
+                                                TextButton(
+                                                    onClick = hapticClick {
+                                                        streamError = null
+                                                        failedSel = emptySet()
+                                                        showDialog = true
+                                                    },
+                                                    shapes = ButtonDefaults.shapes(),
+                                                ) { Text("Pilih server lain") }
+                                            }
+                                        },
+                                    )
+                                } else if (server.isDirect) {
+                                    val alwaysExt = PlayerPrefs.alwaysUseExternal.value
+                                    if (alwaysExt) {
+                                        val externalLauncher =
+                                            rememberExternalLauncher { data ->
+                                                if (ExternalPlayer.record(epId, data)?.crossedDone ==
+                                                    true
+                                                ) {
+                                                    applyResume(true)
+                                                }
+                                                onBack()
+                                            }
+                                        var opened by rememberSaveable(epId, idx, server.link) { mutableStateOf(false) }
+                                        LaunchedEffect(epId, idx, server.link) {
+                                            if (opened) return@LaunchedEffect
+                                            opened = true
+                                            if (!ExternalPlayer.open(
+                                                    ctx,
+                                                    externalLauncher,
+                                                    epId,
+                                                    server.link.orEmpty(),
+                                                    title,
+                                                )
+                                            ) {
+                                                onBack()
+                                            }
+                                        }
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("Buka player eksternal dulu…", color = Color.White)
+                                        }
+                                    }
+                                } else {
+                                    WebEmbed(server.link.orEmpty())
+                                    if (locked) {
+                                        Box(
+                                            Modifier
+                                                .fillMaxSize()
+                                                .pointerInput(Unit) { detectTapGestures { } },
+                                        )
+                                    }
+                                    EmbedTopBar(
+                                        title = if (fullscreen) title else "",
+                                        showSources = servers.size > 1,
+                                        locked = locked,
+                                        onBack = backOrExit,
+                                        onSources = { showDialog = true },
+                                        onLock = { locked = it },
+                                        showLock = fullscreen,
+                                        onComment = if (fullscreen) openComment else null,
+                                        compact = !fullscreen,
                                     )
                                 }
-                                EmbedTopBar(
-                                    title = if (fullscreen) title else "",
-                                    showSources = servers.size > 1,
-                                    locked = locked,
-                                    onBack = backOrExit,
-                                    onSources = { showDialog = true },
-                                    onLock = { locked = it },
-                                    showLock = fullscreen,
-                                    onComment = if (fullscreen) openComment else null,
-                                    compact = !fullscreen,
-                                )
                             }
                         }
                     }

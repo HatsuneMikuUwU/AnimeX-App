@@ -153,7 +153,10 @@ class DiscussionViewModel private constructor(
         }
     }
 
-    fun react(discussion: UserApi.Discussion, type: String) {
+    fun react(
+        discussion: UserApi.Discussion,
+        type: String,
+    ) {
         if (scope != DiscussionScope.Episode) return
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
         if (!reactingIds.add(id)) return
@@ -181,14 +184,19 @@ class DiscussionViewModel private constructor(
 
     private val reactingIds = HashSet<String>()
 
-    private fun patchDiscussion(id: String, transform: (UserApi.Discussion) -> UserApi.Discussion) {
+    private fun patchDiscussion(
+        id: String,
+        transform: (UserApi.Discussion) -> UserApi.Discussion,
+    ) {
         val current = (state.value as? UiState.Ready)?.value ?: return
         updateReadyValue(current.map { if (it.id == id) transform(it) else it })
     }
 
     private fun UserApi.Discussion.withReaction(type: String): UserApi.Discussion {
         val old = reaction.orEmpty()
+
         fun delta(key: String) = (if (type.equals(key, true)) 1 else 0) - (if (old.equals(key, true)) 1 else 0)
+
         fun String?.addCount(d: Int) = ((this?.toIntOrNull() ?: 0) + d).coerceAtLeast(0).toString()
         return copy(
             reaction = type,
@@ -197,7 +205,10 @@ class DiscussionViewModel private constructor(
         )
     }
 
-    fun loadReplies(discussion: UserApi.Discussion, onLoaded: (List<UserApi.Discussion>) -> Unit) {
+    fun loadReplies(
+        discussion: UserApi.Discussion,
+        onLoaded: (List<UserApi.Discussion>) -> Unit,
+    ) {
         if (scope != DiscussionScope.Episode) return
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
         viewModelScope.launch {
@@ -212,7 +223,11 @@ class DiscussionViewModel private constructor(
         }
     }
 
-    fun reply(discussion: UserApi.Discussion, text: String, onSuccess: () -> Unit) {
+    fun reply(
+        discussion: UserApi.Discussion,
+        text: String,
+        onSuccess: () -> Unit,
+    ) {
         if (scope != DiscussionScope.Episode || text.isBlank()) return
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
         performAction(refreshAfter = true, onSuccess = onSuccess) {

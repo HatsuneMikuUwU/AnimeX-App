@@ -6,14 +6,14 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -521,7 +521,13 @@ private fun DiscussionInputBar(
                             .padding(start = 20.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.width(3.dp).height(32.dp).clip(CircleShape).background(cs.primary))
+                        Box(
+                            Modifier
+                                .width(3.dp)
+                                .height(32.dp)
+                                .clip(CircleShape)
+                                .background(cs.primary),
+                        )
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -541,7 +547,11 @@ private fun DiscussionInputBar(
                             )
                         }
                         IconButton(onClick = hapticClick(block = onCancelReply)) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Batal membalas", tint = cs.onSurfaceVariant)
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Batal membalas",
+                                tint = cs.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -604,7 +614,11 @@ private fun DiscussionInputBar(
                 ) {
                     when {
                         sending -> AppLoadingIndicator(Modifier.size(24.dp))
-                        !loggedIn -> Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = null, tint = cs.onSurface)
+                        !loggedIn -> Icon(
+                            Icons.AutoMirrored.Outlined.Login,
+                            contentDescription = null,
+                            tint = cs.onSurface,
+                        )
                         else ->
                             Icon(
                                 Icons.AutoMirrored.Outlined.Send,
@@ -907,7 +921,11 @@ internal fun DiscussionRow(
                                         Text("PRO", style = MaterialTheme.typography.labelSmall, color = cs.tertiary)
                                     }
                                     discussion.rank?.toIntOrNull()?.takeIf { it in 1..10 }?.let { rank ->
-                                        Text("R$rank", style = MaterialTheme.typography.labelSmall, color = cs.secondary)
+                                        Text(
+                                            "R$rank",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = cs.secondary,
+                                        )
                                     }
                                 }
                                 if (discussion.body().isNotBlank()) {

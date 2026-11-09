@@ -56,7 +56,9 @@ object TitleMatcher {
     private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special|gekijou?ban)\\b")
     private val TITLE_YEAR = Regex("[(\\[]\\s*((?:19|20)\\d{2})\\s*[)\\]]")
     private val EDGE_QUOTES =
-        Regex("(?<![\\p{L}\\p{N}])['\u2019\u2018`\u00B4\"\u201C\u201D]|['\u2019\u2018`\u00B4\"\u201C\u201D](?![\\p{L}\\p{N}])")
+        Regex(
+            "(?<![\\p{L}\\p{N}])['\u2019\u2018`\u00B4\"\u201C\u201D]|['\u2019\u2018`\u00B4\"\u201C\u201D](?![\\p{L}\\p{N}])",
+        )
     private val TIMES_SIGN = Regex("[\u00D7\u2715\u2716]")
     private val HONORIFIC_HYPHEN = Regex("(?i)(?<=\\p{L})-(?=(?:chan|kun|san|sama|sensei|senpai|tan|dono)\\b)")
     private val SPACES = Regex("\\s+")

@@ -31,7 +31,8 @@ class AnimeXApp :
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)
-        com.uwu.animex.data.user.UserSession.init(this)
+        com.uwu.animex.data.user.UserSession
+            .init(this)
         AniZip.init(this)
         Translator.init(this)
 

@@ -293,7 +293,10 @@ fun WaitingCardPlaceholder(modifier: Modifier = Modifier) {
             .padding(8.dp),
     ) {
         Ph(Modifier.fillMaxWidth().height(118.dp), RoundedCornerShape(16.dp))
-        Column(Modifier.padding(horizontal = 4.dp).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            Modifier.padding(horizontal = 4.dp).padding(top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             PhLine(fraction = 0.3f, style = MaterialTheme.typography.labelSmall)
             PhLine(fraction = 0.7f, style = MaterialTheme.typography.bodyMedium)
             PhLine(style = MaterialTheme.typography.bodySmall)
