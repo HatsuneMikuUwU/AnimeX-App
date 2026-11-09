@@ -41,6 +41,7 @@ enum Op {
     FYP_SCROLL = 31,
     FYP_VIEW = 32,
     FYP_LIKE = 33,
+    FYP_SERVER = 34,
 };
 
 std::string secret(int id, const char* masked_hex);

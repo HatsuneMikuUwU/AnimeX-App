@@ -254,6 +254,7 @@ std::string endpoint(int op, const std::string& arg) {
         case FYP_SCROLL: return OBF("data/fyp2/list_scroll");
         case FYP_VIEW: return OBF("data/fyp/view");
         case FYP_LIKE: return OBF("data/user/fyp/like");
+        case FYP_SERVER: return OBF("data/fyp/server");
         default: return "";
     }
 }

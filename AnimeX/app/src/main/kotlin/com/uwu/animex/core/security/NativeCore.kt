@@ -40,6 +40,7 @@ object NativeCore {
     const val FYP_SCROLL = 31
     const val FYP_VIEW = 32
     const val FYP_LIKE = 33
+    const val FYP_SERVER = 34
 
     init {
         System.loadLibrary("animexcore")

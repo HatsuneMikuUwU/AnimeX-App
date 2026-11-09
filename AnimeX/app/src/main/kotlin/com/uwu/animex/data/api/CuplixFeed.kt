@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlin.random.Random
 
 data class CuplixFeedState(
     val clips: List<Cuplix> = emptyList(),
@@ -31,7 +32,8 @@ fun cuplixKey(clip: Cuplix): String =
  * punya data (tidak kembali ke halaman 1).
  */
 object CuplixFeed {
-    private const val MAX_PAGE_ATTEMPTS = 5
+    private const val MAX_PAGE_ATTEMPTS = 6
+    private const val EMPTY_PAGES_TO_END = 3
 
     private val _state = MutableStateFlow(CuplixFeedState())
     val state: StateFlow<CuplixFeedState> = _state.asStateFlow()
@@ -50,15 +52,12 @@ object CuplixFeed {
     @Volatile
     private var scrollCursor: Map<String, String> = emptyMap()
 
-    @Volatile
-    private var scrollLast: Cuplix? = null
 
     private fun resetPaging() {
         scrollPage = 1
         legacyPage = 2
         scrollUnavailable = false
         scrollCursor = emptyMap()
-        scrollLast = null
     }
 
     fun replace(first: List<Cuplix>) {
@@ -96,22 +95,23 @@ object CuplixFeed {
         loadMore()
     }
 
+    // Pilihan sort sama seperti app ANIMEIN: 50% likes, 30% terbaru, 20% terlama.
+    private fun randomSort(): String {
+        val roll = Random.nextInt(100)
+        return when {
+            roll < 50 -> "scroll_likes"
+            roll < 80 -> "scroll_new"
+            else -> "scroll_old"
+        }
+    }
+
     // Ambil satu halaman berikutnya: endpoint scroll dulu, `home/fyp` hanya sebagai cadangan.
     private suspend fun fetchBatch(): List<Cuplix> {
         if (!scrollUnavailable) {
             val page = scrollPage
-            // Pakai cursor dari respons sebelumnya; kalau server tidak memberi cursor, turunkan dari klip
-            // terakhir (urutan terbaru) supaya halaman berikutnya tidak mengulang halaman pertama.
-            val cursor =
-                scrollCursor.ifEmpty {
-                    scrollLast
-                        ?.takeIf { page > 1 && !it.id.isNullOrBlank() && !it.key_time.isNullOrBlank() }
-                        ?.let { mapOf("cursor_new_time" to it.key_time.orEmpty(), "cursor_new_id" to it.id.orEmpty()) }
-                        .orEmpty()
-                }
             val result =
                 try {
-                    Api.cuplixScroll(page = page, cursor = cursor)
+                    Api.cuplixScroll(sort = randomSort(), cursor = scrollCursor)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -121,16 +121,11 @@ object CuplixFeed {
                     scrollUnavailable = true
                     return fetchLegacyBatch()
                 }
-            if (result.clips.isNotEmpty()) {
-                scrollPage = page + 1
-                scrollCursor = result.cursor
-                scrollLast = result.clips.last()
-                return result.clips
-            }
-            if (page > 1) {
-                scrollPage = page + 1
-                return emptyList()
-            }
+            scrollPage = page + 1
+            // Cursor selalu diganti dengan yang terbaru dari server, persis seperti app ANIMEIN.
+            if (result.cursor.isNotEmpty()) scrollCursor = result.cursor
+            if (result.clips.isNotEmpty()) return result.clips
+            if (page > 1) return emptyList()
             scrollUnavailable = true
         }
         return fetchLegacyBatch()
@@ -154,13 +149,18 @@ object CuplixFeed {
             var fresh = emptyList<Cuplix>()
             var sawNovel = false
             var reachedEnd = false
+            var emptyScroll = 0
             var attempts = 0
             while (fresh.isEmpty() && !reachedEnd && attempts < MAX_PAGE_ATTEMPTS) {
                 attempts++
                 val batch = fetchBatch()
                 if (batch.isEmpty()) {
-                    reachedEnd = true
+                    // Sort acak: satu sort bisa habis sementara sort lain masih punya klip, jadi
+                    // baru dianggap habis setelah beberapa kali kosong berturut-turut.
+                    emptyScroll++
+                    if (scrollUnavailable || emptyScroll >= EMPTY_PAGES_TO_END) reachedEnd = true
                 } else {
+                    emptyScroll = 0
                     val novel = batch.filter { cuplixKey(it) !in seen }.distinctBy(::cuplixKey)
                     if (novel.isNotEmpty()) sawNovel = true
                     fresh = novel.filterNot { CuplixSeen.contains(cuplixKey(it)) }

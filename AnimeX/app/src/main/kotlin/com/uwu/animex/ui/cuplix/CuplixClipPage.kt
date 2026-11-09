@@ -93,8 +93,10 @@ import androidx.media3.ui.PlayerView
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.UserAvatar
@@ -106,6 +108,7 @@ import com.uwu.animex.ui.player.PlayerResize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -123,6 +126,16 @@ private const val BROWSER_UA =
 private val posterCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
 private val OverlayShadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
+
+// Klip pendek: default 480p (360p kalau dipilih), sama seperti pemilihan kualitas di app ANIMEIN.
+private fun List<Server>.clipServer(): Server? {
+    val direct = filter { it.isDirect && !it.link.isNullOrBlank() }
+    val target = if (PlayerPrefs.quality == 360) 360 else 480
+    return direct
+        .filter { it.qualityValue > 0 }
+        .minWithOrNull(compareBy<Server>({ abs(it.qualityValue - target) }, { it.qualityValue }))
+        ?: direct.firstOrNull()
+}
 
 private data class HeartBurst(
     val id: Long,
@@ -198,8 +211,15 @@ internal fun CuplixClipPage(
     var streamUrl by remember(episodeId, attempt) { mutableStateOf<String?>(null) }
     var failed by remember(episodeId, attempt) { mutableStateOf(false) }
     LaunchedEffect(episodeId, attempt) {
+        val clipId = clip.id.orEmpty()
+        // Sumber utama: fyp/server (seperti app ANIMEIN); cadangan: stream episode biasa.
         val link =
-            runSuspendCatching { Api.servers(episodeId, force = attempt > 0).bestDirect()?.link }.getOrNull()
+            (
+                clipId
+                    .takeIf { it.isNotBlank() }
+                    ?.let { runSuspendCatching { Api.cuplixServers(it).clipServer()?.link }.getOrNull() }
+                    ?.takeIf { it.isNotBlank() }
+            ) ?: runSuspendCatching { Api.servers(episodeId, force = attempt > 0).bestDirect()?.link }.getOrNull()
         if (link.isNullOrBlank()) failed = true else streamUrl = link
     }
 

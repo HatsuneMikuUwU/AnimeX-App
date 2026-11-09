@@ -62,6 +62,21 @@ import java.lang.reflect.Type
 object Api {
     const val API_LIMIT = 30
 
+    private val CUPLIX_CURSOR_KEYS =
+        listOf(
+            "cursor_new_time",
+            "cursor_new_id",
+            "cursor_likes_count",
+            "cursor_likes_id",
+            "cursor_old_time",
+            "cursor_old_id",
+            "cursor_views_count",
+            "cursor_views_id",
+            "cursor_episode_time_start",
+            "cursor_episode_id",
+            "cursor_episode_index",
+        )
+
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
@@ -70,6 +85,7 @@ object Api {
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val homeCuplixPath: String by lazy { NativeCore.path(NativeCore.HOME_CUPLIX) }
     private val cuplixScrollPath: String by lazy { NativeCore.path(NativeCore.FYP_SCROLL) }
+    private val cuplixServerPath: String by lazy { NativeCore.path(NativeCore.FYP_SERVER) }
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
     private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
@@ -649,21 +665,24 @@ object Api {
     )
 
     /**
-     * Halaman feed Cuplix dari endpoint scroll ANIMEIN (`fyp2/list_scroll`). Respons berbentuk
-     * `data.fyp` (list klip) + `data.cursor` (cursor_new_time, cursor_new_id, dst). Cursor dari
-     * respons sebelumnya dikirim balik sebagai query param; `page` ikut dikirim sebagai cadangan.
-     * Melempar exception kalau request/parse gagal; list kosong berarti halaman habis.
+     * Halaman feed Cuplix dari endpoint scroll ANIMEIN (`fyp2/list_scroll`), dengan parameter yang
+     * sama seperti FypActivity di app ANIMEIN: `sort` (scroll_likes / scroll_new / scroll_old),
+     * `key_id_fyp`, `id_user_fyp`, `movie_ids`, dan semua field cursor (string kosong kalau belum ada).
+     * Respons berbentuk `data.fyp` + `data.cursor`; cursor itu dikirim balik di request berikutnya.
+     * Melempar exception kalau request/parse gagal; list kosong berarti sort itu sudah habis.
      */
     suspend fun cuplixScroll(
-        page: Int,
+        sort: String,
         cursor: Map<String, String> = emptyMap(),
         force: Boolean = true,
     ): CuplixPage {
         val params =
             buildMap {
-                put("limit", "$API_LIMIT")
-                if (page > 1) put("page", page.toString())
-                putAll(cursor)
+                put("sort", sort)
+                put("key_id_fyp", "")
+                put("id_user_fyp", "")
+                put("movie_ids", "")
+                CUPLIX_CURSOR_KEYS.forEach { key -> put(key, cursor[key].orEmpty()) }
             }
         val json = fetchCached(cuplixScrollPath, params, force)
         return withContext(Dispatchers.Default) {
@@ -707,13 +726,29 @@ object Api {
             val nextCursor =
                 buildMap {
                     data?.get("cursor")?.takeIf { it.isJsonObject }?.asJsonObject?.entrySet()?.forEach { (k, v) ->
-                        val text = v.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
-                        if (text.isNotEmpty() && text != "0") put(k, text)
+                        put(k, v.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty())
                     }
                 }
             CuplixPage(clips, nextCursor)
         }
     }
+
+    /**
+     * Server video untuk satu klip Cuplix (`fyp/server?id_fyp=`), sumber yang sama dengan app ANIMEIN.
+     * Selalu ambil dari jaringan karena link bisa kedaluwarsa.
+     */
+    suspend fun cuplixServers(clipId: String): List<Server> =
+        get<StreamData>(
+            cuplixServerPath,
+            StreamData::class.java,
+            mapOf("id_fyp" to clipId),
+            force = true,
+        )?.server
+            .orEmpty()
+            .filter { !it.link.isNullOrBlank() }
+            .mapNotNull { server ->
+                UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
+            }
 
     // Klip tanpa thumbnail atau tanpa id_episode tidak bisa diputar di player shorts.
     private fun Cuplix.isPlayable(): Boolean = !url_thumbnail.isNullOrBlank() && !id_episode.isNullOrBlank()

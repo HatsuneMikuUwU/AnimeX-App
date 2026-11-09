@@ -340,7 +340,7 @@ object UserApi {
         )
     }
 
-    /** Lapor satu tayangan klip Cuplix ke server (best effort, nama field `id_fyp` mengikuti pola API). */
+    /** Lapor satu tayangan klip Cuplix ke server (field `id_fyp`, sama seperti app ANIMEIN). */
     suspend fun cuplixView(clipId: String) {
         request(
             "POST",
@@ -350,12 +350,15 @@ object UserApi {
         )
     }
 
-    /** Suka/batal suka klip Cuplix; hanya untuk user yang sudah login. */
-    suspend fun cuplixLike(clipId: String) {
+    /** Suka/batal suka klip Cuplix; `action` Y = disukai, N = batal suka (sama seperti app ANIMEIN). */
+    suspend fun cuplixLike(
+        clipId: String,
+        liked: Boolean,
+    ) {
         request(
             "POST",
             NativeCore.path(NativeCore.FYP_LIKE),
-            form = mapOf("id_fyp" to clipId),
+            form = mapOf("id_fyp" to clipId, "action" to if (liked) "Y" else "N"),
             authed = true,
         )
     }

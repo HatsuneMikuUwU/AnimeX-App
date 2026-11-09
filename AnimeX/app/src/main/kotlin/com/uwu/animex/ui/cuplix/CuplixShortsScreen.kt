@@ -153,7 +153,7 @@ fun CuplixShortsScreen(
                             val clipId = clip.id
                             if (!clipId.isNullOrBlank() && UserSession.isLoggedIn()) {
                                 scope.launch {
-                                    runCatching { UserApi.cuplixLike(clipId) }
+                                    runCatching { UserApi.cuplixLike(clipId, value) }
                                         .onFailure { liked[key] = !value }
                                 }
                             }
