@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -173,6 +174,7 @@ fun PlayerScreen(
     var curUploadDate by remember { mutableStateOf<String?>(null) }
 
     var nextEp by remember { mutableStateOf<Episode?>(null) }
+    var prevEp by remember { mutableStateOf<Episode?>(null) }
 
     var nextLookup by remember { mutableStateOf<Api.NextEpisodeLookup>(Api.NextEpisodeLookup.Unknown) }
     LaunchedEffect(curEpId, movieId, curIndex) {
@@ -193,6 +195,13 @@ fun PlayerScreen(
                 runCatching {
                     Api.episodes(movieId).firstOrNull { it.id == curEpId }?.key_time?.takeIf { it.isNotBlank() }
                 }.getOrNull()
+        }
+    }
+    LaunchedEffect(curEpId, movieId, curIndex) {
+        prevEp = null
+        val prevIdx = curIndex?.trim()?.toIntOrNull()?.minus(1)?.takeIf { it >= 1 }
+        if (movieId != null && prevIdx != null) {
+            prevEp = runCatching { Api.findEpisode(movieId, prevIdx.toString()) }.getOrNull()
         }
     }
     val finishedEps = remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -219,6 +228,10 @@ fun PlayerScreen(
         curIndex = ep.index
         curEpId = id
         curUploadDate = ep.key_time?.takeIf { it.isNotBlank() }
+    }
+    val goPrev: () -> Unit = prev@{
+        val ep = prevEp ?: return@prev
+        switchTo(ep, false)
     }
     val goNext: () -> Unit = next@{
         val ep = nextEp ?: return@next
@@ -485,6 +498,9 @@ fun PlayerScreen(
 
     val chips =
         buildList {
+            if (prevEp != null) {
+                add(WatchChip(Icons.Outlined.SkipPrevious, "Sebelumnya", secondary = true) { goPrev() })
+            }
             if (nextEp != null) {
                 add(WatchChip(Icons.Outlined.SkipNext, "Selanjutnya", highlighted = true) { goNext() })
             }

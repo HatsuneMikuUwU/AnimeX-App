@@ -158,6 +158,7 @@ internal data class WatchChip(
     val icon: ImageVector,
     val label: String,
     val highlighted: Boolean = false,
+    val secondary: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -820,8 +821,18 @@ private fun InlineHotRecCard(
 @Composable
 private fun WatchChipButton(chip: WatchChip) {
     val cs = MaterialTheme.colorScheme
-    val container = if (chip.highlighted) cs.primaryContainer else cs.surfaceContainerHigh
-    val content = if (chip.highlighted) cs.onPrimaryContainer else cs.onSurface
+    val container =
+        when {
+            chip.highlighted -> cs.primaryContainer
+            chip.secondary -> cs.secondaryContainer
+            else -> cs.surfaceContainerHigh
+        }
+    val content =
+        when {
+            chip.highlighted -> cs.onPrimaryContainer
+            chip.secondary -> cs.onSecondaryContainer
+            else -> cs.onSurface
+        }
     Row(
         Modifier
             .clip(RoundedCornerShape(50))
