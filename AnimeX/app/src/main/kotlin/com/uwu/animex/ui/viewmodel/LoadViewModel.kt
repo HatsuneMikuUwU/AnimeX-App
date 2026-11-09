@@ -24,6 +24,7 @@ open class LoadViewModel<T>(
     autoLoad: Boolean = true,
     initial: (() -> T?)? = null,
     private val needsRevalidate: (() -> Boolean)? = null,
+    private val revalidateLoader: (suspend () -> T)? = null,
 ) : ViewModel() {
     private val _state =
         MutableStateFlow<UiState<T>>(
@@ -80,7 +81,7 @@ open class LoadViewModel<T>(
             if (_state.value !is UiState.Ready || !check()) return@launch
             val gen = generation
             try {
-                val result = loader(true)
+                val result = revalidateLoader?.invoke() ?: loader(true)
                 if (gen == generation) _state.value = UiState.Ready(result)
             } catch (e: CancellationException) {
                 throw e

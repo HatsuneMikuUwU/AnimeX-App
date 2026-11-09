@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,7 +21,12 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,19 +36,38 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.model.Cuplix
 
 @Composable
 fun CuplixRow(
     clips: List<Cuplix>,
     onPlay: (Cuplix) -> Unit,
+    hasMore: Boolean = false,
+    loadingMore: Boolean = false,
+    loadMoreFailed: Boolean = false,
+    onLoadMore: () -> Unit = {},
+    onRetryLoadMore: () -> Unit = {},
 ) {
     val scale = rememberHomeCardScale()
+    val listState = rememberLazyListState()
+    val nearEnd by remember(listState) {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val total = info.totalItemsCount
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            total > 0 && lastVisible >= total - 3
+        }
+    }
+    LaunchedEffect(nearEnd, hasMore, loadingMore, loadMoreFailed, clips.size) {
+        if (nearEnd && hasMore && !loadingMore && !loadMoreFailed) onLoadMore()
+    }
     LazyRow(
+        state = listState,
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(clips, key = { it.id ?: "${it.id_episode}:${it.time_start}" }) { clip ->
+        items(clips, key = { cuplixKey(it) }) { clip ->
             Column(
                 Modifier
                     .width(154.dp * scale)
@@ -121,6 +146,19 @@ fun CuplixRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+        }
+        if (loadingMore && !loadMoreFailed) {
+            item(key = "cuplix:load-more") { CuplixCardPlaceholder(Modifier.width(154.dp * scale)) }
+        }
+        if (loadMoreFailed) {
+            item(key = "cuplix:load-more-retry") {
+                Box(
+                    Modifier.width(154.dp * scale).height(218.dp * scale),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    TextButton(onClick = onRetryLoadMore) { Text("Gagal muat lagi. Coba lagi") }
+                }
             }
         }
     }

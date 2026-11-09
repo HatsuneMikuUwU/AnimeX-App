@@ -120,6 +120,8 @@ private const val BROWSER_UA =
     "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
         "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
 
+private val posterCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
 private val OverlayShadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
 
 private data class HeartBurst(
@@ -597,14 +599,26 @@ private fun ClipRail(
             onClick = onToggleLike,
         )
         RailAction(icon = Icons.Outlined.Share, label = "Bagikan", onClick = onShare)
+        val movieId = clip.id_movie
+        var posterUrl by remember(movieId) {
+            mutableStateOf(movieId?.let { posterCache[it] ?: Api.peekDetail(it)?.movie?.image_poster })
+        }
+        LaunchedEffect(movieId) {
+            if (movieId.isNullOrBlank() || !posterUrl.isNullOrBlank()) return@LaunchedEffect
+            val url = runSuspendCatching { Api.detail(movieId) }.getOrNull()?.image_poster
+            if (!url.isNullOrBlank()) {
+                posterCache[movieId] = url
+                posterUrl = url
+            }
+        }
         Box(
             Modifier
-                .size(42.dp)
+                .size(width = 42.dp, height = 58.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .border(2.dp, Color.White, RoundedCornerShape(10.dp))
                 .hapticClick(onClick = onOpenAnime),
         ) {
-            Poster(clip.url_thumbnail, Modifier.fillMaxSize(), radius = 10.dp)
+            Poster(posterUrl?.takeIf { it.isNotBlank() } ?: clip.url_thumbnail, Modifier.fillMaxSize(), radius = 10.dp)
         }
     }
 }

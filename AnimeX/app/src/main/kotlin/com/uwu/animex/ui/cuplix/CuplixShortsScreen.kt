@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.VerticalPager
@@ -19,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,14 +33,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat
-import com.uwu.animex.core.network.runSuspendCatching
-import com.uwu.animex.data.api.Api
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.api.CuplixFeed
+import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.player.findActivity
-
-private const val MAX_FETCH_ATTEMPTS = 4
 
 @Composable
 fun CuplixShortsScreen(
@@ -48,17 +47,15 @@ fun CuplixShortsScreen(
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit,
 ) {
-    var clips by remember { mutableStateOf<List<Cuplix>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-    var retryTick by remember { mutableIntStateOf(0) }
-    var nextPage by remember { mutableIntStateOf(2) }
+    val feed by CuplixFeed.state.collectAsStateWithLifecycle()
+    val clips = remember(feed.clips) { feed.clips.playable() }
+    var loading by remember { mutableStateOf(CuplixFeed.state.value.clips.isEmpty()) }
     var positioned by remember { mutableStateOf(false) }
     val liked = remember { mutableStateMapOf<String, Boolean>() }
 
     LaunchedEffect(Unit) {
         runCatching { PlaybackSessions.current?.player?.pause() }
-        val batch = runSuspendCatching { Api.homeCuplix(page = 1) }.getOrDefault(emptyList())
-        clips = batch.playable()
+        CuplixFeed.ensureLoaded()
         loading = false
     }
 
@@ -70,25 +67,19 @@ fun CuplixShortsScreen(
         positioned = true
     }
 
-    LaunchedEffect(pagerState.currentPage, clips.size, retryTick) {
-        val nearEnd = pagerState.currentPage >= clips.lastIndex - 3
-        if (clips.isEmpty() || !nearEnd) return@LaunchedEffect
-        val existingKeys = clips.mapTo(mutableSetOf(), ::clipKey)
-        var additions = emptyList<Cuplix>()
-        var attempt = 0
-        while (additions.isEmpty() && attempt < MAX_FETCH_ATTEMPTS) {
-            attempt++
-            val page = nextPage
-            val batch = runSuspendCatching { Api.homeCuplix(force = true, page = page) }.getOrDefault(emptyList())
-            nextPage = if (batch.isEmpty()) 1 else page + 1
-            additions = batch.playable().filter { clipKey(it) !in existingKeys }
+    // Muat halaman berikutnya saat mendekati ujung. Kalau feed sudah habis, loadMore() tidak melakukan apa-apa,
+    // jadi daftar berhenti di klip terakhir dan tidak berputar ke awal.
+    LaunchedEffect(pagerState, positioned) {
+        if (!positioned) return@LaunchedEffect
+        snapshotFlow { pagerState.currentPage to pagerState.pageCount }.collect { (page, count) ->
+            if (count > 0 && page >= count - 4) CuplixFeed.loadMore()
         }
-        if (additions.isNotEmpty()) clips = clips + additions
     }
 
+    // Kalau muat sebelumnya gagal, geser di klip terakhir dianggap coba lagi.
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.isScrollInProgress }.collect { scrolling ->
-            if (scrolling && pagerState.currentPage >= pagerState.pageCount - 1) retryTick++
+            if (scrolling && pagerState.currentPage >= pagerState.pageCount - 1) CuplixFeed.retryLoadMore()
         }
     }
 
@@ -135,6 +126,29 @@ fun CuplixShortsScreen(
             }
         }
 
+        val atLastClip = clips.isNotEmpty() && pagerState.currentPage >= clips.lastIndex
+        if (atLastClip && feed.loadingMore) {
+            AppLoadingIndicator(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp)
+                    .zIndex(3f),
+                color = Color.White,
+            )
+        } else if (atLastClip && feed.loadMoreFailed) {
+            Text(
+                "Gagal memuat Cuplix lagi. Geser ke atas untuk coba lagi.",
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    .zIndex(3f),
+                color = Color.White,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
         Box(
             Modifier
                 .align(Alignment.TopStart)
@@ -153,5 +167,4 @@ fun CuplixShortsScreen(
 
 private fun List<Cuplix>.playable(): List<Cuplix> = filter { !it.id_episode.isNullOrBlank() }
 
-private fun clipKey(clip: Cuplix): String =
-    clip.id?.takeIf { it.isNotBlank() } ?: "${clip.id_episode}:${clip.time_start}:${clip.anime}"
+private fun clipKey(clip: Cuplix): String = cuplixKey(clip)

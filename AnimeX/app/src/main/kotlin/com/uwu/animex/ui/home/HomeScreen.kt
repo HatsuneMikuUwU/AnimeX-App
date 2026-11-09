@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.HomeData
@@ -95,6 +96,8 @@ private fun HomeContent(
 ) {
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
+    val cuplixFeed by CuplixFeed.state.collectAsStateWithLifecycle()
+    val cuplixClips = cuplixFeed.clips.ifEmpty { h.cuplix }
     val scheduleViewModel: ScheduleViewModel = viewModel()
     val scheduleState by scheduleViewModel.state.collectAsStateWithLifecycle()
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
@@ -118,14 +121,24 @@ private fun HomeContent(
                 RandomPreviewPager(previewList, onOpen, onPlay)
             }
         }
-        if (h.cuplix.isNotEmpty()) {
+        if (cuplixClips.isNotEmpty()) {
             item(key = "header:Cuplix") {
                 Box(animateItemExpressive()) {
                     SectionHeader("Cuplix", null, icon = Icons.Outlined.PlayCircleOutline)
                 }
             }
             item(key = "content:Cuplix") {
-                Box(animateItemExpressive()) { CuplixRow(h.cuplix, onPlayCuplix) }
+                Box(animateItemExpressive()) {
+                    CuplixRow(
+                        clips = cuplixClips,
+                        onPlay = onPlayCuplix,
+                        hasMore = cuplixFeed.hasMore,
+                        loadingMore = cuplixFeed.loadingMore,
+                        loadMoreFailed = cuplixFeed.loadMoreFailed,
+                        onLoadMore = CuplixFeed::loadMore,
+                        onRetryLoadMore = CuplixFeed::retryLoadMore,
+                    )
+                }
             }
         }
         val historyIsLocal = localHistory.isNotEmpty()

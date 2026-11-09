@@ -306,7 +306,7 @@ fun WaitingCardPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CuplixCardPlaceholder(modifier: Modifier = Modifier) {
+internal fun CuplixCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(22.dp))

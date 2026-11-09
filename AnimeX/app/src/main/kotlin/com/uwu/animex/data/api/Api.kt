@@ -181,6 +181,7 @@ object Api {
         oldestDir?.listFiles()?.forEach { it.delete() }
         homeMem = null
         homeMemAt = 0L
+        CuplixFeed.clear()
     }
 
     private fun normalizeBase(raw: String): String {
@@ -539,7 +540,10 @@ object Api {
         return UrlSecurity.secureOrNull(candidate)
     }
 
-    suspend fun home(force: Boolean = false): HomeData {
+    suspend fun home(
+        force: Boolean = false,
+        refreshCuplix: Boolean = force,
+    ): HomeData {
         val cached = homeMem
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
             return cached
@@ -558,7 +562,8 @@ object Api {
                 if (cached != null) return cached
                 throw e
             } ?: return cached ?: HomeData()
-        val cuplix = runSuspendCatching { homeCuplix(force) }.getOrDefault(emptyList())
+        val cuplix = runSuspendCatching { homeCuplix(refreshCuplix) }.getOrDefault(emptyList())
+        if (refreshCuplix && cuplix.isNotEmpty()) CuplixFeed.replace(cuplix) else CuplixFeed.seedIfEmpty(cuplix)
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =
