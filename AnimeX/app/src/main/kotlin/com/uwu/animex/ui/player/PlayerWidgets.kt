@@ -53,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -178,9 +179,31 @@ internal fun EpisodePanel(
     onDismiss: () -> Unit,
 ) {
     LaunchedEffect(movieId) {
-        viewModel.loadEpisodes(movieId, force = false)
+        viewModel.openEpisodeList(movieId, null)
     }
-    val state by viewModel.episodes.collectAsStateWithLifecycle()
+    val state by viewModel.episodeList.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val nearEnd by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            info.totalItemsCount > 0 && last >= info.totalItemsCount - 5
+        }
+    }
+    LaunchedEffect(nearEnd, state.hasMore, state.loadingMore, state.loading, state.moreError) {
+        if (nearEnd && state.hasMore && !state.loadingMore && !state.loading && !state.moreError) {
+            viewModel.loadMoreEpisodes()
+        }
+    }
+    var scrolledToCurrent by remember(currentEpId) { mutableStateOf(false) }
+    LaunchedEffect(state.episodes.size, currentEpId) {
+        if (scrolledToCurrent) return@LaunchedEffect
+        val i = state.episodes.indexOfFirst { it.id == currentEpId }
+        if (i >= 0) {
+            scrolledToCurrent = true
+            if (i > 0) listState.scrollToItem(i)
+        }
+    }
     Box(
         Modifier
             .fillMaxSize()
@@ -209,21 +232,17 @@ internal fun EpisodePanel(
                     Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = Color.White)
                 }
             }
-            when (val s = state) {
-                UiState.Loading ->
+            val error = state.error
+            when {
+                state.loading && state.episodes.isEmpty() ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         AppLoadingIndicator(color = Color.White)
                     }
-                is UiState.Error -> ErrorState(s.msg, { viewModel.loadEpisodes(movieId, force = true) }, Color.White)
-                is UiState.Ready -> {
-                    val list = s.value
-                    val listState = rememberLazyListState()
-                    LaunchedEffect(list, currentEpId) {
-                        val i = list.indexOfFirst { it.id == currentEpId }
-                        if (i > 0) listState.scrollToItem(i)
-                    }
+                error != null && state.episodes.isEmpty() ->
+                    ErrorState(error, { viewModel.openEpisodeList(movieId, null, force = true) }, Color.White)
+                else ->
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                        itemsIndexed(list, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
+                        itemsIndexed(state.episodes, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
                             val current = ep.id == currentEpId
                             Row(
                                 Modifier
@@ -262,8 +281,22 @@ internal fun EpisodePanel(
                                 }
                             }
                         }
+                        if (state.moreError) {
+                            item(key = "more-retry") {
+                                TextButton(
+                                    onClick = hapticClick { viewModel.loadMoreEpisodes() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text("Gagal muat lagi. Coba lagi", color = Color.White) }
+                            }
+                        } else if (state.loadingMore) {
+                            item(key = "more-loading") {
+                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    AppLoadingIndicator(color = Color.White)
+                                }
+                            }
+                        }
                     }
-                }
             }
         }
     }

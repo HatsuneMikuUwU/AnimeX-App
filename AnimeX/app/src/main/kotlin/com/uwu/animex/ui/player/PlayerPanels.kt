@@ -62,6 +62,8 @@ internal val SLEEP_OPTIONS = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it men
 
 private val SLEEP_OPTION_END_OF_EPISODE = SLEEP_OPTIONS.lastIndex
 
+private var lastTimedSleepOption = -1
+
 internal const val SLEEP_TICK_MS = 10_000L
 
 private const val MS_PER_MINUTE = 60_000L
@@ -89,6 +91,7 @@ internal fun sleepSelectedIndex(
 ): Int =
     when {
         afterEpisode -> SLEEP_OPTION_END_OF_EPISODE
+        deadlineMs > 0L && lastTimedSleepOption in 1 until SLEEP_OPTION_END_OF_EPISODE -> lastTimedSleepOption
         deadlineMs > 0L -> {
             val remaining = sleepRemainingMinutes(deadlineMs, nowMs)
             val index = SLEEP_TIMER_MINUTES.indexOfFirst { it.toLong() == remaining }
@@ -109,6 +112,7 @@ internal fun sleepSelection(index: Int): SleepSelection =
         SLEEP_OPTION_END_OF_EPISODE -> SleepSelection(0L, true, "Berhenti setelah episode ini")
         else -> {
             val minutes = SLEEP_TIMER_MINUTES[index - 1]
+            lastTimedSleepOption = index
             val deadline = SystemClock.elapsedRealtime() + minutes * MS_PER_MINUTE
             SleepSelection(deadline, false, "Berhenti dalam $minutes menit")
         }
