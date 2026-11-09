@@ -44,10 +44,6 @@ open class LoadViewModel<T>(
         _state.value = UiState.Ready(value)
     }
 
-    /**
-     * Silently replaces the current value with the result of [block], without touching the loader
-     * (so paging state owned by subclasses is preserved). Errors keep the previous value.
-     */
     protected fun reloadWith(block: suspend () -> T) {
         generation++
         val gen = generation

@@ -79,7 +79,7 @@ class PlayerViewModel(
         serversJob =
             viewModelScope.launch {
                 val previous = _servers.value
-                // Daftar server lama punya episode lain? Jangan dipakai buat episode ini (URL-nya beda).
+
                 val sameEp = loadedEpId == epId
                 if (force && previous is UiState.Ready && sameEp) {
                     _isRefreshing.value = true

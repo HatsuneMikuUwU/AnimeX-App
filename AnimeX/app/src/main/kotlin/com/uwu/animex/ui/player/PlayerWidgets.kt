@@ -412,8 +412,7 @@ internal fun PlayerLoadError(
     extra: @Composable () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
-        // Di player inline tinggi areanya cuma ~200dp: tombol disusun sejajar dan diberi jarak dari top bar
-        // supaya pesan + tombol gak ketimpa / kepotong.
+
         Column(
             Modifier
                 .fillMaxSize()
@@ -472,7 +471,7 @@ internal fun WebEmbed(url: String) {
     val ctx = LocalContext.current
     val lifecycleOwner: LifecycleOwner = (ctx.findActivity() as? LifecycleOwner) ?: LocalLifecycleOwner.current
     val holder = remember { arrayOfNulls<WebView>(1) }
-    // Embed jangan terus bunyi pas app masuk background; lanjut lagi waktu app balik ke depan.
+
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
@@ -485,7 +484,7 @@ internal fun WebEmbed(url: String) {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    // key(url): pindah ke server embed lain harus bikin WebView baru, kalau nggak URL baru gak pernah dimuat.
+
     key(url) {
         AndroidView(
             factory = { c ->

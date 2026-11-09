@@ -269,7 +269,6 @@ object UserApi {
         )
     }
 
-    // Komentar per episode (sama endpoint AnimeIn: 3/2/comment/...).
     suspend fun episodeCommentList(
         episodeId: String,
         page: Int = 0,
@@ -334,7 +333,6 @@ object UserApi {
         )
     }
 
-    /** AnimeIn uses type=Y for like, N for dislike and - to clear a reaction. */
     suspend fun episodeCommentAction(commentId: String, type: String) {
         request(
             "POST",

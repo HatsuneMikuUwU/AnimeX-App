@@ -71,8 +71,6 @@ internal fun ExoView(
     val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
     val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
 
-    // Kalau sesi episode + link yang sama masih aktif (mis. balik dari layar komentar), pakai player-nya lagi
-    // supaya video lanjut mulus (tidak di-pause, tidak buffering ulang dari awal).
     val reusedSession =
         remember(epId, url) {
             val session = PlaybackSessions.current
@@ -92,7 +90,7 @@ internal fun ExoView(
     val player =
         remember(epId, url) {
             (reusedSession?.player as? ExoPlayer) ?: run {
-                // Player lama (kalau ada) dijeda dulu supaya tidak bunyi dobel sebelum dilepas.
+
                 runCatching { PlaybackSessions.current?.player?.pause() }
                 val client = NetworkModule.streamClient
                 val browserUa =
@@ -158,8 +156,7 @@ internal fun ExoView(
             }
         }
     }
-    // Layar cuma ditahan nyala selama video lagi jalan / buffering. Kalau dijeda (mis. user lagi baca
-    // komentar di halaman inline) atau sudah selesai, layar boleh mati normal.
+
     var keepOn by remember(player) { mutableStateOf(player.shouldKeepScreenOn()) }
     DisposableEffect(player) {
         val listener =
@@ -196,8 +193,7 @@ internal fun ExoView(
         }
     }
     val backgroundPlay by PlayerPrefs.backgroundPlay.collectAsStateWithLifecycle()
-    // Pakai lifecycle Activity, bukan lifecycle NavBackStackEntry. Entry player masuk ON_STOP setiap kali
-    // pindah ke layar lain (mis. diskusi) atau back, dan itu bikin video ke-pause padahal app masih di depan.
+
     val lifecycleOwner: LifecycleOwner = (ctx.findActivity() as? LifecycleOwner) ?: LocalLifecycleOwner.current
     DisposableEffect(player, lifecycleOwner, backgroundPlay) {
         val observer =

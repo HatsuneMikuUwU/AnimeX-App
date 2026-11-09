@@ -27,10 +27,6 @@ import com.uwu.animex.data.model.Episode
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.hapticClick
 
-/**
- * Kartu episode khusus daftar di halaman player inline: thumbnail polos (tanpa overlay play /
- * progress bar), judul, info singkat, dan sinopsis. Sengaja terpisah dari EpisodeRow di layar detail.
- */
 @Composable
 internal fun PlayerEpisodeCard(
     ep: Episode,

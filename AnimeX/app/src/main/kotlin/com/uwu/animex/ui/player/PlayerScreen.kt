@@ -186,7 +186,7 @@ fun PlayerScreen(
             nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
                 ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
         }
-        // Tanggal upload episode yang sedang diputar (key_time)
+
         if (movieId != null && curUploadDate.isNullOrBlank()) {
             curUploadDate =
                 runCatching {
@@ -278,7 +278,6 @@ fun PlayerScreen(
     val ctx = LocalContext.current
     val activity = ctx.findActivity()
 
-    // Fullscreen = landscape (atau PiP). Portrait = player inline di atas, kayak YouTube.
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
     val fullscreen = isLandscape || inPip
@@ -305,8 +304,6 @@ fun PlayerScreen(
         if (fullscreen) exitFullscreen() else enterFullscreen()
     }
 
-    // Orientasi dikunci cuma sementara setelah tombol fullscreen ditekan. Begitu HP beneran
-    // diputar ke arah yang sama, kunci dilepas biar auto-rotate balik normal.
     DisposableEffect(manualLock) {
         val lock = manualLock
         val autoRotate =
@@ -337,7 +334,7 @@ fun PlayerScreen(
     DisposableEffect(Unit) {
         val controller = activity?.let { WindowCompat.getInsetsController(it.window, it.window.decorView) }
         val previousLightStatus = controller?.isAppearanceLightStatusBars ?: false
-        // Area status bar ketutup background hitam player, jadi ikonnya harus terang.
+
         controller?.isAppearanceLightStatusBars = false
         PipHelper.playerActive = true
         PipHelper.isPlaying = false
@@ -374,7 +371,7 @@ fun PlayerScreen(
     var showComments by rememberSaveable { mutableStateOf(false) }
     var locked by rememberSaveable { mutableStateOf(false) }
     var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
-    // Kalau balik dari layar lain (mis. komentar), kecepatan ikut yang lagi dipakai player-nya (bukan balik ke 1x).
+
     var speed by rememberSaveable {
         mutableStateOf(
             if (PlaybackSessions.episodeId == epId) {
@@ -398,8 +395,7 @@ fun PlayerScreen(
         if (!fullscreen) showEpisodes = false
         showComments = false
     }
-    // Kunci layar cuma ada di fullscreen. Kalau balik ke inline masih terkunci, kontrol & tombol
-    // fullscreen gak bisa dipakai sama sekali, jadi kunci dilepas otomatis.
+
     LaunchedEffect(fullscreen) { if (!fullscreen) locked = false }
     LaunchedEffect(fullscreen) { if (fullscreen) PipHelper.updateSourceRect(activity, null) }
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
@@ -425,7 +421,7 @@ fun PlayerScreen(
 
     fun resolveSel(servers: List<Server>): Int {
         if (sel >= 0) return sel.coerceIn(0, servers.lastIndex)
-        // Kalau episode ini masih punya sesi aktif (mis. balik dari layar komentar), pilih server yang sama supaya player dipakai ulang.
+
         val activeUrl = if (PlaybackSessions.episodeId == epId) PlaybackSessions.streamUrl else null
         val activeIdx = activeUrl?.let { u -> servers.indexOfFirst { it.link == u } }?.takeIf { it >= 0 }
         return activeIdx ?: preferredIndex(servers)
@@ -460,8 +456,7 @@ fun PlayerScreen(
 
     val currentServer: Server? = if (servers.isEmpty()) null else servers[resolveSel(servers)]
     val cs = MaterialTheme.colorScheme
-    // Keluar dari player (bukan fullscreen -> inline): jeda dulu saat itu juga, jangan nunggu sesi dilepas
-    // setelah transisi keluar selesai, supaya suara tidak masih keputar.
+
     val leavePlayer: () -> Unit = {
         runCatching { playerRef?.pause() }
         onBack()
@@ -524,8 +519,6 @@ fun PlayerScreen(
             }
         }
 
-    // Episode ini masih punya sesi aktif: langsung nempel ke player yang sama, tanpa nunggu daftar
-    // server (jadi gak ada spinner/hitam) dan tanpa peduli URL dari API berubah (signed URL beda-beda).
     val liveUrl: String? =
         if (sel < 0 && streamError == null && !PlayerPrefs.alwaysUseExternal.value && PlaybackSessions.episodeId == epId) {
             val livePlayer = PlaybackSessions.current?.player
@@ -667,8 +660,7 @@ fun PlayerScreen(
                 }
             Box(videoModifier.background(Color.Black)) {
                 if (exoTarget != null) {
-                    // Satu call site buat semua kasus (sesi lama / server baru), jadi ExoView gak
-                    // di-recreate pas sesi baru kebentuk atau daftar server baru selesai load.
+
                     key(epId, exoTarget.url) {
                         renderExo(exoTarget.url, exoTarget.subtitle, exoTarget.idx)
                     }
@@ -678,7 +670,7 @@ fun PlayerScreen(
                             if (PlayerPrefs.showLoadingCircle.value) {
                                 AppLoadingIndicator(color = Color.White)
                             }
-                            // Tanpa ini user gak punya tombol keluar selama server masih dimuat.
+
                             Box(
                                 Modifier
                                     .align(Alignment.TopStart)

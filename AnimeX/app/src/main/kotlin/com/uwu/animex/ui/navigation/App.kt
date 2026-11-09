@@ -67,8 +67,7 @@ import com.uwu.animex.ui.update.UpdateScreen
 fun App() {
     val nav = rememberNavController()
     val backEntry by nav.currentBackStackEntryAsState()
-    // Tanpa mini player, sesi playback berhenti begitu layar player benar-benar keluar dari back stack
-    // (back / pindah ke detail). Pindah ke layar lain di atas player (mis. komentar) gak menghentikannya.
+
     LaunchedEffect(nav) {
         nav.currentBackStack.collect { stack ->
             val inPlayer = stack.any { it.destination.route?.startsWith("player") == true }
@@ -123,7 +122,7 @@ fun App() {
 
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val route = backEntry?.destination?.route ?: startDestination
-    // Player: background animasi aktif cuma pas inline (portrait). Fullscreen (landscape / PiP) tetap hitam polos.
+
     val playerInPip by PipHelper.inPip.collectAsStateWithLifecycle()
     val playerFullscreen =
         LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE || playerInPip

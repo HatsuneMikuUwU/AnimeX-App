@@ -32,8 +32,6 @@ object PipHelper {
     @Volatile
     private var lastActivity: Activity? = null
 
-    // Posisi video inline di window, dipakai sebagai source rect hint supaya animasi masuk PiP
-    // mengecil mulus dari player (bukan dari seluruh layar).
     @Volatile
     private var sourceRect: android.graphics.Rect? = null
 

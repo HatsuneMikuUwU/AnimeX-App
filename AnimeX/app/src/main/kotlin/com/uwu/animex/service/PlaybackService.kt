@@ -110,8 +110,7 @@ object PlaybackSessions {
 
     private fun releaseSession(session: MediaSession) {
         val player = session.player
-        // stop() (bukan clearMediaItems): mengosongkan playlist membuat ExoPlayer pindah ke STATE_ENDED,
-        // dan itu dibaca listener player sebagai "episode selesai".
+
         runCatching { player.stop() }
         runCatching { session.release() }
         (player as? ExoPlayer)?.let { runCatching { it.release() } }

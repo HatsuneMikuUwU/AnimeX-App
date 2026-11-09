@@ -74,7 +74,6 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import kotlinx.coroutines.launch
 
-/** Registration needs a starter Pokemon choice that the app can't send, so it happens on the website. */
 private const val REGISTER_URL = "https://animeinweb.com"
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

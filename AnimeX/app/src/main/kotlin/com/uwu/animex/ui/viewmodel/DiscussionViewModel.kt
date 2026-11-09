@@ -23,7 +23,6 @@ enum class DiscussionScope {
     Episode,
 }
 
-/** Holds paging state outside the ViewModel so the loader lambda never captures `this` during super construction. */
 private class DiscussionPager(
     private val targetId: String,
     private val scope: DiscussionScope,
@@ -44,7 +43,6 @@ private class DiscussionPager(
         return loadPage(initialPage).also { onFirstPage?.invoke(it.size) }
     }
 
-    /** Re-fetches every page loaded so far, so a refresh keeps the "load more" progress. */
     suspend fun reloadLoadedPages(): List<UserApi.Discussion> {
         val pageCount = (nextPage - initialPage).coerceAtLeast(1)
         val seen = HashSet<String>()
@@ -155,10 +153,6 @@ class DiscussionViewModel private constructor(
         }
     }
 
-    /**
-     * Optimistic like/dislike: the list is patched locally right away and the request runs in the
-     * background, so the row never dims, reloads or flickers. On failure the previous values are restored.
-     */
     fun react(discussion: UserApi.Discussion, type: String) {
         if (scope != DiscussionScope.Episode) return
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
