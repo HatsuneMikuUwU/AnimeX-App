@@ -146,6 +146,7 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.WaitingCardPlaceholder
+import com.uwu.animex.ui.common.WatchPagePlaceholder
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.defaultPlaceholder
@@ -194,6 +195,7 @@ internal fun PlayerWatchPage(
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
     var section by rememberSaveable { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
     val snackbar = remember { SnackbarHostState() }
@@ -204,6 +206,7 @@ internal fun PlayerWatchPage(
     val synced = rememberSyncedWatched(movieId)
     val openStatus = LocalOpenStatusSheet.current
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
+    var movieLoaded by remember(movieId) { mutableStateOf(movieId == null) }
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
     var similarLoading by remember(movieId) { mutableStateOf(false) }
 
@@ -212,6 +215,7 @@ internal fun PlayerWatchPage(
         playerViewModel.openEpisodeList(movieId, currentIndex)
         playerViewModel.loadAniZip(movieId)
         movie = runCatching { Api.detail(movieId) }.getOrNull()
+        movieLoaded = true
     }
     LaunchedEffect(movieId, currentIndex) {
         if (movieId == null) return@LaunchedEffect
@@ -227,6 +231,7 @@ internal fun PlayerWatchPage(
         similarLoading = false
     }
 
+    val showSkeleton = movieId != null && (!movieLoaded || (episodeList.loading && episodeList.episodes.isEmpty()))
     val download = rememberEpisodeDownload(animeTitle, movieId, movie, snackbar)
     val nearEnd by remember {
         derivedStateOf {
@@ -258,100 +263,117 @@ internal fun PlayerWatchPage(
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
 
     Box(modifier.background(screenContainerColor())) {
-        LazyColumn(
-            state = listState,
+        AnimatedContent(
+            targetState = showSkeleton,
+            transitionSpec = { AppMotion.crossfade(motion) },
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = bottomPad),
-        ) {
-            item(key = "header") {
-                val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
-                val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
-                val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() }
-                val headerTitle =
-                    when {
-                        epNumber == null -> epTitle ?: animeTitle
-                        epTitle != null -> epTitle
-                        else -> "Episode $epNumber"
-                    }
-                val headerMeta =
-                    listOfNotNull(
-                        epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
-                        epMeta?.runtime?.let { "${it}m" },
-                        AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
-                    ).joinToString("  •  ").takeIf { it.isNotEmpty() }
-                WatchHeader(headerTitle, headerMeta)
-            }
-            item(key = "anime") {
-                WatchAnimeRow(
-                    title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                    movie = movie,
-                    status = synced.status,
-                    enabled = movie != null && movieId != null,
-                    onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
-                )
-            }
-            if (onPrev != null || onNext != null) {
-                item(key = "nav-buttons") {
-                    WatchNavButtons(
-                        onPrev = onPrev,
-                        onNext = onNext,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            }
-            if (chips.isNotEmpty()) {
-                item(key = "chips") {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(chips) { chip -> WatchChipButton(chip) }
-                    }
-                }
-            }
-            item(key = "comments-preview") {
-                CommentsPreviewCard(
-                    state = commentsState,
-                    onClick = onOpenComments,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-            item(key = "sections") {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    WatchSectionToggleGroup(
-                        labels = WATCH_SECTIONS,
-                        selected = section,
-                        onSelect = { section = it },
-                    )
-                    Spacer(Modifier.weight(1f))
-                    if (section == 0 && movieId != null) {
-                        WatchSortButton(
-                            newestFirst = episodeList.newestFirst,
-                            onClick = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
-                        )
-                    }
-                }
-            }
-            if (section == 0) {
-                watchEpisodeItems(
-                    movieId = movieId,
-                    list = episodeList,
-                    currentEpId = currentEpId,
-                    fallbackImage = fallbackImage,
-                    malWatched = synced.watched,
-                    aniZip = aniZip,
-                    onRetry = { movieId?.let { playerViewModel.openEpisodeList(it, currentIndex, force = true) } },
-                    onLoadMore = playerViewModel::loadMoreEpisodes,
-                    onDownload = download,
-                    onPick = onPickEpisode,
+            label = "watch-page",
+        ) { skeleton ->
+            if (skeleton) {
+                WatchPagePlaceholder(
+                    showPrev = onPrev != null,
+                    showNext = onNext != null,
+                    showChips = chips.isNotEmpty(),
                 )
             } else {
-                watchSimilarItems(similar, similarLoading, onOpenAnime)
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = bottomPad),
+                ) {
+                    item(key = "header") {
+                        val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
+                        val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
+                        val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() }
+                        val headerTitle =
+                            when {
+                                epNumber == null -> epTitle ?: animeTitle
+                                epTitle != null -> epTitle
+                                else -> "Episode $epNumber"
+                            }
+                        val headerMeta =
+                            listOfNotNull(
+                                epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
+                                epMeta?.runtime?.let { "${it}m" },
+                                AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
+                            ).joinToString("  •  ").takeIf { it.isNotEmpty() }
+                        WatchHeader(headerTitle, headerMeta)
+                    }
+                    item(key = "anime") {
+                        WatchAnimeRow(
+                            title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                            movie = movie,
+                            status = synced.status,
+                            enabled = movie != null && movieId != null,
+                            onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
+                        )
+                    }
+                    if (onPrev != null || onNext != null) {
+                        item(key = "nav-buttons") {
+                            WatchNavButtons(
+                                onPrev = onPrev,
+                                onNext = onNext,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
+                    if (chips.isNotEmpty()) {
+                        item(key = "chips") {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(chips) { chip -> WatchChipButton(chip) }
+                            }
+                        }
+                    }
+                    item(key = "comments-preview") {
+                        CommentsPreviewCard(
+                            state = commentsState,
+                            onClick = onOpenComments,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                    item(key = "sections") {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            WatchSectionToggleGroup(
+                                labels = WATCH_SECTIONS,
+                                selected = section,
+                                onSelect = { section = it },
+                            )
+                            Spacer(Modifier.weight(1f))
+                            if (section == 0 && movieId != null) {
+                                WatchSortButton(
+                                    newestFirst = episodeList.newestFirst,
+                                    onClick = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
+                                )
+                            }
+                        }
+                    }
+                    if (section == 0) {
+                        watchEpisodeItems(
+                            movieId = movieId,
+                            list = episodeList,
+                            currentEpId = currentEpId,
+                            fallbackImage = fallbackImage,
+                            malWatched = synced.watched,
+                            aniZip = aniZip,
+                            onRetry = {
+                                movieId?.let { playerViewModel.openEpisodeList(it, currentIndex, force = true) }
+                            },
+                            onLoadMore = playerViewModel::loadMoreEpisodes,
+                            onDownload = download,
+                            onPick = onPickEpisode,
+                        )
+                    } else {
+                        watchSimilarItems(similar, similarLoading, onOpenAnime)
+                    }
+                }
             }
         }
         SnackbarHost(
