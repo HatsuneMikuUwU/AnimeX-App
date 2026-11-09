@@ -173,6 +173,8 @@ fun PlayerScreen(
 
     var nextEp by remember { mutableStateOf<Episode?>(null) }
     var prevEp by remember { mutableStateOf<Episode?>(null) }
+    var showNext by remember { mutableStateOf(false) }
+    var showPrev by remember { mutableStateOf(false) }
 
     var nextLookup by remember { mutableStateOf<Api.NextEpisodeLookup>(Api.NextEpisodeLookup.Unknown) }
     LaunchedEffect(curEpId, movieId, curIndex) {
@@ -187,6 +189,7 @@ fun PlayerScreen(
             nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
                 ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
         }
+        showNext = nextEp != null
 
         if (movieId != null && curUploadDate.isNullOrBlank()) {
             curUploadDate =
@@ -201,6 +204,7 @@ fun PlayerScreen(
         if (movieId != null && prevIdx != null) {
             prevEp = runCatching { Api.findEpisode(movieId, prevIdx.toString()) }.getOrNull()
         }
+        showPrev = prevEp != null
     }
     val finishedEps = remember { mutableStateOf<Set<String>>(emptySet()) }
     val applyResume: (Boolean) -> Unit = { done ->
@@ -821,8 +825,8 @@ fun PlayerScreen(
                     onOpenComments = { showComments = true },
                     onCloseComments = { showComments = false },
                     chips = chips,
-                    onPrev = if (prevEp != null) goPrev else null,
-                    onNext = if (nextEp != null) goNext else null,
+                    onPrev = if (showPrev) goPrev else null,
+                    onNext = if (showNext) goNext else null,
                     onPickEpisode = { switchTo(it, false) },
                     onOpenAnime = onOpenAnime,
                     onNeedLogin = onNeedLogin,
