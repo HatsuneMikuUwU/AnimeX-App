@@ -66,9 +66,9 @@ object Api {
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
     private const val GATE_RETRY_MS = 60 * 1000L
-    private const val HOME_CUPLIX_PATH = "data/home/fyp"
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
+    private val homeCuplixPath: String by lazy { NativeCore.path(NativeCore.HOME_CUPLIX) }
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
     private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
@@ -292,7 +292,7 @@ object Api {
         add(NativeCore.HOME_LIST, CacheKind.HOME)
         add(NativeCore.HOME_SECTION, CacheKind.HOME)
         add(NativeCore.HOME_NEW_EPISODE, CacheKind.HOME)
-        rules += HOME_CUPLIX_PATH to CacheKind.HOME
+        add(NativeCore.HOME_CUPLIX, CacheKind.HOME)
         add(NativeCore.SCHEDULE, CacheKind.LIST)
         add(NativeCore.EXPLORE_MOVIE, CacheKind.SEARCH)
         add(NativeCore.FIND, CacheKind.SEARCH)
@@ -627,12 +627,12 @@ object Api {
     ): List<Cuplix> {
         val params =
             buildMap {
-                put("limit", "10")
+                put("limit", "$API_LIMIT")
                 if (page > 1) put("page", page.toString())
             }
         val data =
             get<CuplixListData>(
-                HOME_CUPLIX_PATH,
+                homeCuplixPath,
                 CuplixListData::class.java,
                 params,
                 force,

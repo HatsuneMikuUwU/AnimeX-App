@@ -250,6 +250,7 @@ std::string endpoint(int op, const std::string& arg) {
         case COMMENT_ACTION: return OBF("3/2/comment/action");
         case REPLY_LIST: return OBF("data/comment_replay/data");
         case REPLY_POST: return OBF("data/comment_replay/do");
+        case HOME_CUPLIX: return OBF("data/home/fyp");
         default: return "";
     }
 }

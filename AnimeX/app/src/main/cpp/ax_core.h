@@ -37,6 +37,7 @@ enum Op {
     COMMENT_ACTION = 27,
     REPLY_LIST = 28,
     REPLY_POST = 29,
+    HOME_CUPLIX = 30,
 };
 
 std::string secret(int id, const char* masked_hex);

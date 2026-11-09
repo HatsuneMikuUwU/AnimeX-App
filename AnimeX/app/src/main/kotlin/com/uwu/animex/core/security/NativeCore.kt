@@ -36,6 +36,7 @@ object NativeCore {
     const val COMMENT_ACTION = 27
     const val REPLY_LIST = 28
     const val REPLY_POST = 29
+    const val HOME_CUPLIX = 30
 
     init {
         System.loadLibrary("animexcore")
