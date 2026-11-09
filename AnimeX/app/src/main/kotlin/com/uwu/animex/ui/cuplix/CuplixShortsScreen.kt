@@ -36,10 +36,14 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
+import com.uwu.animex.data.local.CuplixSeen
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.player.findActivity
+import kotlinx.coroutines.delay
+
+private const val SEEN_AFTER_MS = 3_000L
 
 @Composable
 fun CuplixShortsScreen(
@@ -48,7 +52,13 @@ fun CuplixShortsScreen(
     onOpenAnime: (String) -> Unit,
 ) {
     val feed by CuplixFeed.state.collectAsStateWithLifecycle()
-    val clips = remember(feed.clips) { feed.clips.playable() }
+    // Klip yang sudah ditonton sebelum layar ini dibuka disembunyikan. Daftarnya tidak berubah selama
+    // layar terbuka supaya halaman pager tidak bergeser saat klip ditandai ditonton.
+    val seenAtOpen = remember { CuplixSeen.seen.value }
+    val clips =
+        remember(feed.clips) {
+            feed.clips.playable().filter { it.id == startClipId || clipKey(it) !in seenAtOpen }
+        }
     var loading by remember { mutableStateOf(CuplixFeed.state.value.clips.isEmpty()) }
     var positioned by remember { mutableStateOf(false) }
     val liked = remember { mutableStateMapOf<String, Boolean>() }
@@ -65,6 +75,14 @@ fun CuplixShortsScreen(
         val startIndex = clips.indexOfFirst { it.id == startClipId }.takeIf { it >= 0 } ?: 0
         if (pagerState.currentPage != startIndex) pagerState.scrollToPage(startIndex)
         positioned = true
+    }
+
+    // Klip dianggap sudah ditonton setelah tampil beberapa detik.
+    val currentKey = clips.getOrNull(pagerState.currentPage)?.let(::clipKey)
+    LaunchedEffect(currentKey, positioned) {
+        if (!positioned || currentKey == null) return@LaunchedEffect
+        delay(SEEN_AFTER_MS)
+        CuplixSeen.mark(currentKey)
     }
 
     // Muat halaman berikutnya saat mendekati ujung. Kalau feed sudah habis, loadMore() tidak melakukan apa-apa,

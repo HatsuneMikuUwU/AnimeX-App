@@ -2,6 +2,7 @@ package com.uwu.animex.data.api
 
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.network.runSuspendCatching
+import com.uwu.animex.data.local.CuplixSeen
 import com.uwu.animex.data.model.Cuplix
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,7 @@ fun cuplixKey(clip: Cuplix): String =
  * ketika server sudah tidak punya data (tidak kembali ke halaman 1).
  */
 object CuplixFeed {
-    private const val MAX_PAGE_ATTEMPTS = 3
+    private const val MAX_PAGE_ATTEMPTS = 5
 
     private val _state = MutableStateFlow(CuplixFeedState())
     val state: StateFlow<CuplixFeedState> = _state.asStateFlow()
@@ -38,13 +39,15 @@ object CuplixFeed {
     private var nextPage = 2
 
     fun replace(first: List<Cuplix>) {
-        val distinct = first.distinctBy(::cuplixKey)
+        val distinct = first.distinctBy(::cuplixKey).filterNot { CuplixSeen.contains(cuplixKey(it)) }
         nextPage = 2
-        _state.value = CuplixFeedState(clips = distinct, hasMore = distinct.isNotEmpty())
+        _state.value = CuplixFeedState(clips = distinct, hasMore = first.isNotEmpty())
+        // Satu halaman penuh sudah pernah ditonton semua: langsung cari halaman berikutnya.
+        if (distinct.isEmpty() && first.isNotEmpty()) loadMore()
     }
 
     fun seedIfEmpty(first: List<Cuplix>) {
-        if (first.isNotEmpty() && _state.value.clips.isEmpty()) replace(first)
+        if (first.isNotEmpty() && _state.value.clips.isEmpty() && nextPage == 2) replace(first)
     }
 
     fun clear() {
@@ -60,7 +63,7 @@ object CuplixFeed {
 
     fun loadMore() {
         val s = _state.value
-        if (s.clips.isEmpty() || !s.hasMore || s.loadingMore || s.loadMoreFailed) return
+        if (!s.hasMore || s.loadingMore || s.loadMoreFailed) return
         AppScope.io.launch { fetchNextPage() }
     }
 
@@ -74,11 +77,12 @@ object CuplixFeed {
         if (!loadLock.tryLock()) return
         try {
             val current = _state.value
-            if (current.clips.isEmpty() || !current.hasMore) return
+            if (!current.hasMore) return
             _state.update { it.copy(loadingMore = true, loadMoreFailed = false) }
 
             val seen = current.clips.mapTo(mutableSetOf(), ::cuplixKey)
             var fresh = emptyList<Cuplix>()
+            var sawNovel = false
             var reachedEnd = false
             var attempts = 0
             while (fresh.isEmpty() && !reachedEnd && attempts < MAX_PAGE_ATTEMPTS) {
@@ -89,11 +93,14 @@ object CuplixFeed {
                 if (batch.isEmpty()) {
                     reachedEnd = true
                 } else {
-                    fresh = batch.filter { cuplixKey(it) !in seen }.distinctBy(::cuplixKey)
+                    val novel = batch.filter { cuplixKey(it) !in seen }.distinctBy(::cuplixKey)
+                    if (novel.isNotEmpty()) sawNovel = true
+                    fresh = novel.filterNot { CuplixSeen.contains(cuplixKey(it)) }
                 }
             }
             // Halaman kosong / isinya duplikat semua berarti feed sudah habis, jangan diulang.
-            val exhausted = reachedEnd || fresh.isEmpty()
+            // Kalau halaman berisi klip baru yang semuanya sudah ditonton, feed belum habis.
+            val exhausted = reachedEnd || (fresh.isEmpty() && !sawNovel)
             _state.update {
                 it.copy(
                     clips = if (fresh.isEmpty()) it.clips else it.clips + fresh,

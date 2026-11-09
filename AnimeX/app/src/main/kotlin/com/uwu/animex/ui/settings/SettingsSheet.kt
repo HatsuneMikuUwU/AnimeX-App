@@ -97,6 +97,7 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.CuplixPrefs
+import com.uwu.animex.data.local.CuplixSeen
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
@@ -281,17 +282,35 @@ private fun NotificationsGroup() {
 
 @Composable
 private fun CuplixGroup() {
+    val cs = MaterialTheme.colorScheme
+    val ctx = LocalContext.current
     val enabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
+    val seenCount by CuplixSeen.seen.collectAsStateWithLifecycle()
 
     SettingGroup(icon = Icons.Outlined.PlayCircleOutline, title = "Cuplix", initiallyExpanded = false) {
         SwitchItem(
             icon = Icons.Outlined.PlayCircleOutline,
             title = "Aktifkan Cuplix",
             subtitle = "Tampilkan Cuplix di beranda dan putar klip pendeknya. Matikan untuk menyembunyikan fitur ini",
-            shape = itemShape(0, 1),
+            shape = itemShape(0, 2),
             checked = enabled,
             enabled = true,
             onChange = CuplixPrefs::setEnabled,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Restore,
+            title = "Reset riwayat Cuplix",
+            subtitle = "${seenCount.size} klip yang sudah ditonton disembunyikan. Reset supaya bisa muncul lagi",
+            shape = itemShape(1, 2),
+            container = cs.surfaceContainerHighest,
+            content = cs.onSurface,
+            enabled = seenCount.isNotEmpty(),
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = {
+                CuplixSeen.clear()
+                Toast.makeText(ctx, "Riwayat Cuplix direset", Toast.LENGTH_SHORT).show()
+            },
         )
     }
 }
