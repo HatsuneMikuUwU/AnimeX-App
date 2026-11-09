@@ -831,7 +831,7 @@ class AniListApi : SyncAPI() {
         auth: AuthData?,
         id: String,
     ): Boolean {
-        val query = "query(\$mediaId: Int) { Media(id: \$mediaId, type: ANIME) { mediaListEntry { id } } }"
+        val query = "query(\$id: Int) { Media(id: \$id, type: ANIME) { mediaListEntry { id } } }"
         val vars = variableInt(id.toIntOrNull() ?: return false)
         val entryId = graph(query, vars, auth?.token?.accessToken).Media?.mediaListEntry?.id ?: return true
         val mutation = "mutation(\$id: Int) { DeleteMediaListEntry(id: \$id) { deleted } }"

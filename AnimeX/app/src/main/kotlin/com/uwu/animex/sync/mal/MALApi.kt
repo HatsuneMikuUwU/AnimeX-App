@@ -498,7 +498,11 @@ class MALApi : SyncAPI() {
         auth: AuthData?,
         id: String,
     ): Boolean {
-        call(auth?.token?.accessToken) { it.url("$API/anime/$id/my_list_status").delete() }
+        try {
+            call(auth?.token?.accessToken) { it.url("$API/anime/$id/my_list_status").delete() }
+        } catch (e: HttpException) {
+            if (e.code != 404) throw e
+        }
         return true
     }
 
