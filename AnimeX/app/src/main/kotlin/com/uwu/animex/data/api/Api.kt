@@ -22,6 +22,8 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.model.Cuplix
+import com.uwu.animex.data.model.CuplixListData
 import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.EpisodeListData
@@ -63,6 +65,7 @@ object Api {
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
     private const val GATE_RETRY_MS = 60 * 1000L
+    private const val HOME_CUPLIX_PATH = "data/home/fyp"
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
@@ -287,6 +290,7 @@ object Api {
         add(NativeCore.HOME_LIST, CacheKind.HOME)
         add(NativeCore.HOME_SECTION, CacheKind.HOME)
         add(NativeCore.HOME_NEW_EPISODE, CacheKind.HOME)
+        rules += HOME_CUPLIX_PATH to CacheKind.HOME
         add(NativeCore.SCHEDULE, CacheKind.LIST)
         add(NativeCore.EXPLORE_MOVIE, CacheKind.SEARCH)
         add(NativeCore.FIND, CacheKind.SEARCH)
@@ -554,6 +558,7 @@ object Api {
                 if (cached != null) return cached
                 throw e
             } ?: return cached ?: HomeData()
+        val cuplix = runSuspendCatching { homeCuplix(force) }.getOrDefault(emptyList())
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =
@@ -572,6 +577,7 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
+                    cuplix = cuplix,
                 )
             }
         homeMem = h
@@ -602,6 +608,25 @@ object Api {
             { get<MovieListData>(path, MovieListData::class.java, params, force)?.movie.orEmpty() },
             { getData(path, params, force)?.movieArray().orEmpty() },
         )
+    }
+
+    suspend fun homeCuplix(
+        force: Boolean = false,
+        page: Int = 1,
+    ): List<Cuplix> {
+        val params =
+            buildMap {
+                put("limit", "10")
+                if (page > 1) put("page", page.toString())
+            }
+        val data =
+            get<CuplixListData>(
+                HOME_CUPLIX_PATH,
+                CuplixListData::class.java,
+                params,
+                force,
+            )
+        return data?.fyp.orEmpty().filter { !it.url_thumbnail.isNullOrBlank() }
     }
 
     private fun homeListParams(page: Int): Map<String, String> =

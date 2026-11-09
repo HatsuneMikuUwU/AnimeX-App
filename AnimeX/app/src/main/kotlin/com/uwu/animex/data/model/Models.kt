@@ -108,6 +108,26 @@ data class Slider(
     val link: String? = null,
 )
 
+data class Cuplix(
+    val id: String? = null,
+    val caption: String? = null,
+    val url_thumbnail: String? = null,
+    val id_episode: String? = null,
+    val count_views: String? = null,
+    val count_likes: String? = null,
+    val count_comments: String? = null,
+    val anime: String? = null,
+    val episode: String? = null,
+    val time_start: String? = null,
+    val time_end: String? = null,
+    val id_movie: String? = null,
+    val username: String? = null,
+)
+
+data class CuplixListData(
+    val fyp: List<Cuplix>? = null,
+)
+
 data class HomeData(
     val slider: List<Slider> = emptyList(),
     val history: List<Movie> = emptyList(),
@@ -118,6 +138,7 @@ data class HomeData(
     val random: List<Movie> = emptyList(),
     val waiting: List<Movie> = emptyList(),
     val popular: List<Movie> = emptyList(),
+    val cuplix: List<Cuplix> = emptyList(),
 )
 
 data class ExploreItem(

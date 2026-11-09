@@ -33,7 +33,8 @@
 
 ### 🏠 Beranda & Navigasi
 - Lima tab: **Home**, **Jadwal**, **Explore**, **Bookmark**, dan **Profil**.
-- Baris konten: `Lanjut Nonton` · `Episode Baru` · `Sedang Hangat` · `Judul Baru` · `Jadwal Hari Ini` · `Paling Ditunggu` · `Populer`.
+- Baris konten: `Cuplix` · `Lanjut Nonton` · `Episode Baru` · `Sedang Hangat` · `Judul Baru` · `Jadwal Hari Ini` · `Paling Ditunggu` · `Populer`.
+- Cuplix membuka feed video vertikal: geser ke atas/bawah untuk berpindah klip, autoplay pada klip aktif, dan memuat batch berikutnya saat hampir mencapai akhir.
 - Jadwal tayang anime per hari.
 - Ukuran kartu di beranda bisa diatur.
 

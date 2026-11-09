@@ -84,6 +84,7 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.SearchHistory
+import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.tracker.SyncSource
@@ -201,6 +202,7 @@ fun MainScreen(
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
+    onPlayCuplix: (Cuplix) -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onOpenUpdate: () -> Unit = {},
@@ -404,7 +406,7 @@ fun MainScreen(
                         ) { currentTab ->
                             tabStateHolder.SaveableStateProvider(key = currentTab) {
                                 when (currentTab) {
-                                    0 -> HomeScreen(onOpen, onMore, onPlay)
+                                    0 -> HomeScreen(onOpen, onMore, onPlay, onPlayCuplix)
                                     1 -> ScheduleScreen(onOpen)
                                     2 ->
                                         ExploreScreen(

@@ -161,6 +161,8 @@ fun PlayerScreen(
     title: String,
     movieId: String? = null,
     epIndex: String? = null,
+    startAtMs: Long? = null,
+    shortsMode: Boolean = false,
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit = {},
     onNeedLogin: () -> Unit = {},
@@ -169,6 +171,7 @@ fun PlayerScreen(
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
     var curIndex by rememberSaveable { mutableStateOf(epIndex) }
+    var initialPositionMs by rememberSaveable(epId) { mutableStateOf(startAtMs) }
     var curUploadDate by remember { mutableStateOf<String?>(null) }
 
     var nextEp by remember { mutableStateOf<Episode?>(null) }
@@ -237,6 +240,7 @@ fun PlayerScreen(
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
         curIndex = ep.index
         curEpId = id
+        initialPositionMs = null
         curUploadDate = ep.key_time?.takeIf { it.isNotBlank() }
     }
     val goPrev: () -> Unit = prev@{
@@ -296,7 +300,7 @@ fun PlayerScreen(
 
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
-    val fullscreen = isLandscape || inPip
+    val fullscreen = shortsMode || isLandscape || inPip
     val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
     var manualLock by remember { mutableStateOf<Int?>(null) }
 
@@ -476,7 +480,7 @@ fun PlayerScreen(
         runCatching { playerRef?.pause() }
         onBack()
     }
-    val backOrExit: () -> Unit = { if (fullscreen) exitFullscreen() else leavePlayer() }
+    val backOrExit: () -> Unit = { if (fullscreen && !shortsMode) exitFullscreen() else leavePlayer() }
 
     BackHandler {
         when {
@@ -485,7 +489,7 @@ fun PlayerScreen(
             showDialog -> showDialog = false
             showEpisodes -> showEpisodes = false
             showComments -> showComments = false
-            fullscreen -> exitFullscreen()
+            fullscreen && !shortsMode -> exitFullscreen()
             else -> leavePlayer()
         }
     }
@@ -559,6 +563,7 @@ fun PlayerScreen(
             subtitle = subtitle,
             movieId = movieId,
             epIndex = curIndex,
+            initialPositionMs = initialPositionMs,
             resize = resize,
             isFinished = { epId in finishedEps.value },
             onEnded = {
@@ -623,7 +628,8 @@ fun PlayerScreen(
                 onOpenSpeed = { showSpeed = true },
                 onOpenSleep = { showSleep = true },
                 compact = !fullscreen,
-                onToggleFullscreen = { toggleFullscreen() },
+                showFullscreenButton = !shortsMode,
+                onToggleFullscreen = { if (!shortsMode) toggleFullscreen() },
                 streamUrl = url,
                 onMessage = showMessage,
                 onProgressSaved = { crossedDone ->

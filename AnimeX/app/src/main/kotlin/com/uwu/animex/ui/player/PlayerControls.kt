@@ -167,6 +167,7 @@ fun PlayerChrome(
     onOpenSleep: () -> Unit = {},
     compact: Boolean = false,
     onToggleFullscreen: () -> Unit = {},
+    showFullscreenButton: Boolean = true,
     onComment: (() -> Unit)? = null,
     streamUrl: String = "",
     onMessage: (String) -> Unit = {},
@@ -839,7 +840,7 @@ fun PlayerChrome(
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
                         )
-                        if (compact) {
+                        if (compact && showFullscreenButton) {
                             IconButton(
                                 onClick = hapticClick {
                                     onToggleFullscreen()
@@ -869,7 +870,7 @@ fun PlayerChrome(
                                     poke++
                                 }
                             }
-                            if (PlayerButton.ROTATE !in hiddenButtons) {
+                            if (showFullscreenButton && PlayerButton.ROTATE !in hiddenButtons) {
                                 PillButton(Icons.Outlined.FullscreenExit, "Kecilkan") {
                                     onToggleFullscreen()
                                 }

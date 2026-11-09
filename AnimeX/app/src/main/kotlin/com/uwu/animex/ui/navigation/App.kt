@@ -39,6 +39,7 @@ import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
+import com.uwu.animex.ui.cuplix.CuplixShortsScreen
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
@@ -70,7 +71,11 @@ fun App() {
 
     LaunchedEffect(nav) {
         nav.currentBackStack.collect { stack ->
-            val inPlayer = stack.any { it.destination.route?.startsWith("player") == true }
+            val inPlayer =
+                stack.any {
+                    val route = it.destination.route
+                    route?.startsWith("player") == true || route?.startsWith("cuplix") == true
+                }
             if (!inPlayer && PlaybackSessions.current != null) PlaybackSessions.stop()
         }
     }
@@ -195,6 +200,9 @@ fun App() {
                                     "&movieId=${Uri.encode(movieId.orEmpty())}" +
                                     "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
+                        },
+                        onPlayCuplix = { clip ->
+                            nav.navigate("cuplix/${Uri.encode(clip.id.orEmpty())}")
                         },
                         onOpenProfile = { showSettings = true },
                         onOpenNotifications = { nav.navigate("notifications") },
@@ -355,8 +363,16 @@ fun App() {
                         onLoggedIn = { nav.popBackStack() },
                     )
                 }
+                composable("cuplix/{clipId}") { e ->
+                    CuplixShortsScreen(
+                        startClipId = Uri.decode(e.arguments?.getString("clipId").orEmpty()),
+                        onBack = { nav.popBackStack() },
+                        onOpenAnime = { animeId -> nav.navigate("detail/$animeId") },
+                        onNeedLogin = { nav.navigate("login") },
+                    )
+                }
                 composable(
-                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
+                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}&startAtMs={startAtMs}",
                     arguments =
                         listOf(
                             navArgument("title") {
@@ -371,6 +387,10 @@ fun App() {
                                 type = NavType.StringType
                                 defaultValue = ""
                             },
+                            navArgument("startAtMs") {
+                                type = NavType.LongType
+                                defaultValue = -1L
+                            },
                         ),
                 ) { e ->
                     PlayerScreen(
@@ -378,10 +398,11 @@ fun App() {
                         title = e.arguments?.getString("title").orEmpty(),
                         movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
                         epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
+                        startAtMs = e.arguments?.getLong("startAtMs")?.takeIf { it >= 0L },
                         onBack = { nav.popBackStack() },
                         onOpenAnime = { animeId ->
                             nav.navigate("detail/$animeId") {
-                                popUpTo("player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}") {
+                                popUpTo("player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}&startAtMs={startAtMs}") {
                                     inclusive = true
                                 }
                             }

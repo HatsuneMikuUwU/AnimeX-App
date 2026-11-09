@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -29,9 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.ContinueWatchingRow
+import com.uwu.animex.ui.common.CuplixRow
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.HomePlaceholder
 import com.uwu.animex.ui.common.HotBlock
@@ -56,6 +59,7 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
+    onPlayCuplix: (Cuplix) -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -75,7 +79,7 @@ fun HomeScreen(
             onRetry = { viewModel.refresh() },
             loading = { HomePlaceholder() },
         ) { data ->
-            HomeContent(data, listState, onOpen, onMore, onPlay)
+            HomeContent(data, listState, onOpen, onMore, onPlay, onPlayCuplix)
         }
     }
 }
@@ -87,6 +91,7 @@ private fun HomeContent(
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
+    onPlayCuplix: (Cuplix) -> Unit,
 ) {
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
@@ -111,6 +116,16 @@ private fun HomeContent(
             item(key = "preview") {
                 val previewList = remember(previewSource) { cachedPreviewList(previewSource) }
                 RandomPreviewPager(previewList, onOpen, onPlay)
+            }
+        }
+        if (h.cuplix.isNotEmpty()) {
+            item(key = "header:Cuplix") {
+                Box(animateItemExpressive()) {
+                    SectionHeader("Cuplix", null, icon = Icons.Outlined.PlayCircleOutline)
+                }
+            }
+            item(key = "content:Cuplix") {
+                Box(animateItemExpressive()) { CuplixRow(h.cuplix, onPlayCuplix) }
             }
         }
         val historyIsLocal = localHistory.isNotEmpty()

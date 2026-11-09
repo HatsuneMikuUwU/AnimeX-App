@@ -76,6 +76,7 @@ internal fun ExoView(
     subtitle: String,
     movieId: String?,
     epIndex: String?,
+    initialPositionMs: Long?,
     resize: PlayerResize,
     isFinished: () -> Boolean,
     onEnded: () -> Unit,
@@ -162,7 +163,7 @@ internal fun ExoView(
         val start =
             if (!appliedResume) {
                 appliedResume = true
-                Progress.resumePosition(epId)
+                initialPositionMs?.coerceAtLeast(0L) ?: Progress.resumePosition(epId)
             } else {
                 0L
             }
