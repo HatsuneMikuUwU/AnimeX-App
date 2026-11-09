@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -39,7 +40,7 @@ import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.player.findActivity
 
-private const val PAGE_SIZE = 10
+private const val MAX_FETCH_ATTEMPTS = 4
 
 @Composable
 fun CuplixShortsScreen(
@@ -49,8 +50,7 @@ fun CuplixShortsScreen(
 ) {
     var clips by remember { mutableStateOf<List<Cuplix>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    var loadingMore by remember { mutableStateOf(false) }
-    var hasMore by remember { mutableStateOf(true) }
+    var retryTick by remember { mutableIntStateOf(0) }
     var nextPage by remember { mutableIntStateOf(2) }
     var positioned by remember { mutableStateOf(false) }
     val liked = remember { mutableStateMapOf<String, Boolean>() }
@@ -59,7 +59,6 @@ fun CuplixShortsScreen(
         runCatching { PlaybackSessions.current?.player?.pause() }
         val batch = runSuspendCatching { Api.homeCuplix(page = 1) }.getOrDefault(emptyList())
         clips = batch.playable()
-        hasMore = batch.size >= PAGE_SIZE
         loading = false
     }
 
@@ -71,21 +70,26 @@ fun CuplixShortsScreen(
         positioned = true
     }
 
-    LaunchedEffect(pagerState.currentPage, clips.size, hasMore) {
-        val nearEnd = pagerState.currentPage >= clips.lastIndex - 2
-        if (clips.isEmpty() || !hasMore || loadingMore || !nearEnd) return@LaunchedEffect
-        loadingMore = true
-        val batch = runSuspendCatching { Api.homeCuplix(page = nextPage) }.getOrDefault(emptyList())
+    LaunchedEffect(pagerState.currentPage, clips.size, retryTick) {
+        val nearEnd = pagerState.currentPage >= clips.lastIndex - 3
+        if (clips.isEmpty() || !nearEnd) return@LaunchedEffect
         val existingKeys = clips.mapTo(mutableSetOf(), ::clipKey)
-        val additions = batch.playable().filter { clipKey(it) !in existingKeys }
-        if (additions.isEmpty()) {
-            hasMore = false
-        } else {
-            clips = clips + additions
-            nextPage += 1
-            if (batch.size < PAGE_SIZE) hasMore = false
+        var additions = emptyList<Cuplix>()
+        var attempt = 0
+        while (additions.isEmpty() && attempt < MAX_FETCH_ATTEMPTS) {
+            attempt++
+            val page = nextPage
+            val batch = runSuspendCatching { Api.homeCuplix(force = true, page = page) }.getOrDefault(emptyList())
+            nextPage = if (batch.isEmpty()) 1 else page + 1
+            additions = batch.playable().filter { clipKey(it) !in existingKeys }
         }
-        loadingMore = false
+        if (additions.isNotEmpty()) clips = clips + additions
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.isScrollInProgress }.collect { scrolling ->
+            if (scrolling && pagerState.currentPage >= pagerState.pageCount - 1) retryTick++
+        }
     }
 
     val activity = LocalContext.current.findActivity()

@@ -424,7 +424,7 @@ internal fun CuplixClipPage(
                     Modifier
                         .align(Alignment.BottomEnd)
                         .navigationBarsPadding()
-                        .padding(end = 10.dp, bottom = 52.dp),
+                        .padding(end = 10.dp, bottom = 44.dp),
             )
         }
 
@@ -557,7 +557,8 @@ private fun ClipInfo(
                     .clip(RoundedCornerShape(50))
                     .background(Color.White.copy(alpha = 0.2f))
                     .hapticClick(onClick = onOpenAnime)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .height(42.dp)
+                    .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
