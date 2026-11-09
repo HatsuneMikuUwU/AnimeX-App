@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,9 +44,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -54,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,12 +69,22 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.data.api.UserApi
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.user.UserSession
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.DiscussionListPlaceholder
+import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.UiStateContent
+import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.discussion.DiscussionRow
+import com.uwu.animex.ui.discussion.ThreadState
+import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
 @Composable
@@ -243,6 +258,141 @@ internal fun EpisodePanel(
                                         tint = Color(0xB3FFFFFF),
                                     )
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CommentsPanel(
+    viewModel: DiscussionViewModel,
+    onDismiss: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val loadingMore by viewModel.loadingMore.collectAsStateWithLifecycle()
+    val hasMore by viewModel.hasMore.collectAsStateWithLifecycle()
+    val loadMoreError by viewModel.loadMoreError.collectAsStateWithLifecycle()
+    val session by UserSession.user.collectAsStateWithLifecycle()
+    val threads = remember { HashMap<String, ThreadState>() }
+    val listState = rememberLazyListState()
+    val items =
+        when (val s = state) {
+            is UiState.Ready -> s.value
+            else -> emptyList()
+        }
+
+    fun threadOf(id: String): ThreadState = threads.getOrPut(id) { ThreadState() }
+
+    fun toggleThread(parent: UserApi.Discussion) {
+        val id = parent.id?.takeIf(String::isNotBlank) ?: return
+        val thread = threadOf(id)
+        if (thread.expanded) {
+            thread.expanded = false
+            return
+        }
+        thread.expanded = true
+        thread.loading = true
+        viewModel.loadReplies(parent) { loaded ->
+            thread.replies = loaded
+            thread.loading = false
+        }
+    }
+
+    val nearEnd by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= info.totalItemsCount - 3
+        }
+    }
+    LaunchedEffect(nearEnd, hasMore, loadingMore, loadMoreError, items.size) {
+        if (nearEnd && hasMore && !loadingMore && !loadMoreError && items.isNotEmpty()) {
+            viewModel.loadMore()
+        }
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+    ) {
+        Column(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(340.dp)
+                .background(cs.surface)
+                .pointerInput(Unit) { detectTapGestures { } }
+                .safeDrawingPadding(),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Komentar",
+                    color = cs.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = hapticClick(block = onDismiss), shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = cs.onSurface)
+                }
+            }
+            UiStateContent(
+                state = state,
+                onRetry = { viewModel.refresh() },
+                loading = { DiscussionListPlaceholder() },
+            ) { _ ->
+                if (items.isEmpty()) {
+                    AnimatedEmptyState(
+                        icon = Icons.Outlined.Forum,
+                        title = "Belum ada komentar",
+                        message = "Belum ada yang berkomentar di episode ini",
+                    )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        itemsIndexed(items, key = { index, d -> d.id ?: "item-$index" }) { _, d ->
+                            DiscussionRow(
+                                discussion = d,
+                                currentUserId = session?.id,
+                                ownImage = session?.image,
+                                loggedIn = false,
+                                isEpisode = true,
+                                actionBusy = false,
+                                thread = d.id?.takeIf(String::isNotBlank)?.let(::threadOf),
+                                onToggleReplies = { toggleThread(d) },
+                                onStartReply = {},
+                                onEdit = { _, _, _ -> },
+                                onDelete = { _, _ -> },
+                                onReport = { _, _ -> },
+                                onReact = { _, _ -> },
+                                readOnly = true,
+                                modifier = animateItemExpressive(),
+                            )
+                        }
+                        if (loadMoreError) {
+                            item(key = "load-more-retry") {
+                                TextButton(
+                                    onClick = hapticClick { viewModel.retryLoadMore() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text("Gagal muat lagi. Coba lagi") }
+                            }
+                        } else if (loadingMore) {
+                            items(count = 2, key = { "load-more-placeholder-$it" }) { index ->
+                                DiscussionRowPlaceholder(fraction = listOf(0.7f, 0.5f)[index % 2])
                             }
                         }
                     }

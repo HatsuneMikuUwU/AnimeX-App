@@ -163,7 +163,6 @@ fun PlayerScreen(
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit = {},
     onNeedLogin: () -> Unit = {},
-    onOpenComment: (episodeId: String, title: String) -> Unit = { _, _ -> },
     viewModel: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(epId), key = "player"),
 ) {
     var curEpId by rememberSaveable { mutableStateOf(epId) }
@@ -395,7 +394,10 @@ fun PlayerScreen(
         }
     }
     LaunchedEffect(curEpId) { showComments = false }
-    LaunchedEffect(fullscreen) { if (!fullscreen) showEpisodes = false }
+    LaunchedEffect(fullscreen) {
+        if (!fullscreen) showEpisodes = false
+        showComments = false
+    }
     // Kunci layar cuma ada di fullscreen. Kalau balik ke inline masih terkunci, kontrol & tombol
     // fullscreen gak bisa dipakai sama sekali, jadi kunci dilepas otomatis.
     LaunchedEffect(fullscreen) { if (!fullscreen) locked = false }
@@ -429,11 +431,7 @@ fun PlayerScreen(
         return activeIdx ?: preferredIndex(servers)
     }
 
-    val commentLabel = curIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: title
-    // Portrait: buka panel komentar di halaman. Fullscreen: layar komentar terpisah seperti upstream.
-    val openComment: () -> Unit = {
-        if (fullscreen) onOpenComment(epId, commentLabel) else showComments = true
-    }
+    val openComment: () -> Unit = { showComments = true }
 
     fun retryServers() {
         failedSel = emptySet()
@@ -476,8 +474,8 @@ fun PlayerScreen(
             showSleep -> showSleep = false
             showDialog -> showDialog = false
             showEpisodes -> showEpisodes = false
-            fullscreen -> exitFullscreen()
             showComments -> showComments = false
+            fullscreen -> exitFullscreen()
             else -> leavePlayer()
         }
     }
@@ -853,6 +851,17 @@ fun PlayerScreen(
                     onDismiss = { showEpisodes = false },
                 )
             }
+        }
+
+        AnimatedVisibility(
+            visible = showComments && fullscreen,
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
+        ) {
+            CommentsPanel(
+                viewModel = commentsViewModel,
+                onDismiss = { showComments = false },
+            )
         }
 
         if (showEndSuggestions) {

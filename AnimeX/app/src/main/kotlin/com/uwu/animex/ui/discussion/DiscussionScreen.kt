@@ -699,6 +699,7 @@ private fun ActionLabel(
     icon: ImageVector? = null,
     active: Boolean = false,
     enabled: Boolean = true,
+    readOnly: Boolean = false,
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -706,8 +707,8 @@ private fun ActionLabel(
     Row(
         modifier
             .clip(RoundedCornerShape(12.dp))
-            .then(if (enabled) Modifier.hapticClick(onClick = onClick) else Modifier)
-            .alpha(if (enabled) 1f else 0.38f)
+            .then(if (enabled && !readOnly) Modifier.hapticClick(onClick = onClick) else Modifier)
+            .alpha(if (enabled || readOnly) 1f else 0.38f)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -752,6 +753,7 @@ private fun ReplyItem(
     reply: UserApi.Discussion,
     canReply: Boolean,
     onReply: () -> Unit,
+    readOnly: Boolean = false,
 ) {
     val cs = MaterialTheme.colorScheme
     val time = reply.time ?: reply.createdAt
@@ -789,7 +791,7 @@ private fun ReplyItem(
                             modifier = Modifier.weight(1f, fill = false).padding(horizontal = 8.dp),
                         )
                     }
-                    ActionLabel("Balas", enabled = canReply, onClick = onReply)
+                    if (!readOnly) ActionLabel("Balas", enabled = canReply, onClick = onReply)
                 }
             }
         }
@@ -812,6 +814,7 @@ internal fun DiscussionRow(
     onReport: (UserApi.Discussion, () -> Unit) -> Unit,
     onReact: (UserApi.Discussion, String) -> Unit,
     modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
 ) {
     val cs = MaterialTheme.colorScheme
     val isMine = !currentUserId.isNullOrBlank() && discussion.userId == currentUserId
@@ -821,7 +824,8 @@ internal fun DiscussionRow(
     var deleteDialog by remember(discussion.id) { mutableStateOf(false) }
     var reportDialog by remember(discussion.id) { mutableStateOf(false) }
     var editText by remember(discussion.id, discussion.body()) { mutableStateOf(discussion.body()) }
-    val canReply = isEpisode && loggedIn && hasId && !actionBusy
+    val canOpenActions = !readOnly && loggedIn && hasId && !actionBusy
+    val canReply = !readOnly && isEpisode && loggedIn && hasId && !actionBusy
     val replyCount = discussion.replyCount?.toIntOrNull() ?: 0
     val expanded = thread?.expanded == true
     val showThreadLine =
@@ -875,7 +879,7 @@ internal fun DiscussionRow(
                                 Modifier
                                     .clip(BubbleShape)
                                     .hapticClick(
-                                        onLongClick = { if (loggedIn && hasId && !actionBusy) actionsExpanded = true },
+                                        onLongClick = { if (canOpenActions) actionsExpanded = true },
                                         onClick = {},
                                     ),
                         ) {
@@ -954,12 +958,13 @@ internal fun DiscussionRow(
                             )
                         }
                         if (isEpisode) {
-                            ActionLabel("Balas", enabled = canReply, onClick = replyToComment)
+                            if (!readOnly) ActionLabel("Balas", enabled = canReply, onClick = replyToComment)
                             ActionLabel(
                                 text = discussion.likeCount ?: "0",
                                 icon = if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                                 active = liked,
                                 enabled = reactEnabled,
+                                readOnly = readOnly,
                                 onClick = { onReact(discussion, if (liked) "-" else "Y") },
                             )
                             ActionLabel(
@@ -967,6 +972,7 @@ internal fun DiscussionRow(
                                 icon = if (disliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
                                 active = disliked,
                                 enabled = reactEnabled,
+                                readOnly = readOnly,
                                 onClick = { onReact(discussion, if (disliked) "-" else "N") },
                             )
                         }
@@ -1001,6 +1007,7 @@ internal fun DiscussionRow(
                             thread.replies.forEach { reply ->
                                 ReplyItem(
                                     reply = reply,
+                                    readOnly = readOnly,
                                     canReply = canReply,
                                     onReply = {
                                         onStartReply(
