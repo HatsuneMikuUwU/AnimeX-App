@@ -69,9 +69,9 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.uwu.animex.data.api.UserApi
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppLoadingIndicator
