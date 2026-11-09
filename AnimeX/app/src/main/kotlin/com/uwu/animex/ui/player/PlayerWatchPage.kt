@@ -1130,7 +1130,7 @@ private fun CommentsPreviewCard(
                     val top = items.firstOrNull()
                     if (top != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            UserAvatar(top.username, pokemon = top.pokemon, size = 28.dp)
+                            UserAvatar(top.username, size = 28.dp)
                             Spacer(Modifier.width(10.dp))
                             Text(
                                 top.body(),
@@ -1270,7 +1270,6 @@ private fun EpisodeCommentsPanel(
                             DiscussionRow(
                                 discussion = d,
                                 currentUserId = session?.id,
-                                ownImage = session?.image,
                                 loggedIn = loggedIn,
                                 isEpisode = true,
                                 actionBusy = actionBusy || sending,
@@ -1326,7 +1325,6 @@ private fun EpisodeCommentsPanel(
             loggedIn = loggedIn,
             sending = sending,
             username = session?.username,
-            avatarUrl = session?.image,
             placeholder = if (replyTarget != null) "Tulis balasan..." else "Tulis komentar...",
             replyTo = replyTarget,
             onCancelReply = ::cancelReply,
@@ -1361,7 +1359,6 @@ private fun CommentInputBar(
     loggedIn: Boolean,
     sending: Boolean,
     username: String?,
-    avatarUrl: String?,
     placeholder: String,
     replyTo: ReplyTarget?,
     onCancelReply: () -> Unit,
@@ -1444,7 +1441,6 @@ private fun CommentInputBar(
         ) {
             UserAvatar(
                 username,
-                imageUrl = avatarUrl,
                 size = 36.dp,
                 modifier = Modifier.padding(bottom = 4.dp),
             )

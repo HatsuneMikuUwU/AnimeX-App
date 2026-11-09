@@ -371,7 +371,6 @@ fun DiscussionScreen(
                                     DiscussionRow(
                                         discussion = d,
                                         currentUserId = session?.id,
-                                        ownImage = session?.image,
                                         loggedIn = loggedIn,
                                         isEpisode = isEpisode,
                                         actionBusy = actionBusy || sending,
@@ -773,7 +772,7 @@ private fun ReplyItem(
     val time = reply.time ?: reply.createdAt
     SwipeToReply(enabled = canReply, onReply = onReply) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            UserAvatar(reply.username, pokemon = reply.pokemon, size = ReplyAvatarSize)
+            UserAvatar(reply.username, size = ReplyAvatarSize)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Surface(color = cs.surfaceContainer, shape = RoundedCornerShape(18.dp)) {
@@ -816,7 +815,6 @@ private fun ReplyItem(
 internal fun DiscussionRow(
     discussion: UserApi.Discussion,
     currentUserId: String?,
-    ownImage: String?,
     loggedIn: Boolean,
     isEpisode: Boolean,
     actionBusy: Boolean,
@@ -879,8 +877,6 @@ internal fun DiscussionRow(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 UserAvatar(
                     discussion.username,
-                    imageUrl = if (isMine) ownImage else null,
-                    pokemon = discussion.pokemon,
                     size = AvatarSize,
                 )
                 Spacer(Modifier.width(8.dp))

@@ -17,6 +17,7 @@ data class UserProfile(
     @SerializedName("key_client") val keyClient: String? = null,
     @SerializedName("money") val money: Long? = null,
     @SerializedName("coin") val coin: Long? = null,
+    @SerializedName("default_account") val isDefaultAccount: Boolean = false,
 ) {
     val isAuthenticated: Boolean
         get() = !id.isNullOrBlank() && !keyClient.isNullOrBlank()

@@ -402,7 +402,6 @@ internal fun CommentsPanel(
                             DiscussionRow(
                                 discussion = d,
                                 currentUserId = session?.id,
-                                ownImage = session?.image,
                                 loggedIn = false,
                                 isEpisode = true,
                                 actionBusy = false,

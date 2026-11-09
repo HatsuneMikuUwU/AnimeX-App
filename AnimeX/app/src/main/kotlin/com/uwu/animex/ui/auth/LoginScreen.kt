@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.user.DefaultAccount
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.background.screenContainerColor
@@ -103,6 +104,21 @@ fun LoginScreen(
             try {
                 val profile = UserApi.login(identity.trim(), password)
                 UserSession.save(profile)
+                onLoggedIn()
+            } catch (e: Exception) {
+                error = e.toUserMessage()
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun useSharedAccount() {
+        busy = true
+        error = null
+        scope.launch {
+            try {
+                UserSession.save(DefaultAccount.signIn())
                 onLoggedIn()
             } catch (e: Exception) {
                 error = e.toUserMessage()
@@ -246,6 +262,17 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 56.dp),
                 ) {
                     Text("Buat akun baru")
+                }
+                if (DefaultAccount.isConfigured) {
+                    Spacer(Modifier.height(8.dp))
+                    FilledTonalButton(
+                        onClick = hapticClick { useSharedAccount() },
+                        shapes = ButtonDefaults.shapes(),
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 56.dp),
+                    ) {
+                        Text("Pakai akun bersama")
+                    }
                 }
                 Spacer(Modifier.height(4.dp))
                 TextButton(onClick = hapticClick(block = onBack), enabled = !busy) {

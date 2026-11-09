@@ -194,7 +194,6 @@ object UserApi {
         ) val username: String? =
             null,
         @com.google.gson.annotations.SerializedName("image") val image: String? = null,
-        @com.google.gson.annotations.SerializedName("user_pokemon") val pokemon: String? = null,
         @com.google.gson.annotations.SerializedName("text") val text: String? = null,
         @com.google.gson.annotations.SerializedName("message") val message: String? = null,
         @com.google.gson.annotations.SerializedName("content") val content: String? = null,

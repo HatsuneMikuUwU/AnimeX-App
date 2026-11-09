@@ -13,35 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import com.uwu.animex.data.api.Api
 
 @Composable
 fun UserAvatar(
     username: String?,
-    imageUrl: String? = null,
-    pokemon: String? = null,
     size: Dp = 40.dp,
     modifier: Modifier = Modifier,
 ) {
-    val image = sequenceOf(imageUrl, pokemon)
-        .filterNotNull()
-        .map { it.trim() }
-        .firstOrNull { value ->
-            value.isNotBlank() &&
-                (
-                    value.startsWith(
-                        "http://",
-                        true,
-                    ) ||
-                        value.startsWith("https://", true) ||
-                        '/' in value ||
-                        '.' in value
-                )
-        }
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val key = username?.trim()?.lowercase().orEmpty()
     val container =
@@ -60,14 +40,6 @@ fun UserAvatar(
             style = MaterialTheme.typography.labelLarge,
             color = container?.second ?: MaterialTheme.colorScheme.onSecondaryContainer,
         )
-        if (image != null) {
-            AsyncImage(
-                model = Api.absUrl(image),
-                contentDescription = "Foto profil ${username ?: "pengguna"}",
-                modifier = Modifier.matchParentSize().clip(CircleShape),
-                contentScale = ContentScale.Crop,
-            )
-        }
     }
 }
 

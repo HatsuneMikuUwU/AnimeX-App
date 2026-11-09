@@ -61,6 +61,9 @@ android {
         versionCode = appVersionCode
         versionName = appVersion
 
+        buildConfigField("String", "DEFAULT_ACCOUNT_USER", "\"${mask(secret("ANIMEIN_DEFAULT_USER", "animein.default.user"))}\"")
+        buildConfigField("String", "DEFAULT_ACCOUNT_PASS", "\"${mask(secret("ANIMEIN_DEFAULT_PASS", "animein.default.pass"))}\"")
+
         externalNativeBuild {
             cmake {
                 arguments +=
