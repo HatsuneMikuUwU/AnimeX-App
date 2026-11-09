@@ -122,7 +122,13 @@ data class Cuplix(
     val time_end: String? = null,
     val id_movie: String? = null,
     val username: String? = null,
-)
+    val key_time: String? = null,
+    val poster: String? = null,
+    val episode_poster: String? = null,
+    val is_like: String? = null,
+) {
+    val likedByMe: Boolean get() = is_like?.trim() == "1"
+}
 
 data class CuplixListData(
     val fyp: List<Cuplix>? = null,

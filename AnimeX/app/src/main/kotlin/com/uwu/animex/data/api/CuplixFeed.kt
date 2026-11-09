@@ -47,10 +47,18 @@ object CuplixFeed {
     @Volatile
     private var scrollUnavailable = false
 
+    @Volatile
+    private var scrollCursor: Map<String, String> = emptyMap()
+
+    @Volatile
+    private var scrollLast: Cuplix? = null
+
     private fun resetPaging() {
         scrollPage = 1
         legacyPage = 2
         scrollUnavailable = false
+        scrollCursor = emptyMap()
+        scrollLast = null
     }
 
     fun replace(first: List<Cuplix>) {
@@ -92,9 +100,18 @@ object CuplixFeed {
     private suspend fun fetchBatch(): List<Cuplix> {
         if (!scrollUnavailable) {
             val page = scrollPage
-            val batch =
+            // Pakai cursor dari respons sebelumnya; kalau server tidak memberi cursor, turunkan dari klip
+            // terakhir (urutan terbaru) supaya halaman berikutnya tidak mengulang halaman pertama.
+            val cursor =
+                scrollCursor.ifEmpty {
+                    scrollLast
+                        ?.takeIf { page > 1 && !it.id.isNullOrBlank() && !it.key_time.isNullOrBlank() }
+                        ?.let { mapOf("cursor_new_time" to it.key_time.orEmpty(), "cursor_new_id" to it.id.orEmpty()) }
+                        .orEmpty()
+                }
+            val result =
                 try {
-                    Api.cuplixScroll(page = page)
+                    Api.cuplixScroll(page = page, cursor = cursor)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -104,9 +121,11 @@ object CuplixFeed {
                     scrollUnavailable = true
                     return fetchLegacyBatch()
                 }
-            if (batch.isNotEmpty()) {
+            if (result.clips.isNotEmpty()) {
                 scrollPage = page + 1
-                return batch
+                scrollCursor = result.cursor
+                scrollLast = result.clips.last()
+                return result.clips
             }
             if (page > 1) {
                 scrollPage = page + 1

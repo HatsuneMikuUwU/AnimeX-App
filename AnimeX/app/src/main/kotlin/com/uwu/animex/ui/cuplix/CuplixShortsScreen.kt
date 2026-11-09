@@ -147,7 +147,7 @@ fun CuplixShortsScreen(
                     CuplixClipPage(
                         clip = clip,
                         active = positioned && page == pagerState.currentPage,
-                        liked = liked[key] == true,
+                        liked = liked[key] ?: clip.likedByMe,
                         onLikedChange = { value ->
                             liked[key] = value
                             val clipId = clip.id

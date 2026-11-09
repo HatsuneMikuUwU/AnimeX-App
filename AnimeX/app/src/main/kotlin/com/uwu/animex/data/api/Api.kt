@@ -642,20 +642,28 @@ object Api {
         return data?.fyp.orEmpty().filter { it.isPlayable() }
     }
 
+    /** Satu halaman feed Cuplix beserta cursor untuk halaman berikutnya (kosong jika server tidak memberi). */
+    data class CuplixPage(
+        val clips: List<Cuplix>,
+        val cursor: Map<String, String>,
+    )
+
     /**
-     * Halaman feed Cuplix dari endpoint scroll ANIMEIN (`fyp2/list_scroll`), endpoint yang dipakai
-     * app ANIMEIN untuk feed vertikal. Bentuk `data` dibaca toleran (array langsung atau objek yang
-     * berisi array) karena skema field-nya tidak dideklarasikan di interface Retrofit.
+     * Halaman feed Cuplix dari endpoint scroll ANIMEIN (`fyp2/list_scroll`). Respons berbentuk
+     * `data.fyp` (list klip) + `data.cursor` (cursor_new_time, cursor_new_id, dst). Cursor dari
+     * respons sebelumnya dikirim balik sebagai query param; `page` ikut dikirim sebagai cadangan.
      * Melempar exception kalau request/parse gagal; list kosong berarti halaman habis.
      */
     suspend fun cuplixScroll(
         page: Int,
+        cursor: Map<String, String> = emptyMap(),
         force: Boolean = true,
-    ): List<Cuplix> {
+    ): CuplixPage {
         val params =
             buildMap {
                 put("limit", "$API_LIMIT")
                 if (page > 1) put("page", page.toString())
+                putAll(cursor)
             }
         val json = fetchCached(cuplixScrollPath, params, force)
         return withContext(Dispatchers.Default) {
@@ -681,30 +689,29 @@ object Api {
                 invalidateCachedResponse(cuplixScrollPath, params)
                 throw ApiException.Remote(root.get("message")?.takeIf { it.isJsonPrimitive }?.asString ?: "API error")
             }
-            val data = root.get("data")
-            val array =
-                when {
-                    data == null || data.isJsonNull -> null
-                    data.isJsonArray -> data.asJsonArray
-                    data.isJsonObject ->
-                        listOf("fyp", "list", "items", "results", "data")
-                            .firstNotNullOfOrNull { key ->
-                                data.asJsonObject.get(key)?.takeIf { it.isJsonArray }?.asJsonArray
-                            }
-                    else -> null
+            val data = root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+            val array = data?.get("fyp")?.takeIf { it.isJsonArray }?.asJsonArray
+            val clips =
+                if (array == null) {
+                    emptyList()
+                } else {
+                    val parsed =
+                        try {
+                            gson.fromJson(array, Array<Cuplix>::class.java)?.toList().orEmpty()
+                        } catch (e: JsonParseException) {
+                            invalidateCachedResponse(cuplixScrollPath, params)
+                            throw ApiException.Parse(e)
+                        }
+                    parsed.filter { it.isPlayable() }
                 }
-            if (array == null) {
-                emptyList()
-            } else {
-                val parsed =
-                    try {
-                        gson.fromJson(array, Array<Cuplix>::class.java)?.toList().orEmpty()
-                    } catch (e: JsonParseException) {
-                        invalidateCachedResponse(cuplixScrollPath, params)
-                        throw ApiException.Parse(e)
+            val nextCursor =
+                buildMap {
+                    data?.get("cursor")?.takeIf { it.isJsonObject }?.asJsonObject?.entrySet()?.forEach { (k, v) ->
+                        val text = v.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
+                        if (text.isNotEmpty() && text != "0") put(k, text)
                     }
-                parsed.filter { it.isPlayable() }
-            }
+                }
+            CuplixPage(clips, nextCursor)
         }
     }
 

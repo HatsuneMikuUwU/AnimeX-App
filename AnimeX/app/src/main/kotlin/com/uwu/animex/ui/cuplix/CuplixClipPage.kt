@@ -595,13 +595,13 @@ private fun ClipRail(
     ) {
         RailAction(
             icon = if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-            label = formatCount(clip.count_likes, if (liked) 1 else 0) ?: "Suka",
+            label = formatCount(clip.count_likes, (if (liked) 1 else 0) - (if (clip.likedByMe) 1 else 0)) ?: "Suka",
             onClick = onToggleLike,
         )
         RailAction(icon = Icons.Outlined.Share, label = "Bagikan", onClick = onShare)
         val movieId = clip.id_movie
-        var posterUrl by remember(movieId) {
-            mutableStateOf(movieId?.let { posterCache[it] ?: Api.peekDetail(it)?.movie?.image_poster })
+        var posterUrl by remember(movieId, clip.poster) {
+            mutableStateOf(clip.poster?.takeIf { it.isNotBlank() } ?: movieId?.let { posterCache[it] ?: Api.peekDetail(it)?.movie?.image_poster })
         }
         LaunchedEffect(movieId) {
             if (movieId.isNullOrBlank() || !posterUrl.isNullOrBlank()) return@LaunchedEffect
