@@ -3,6 +3,9 @@
 package com.uwu.animex.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -298,14 +301,12 @@ internal fun PlayerWatchPage(
                 )
             }
             item(key = "sections") {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    itemsIndexed(WATCH_SECTIONS) { i, label ->
-                        WatchSectionChip(label, section == i) { section = i }
-                    }
-                }
+                WatchSectionToggleGroup(
+                    labels = WATCH_SECTIONS,
+                    selected = section,
+                    onSelect = { section = it },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
             if (section == 0) {
                 watchEpisodeItems(
@@ -481,25 +482,65 @@ private fun WatchAnimeRow(
 }
 
 @Composable
-private fun WatchSectionChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
+private fun WatchSectionToggleGroup(
+    labels: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    Text(
-        label,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = if (selected) cs.onPrimaryContainer else cs.onSurface,
-        maxLines = 1,
-        modifier =
-            Modifier
-                .clip(RoundedCornerShape(50))
-                .background(if (selected) cs.primaryContainer else cs.surfaceContainerHigh)
-                .clickable(onClick = hapticClick(block = onClick))
-                .padding(horizontal = 18.dp, vertical = 10.dp),
-    )
+    val motion = MaterialTheme.motionScheme
+    val full = 20.dp
+    val inner = 8.dp
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        labels.forEachIndexed { i, label ->
+            val isSelected = i == selected
+            val corner by animateDpAsState(
+                targetValue = if (isSelected) full else inner,
+                animationSpec = motion.fastSpatialSpec(),
+                label = "sectionCorner",
+            )
+            val startCorner = if (i == 0) full else corner.coerceAtLeast(0.dp)
+            val endCorner = if (i == labels.lastIndex) full else corner.coerceAtLeast(0.dp)
+            val container by animateColorAsState(
+                targetValue = if (isSelected) cs.primaryContainer else cs.surfaceContainerHigh,
+                animationSpec = motion.fastEffectsSpec(),
+                label = "sectionContainer",
+            )
+            val content by animateColorAsState(
+                targetValue = if (isSelected) cs.onPrimaryContainer else cs.onSurface,
+                animationSpec = motion.fastEffectsSpec(),
+                label = "sectionContent",
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .height(40.dp)
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = startCorner,
+                                bottomStart = startCorner,
+                                topEnd = endCorner,
+                                bottomEnd = endCorner,
+                            ),
+                        ).background(container)
+                        .selectable(
+                            selected = isSelected,
+                            role = Role.Tab,
+                            onClick = hapticClick(block = { onSelect(i) }),
+                        ).padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = content,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
 }
 
 private fun LazyListScope.watchSimilarItems(
