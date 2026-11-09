@@ -2,101 +2,109 @@ package com.uwu.animex.ui.cuplix
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.core.view.WindowCompat
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.service.PlaybackSessions
-import com.uwu.animex.ui.common.Poster
-import com.uwu.animex.ui.player.PlayerScreen
+import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.player.findActivity
+
+private const val PAGE_SIZE = 10
 
 @Composable
 fun CuplixShortsScreen(
     startClipId: String,
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit,
-    onNeedLogin: () -> Unit,
 ) {
     var clips by remember { mutableStateOf<List<Cuplix>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var loadingMore by remember { mutableStateOf(false) }
     var hasMore by remember { mutableStateOf(true) }
     var nextPage by remember { mutableIntStateOf(2) }
+    var positioned by remember { mutableStateOf(false) }
+    val liked = remember { mutableStateMapOf<String, Boolean>() }
 
     LaunchedEffect(Unit) {
-        val firstBatch = runCatching { Api.homeCuplix(page = 1) }.getOrDefault(emptyList())
-        clips = firstBatch
-        hasMore = firstBatch.size >= 10
+        runCatching { PlaybackSessions.current?.player?.pause() }
+        val batch = runSuspendCatching { Api.homeCuplix(page = 1) }.getOrDefault(emptyList())
+        clips = batch.playable()
+        hasMore = batch.size >= PAGE_SIZE
         loading = false
     }
 
     val pagerState = rememberPagerState(pageCount = { clips.size })
-    LaunchedEffect(pagerState.currentPage) {
-        runCatching { PlaybackSessions.current?.player?.pause() }
-    }
-    LaunchedEffect(clips, startClipId) {
-        if (clips.isNotEmpty()) {
-            val startIndex = clips.indexOfFirst { it.id == startClipId }.takeIf { it >= 0 } ?: 0
-            if (pagerState.currentPage != startIndex) pagerState.scrollToPage(startIndex)
-        }
+    LaunchedEffect(clips.isNotEmpty()) {
+        if (clips.isEmpty() || positioned) return@LaunchedEffect
+        val startIndex = clips.indexOfFirst { it.id == startClipId }.takeIf { it >= 0 } ?: 0
+        if (pagerState.currentPage != startIndex) pagerState.scrollToPage(startIndex)
+        positioned = true
     }
 
     LaunchedEffect(pagerState.currentPage, clips.size, hasMore) {
-        if (clips.isEmpty() || !hasMore || loadingMore || pagerState.currentPage < clips.lastIndex - 2) return@LaunchedEffect
+        val nearEnd = pagerState.currentPage >= clips.lastIndex - 2
+        if (clips.isEmpty() || !hasMore || loadingMore || !nearEnd) return@LaunchedEffect
         loadingMore = true
-        val batch = runCatching { Api.homeCuplix(page = nextPage) }.getOrDefault(emptyList())
+        val batch = runSuspendCatching { Api.homeCuplix(page = nextPage) }.getOrDefault(emptyList())
         val existingKeys = clips.mapTo(mutableSetOf(), ::clipKey)
-        val additions = batch.filter { clipKey(it) !in existingKeys }
+        val additions = batch.playable().filter { clipKey(it) !in existingKeys }
         if (additions.isEmpty()) {
             hasMore = false
         } else {
             clips = clips + additions
             nextPage += 1
-            if (batch.size < 10) hasMore = false
+            if (batch.size < PAGE_SIZE) hasMore = false
         }
         loadingMore = false
+    }
+
+    val activity = LocalContext.current.findActivity()
+    DisposableEffect(activity) {
+        val controller = activity?.let { WindowCompat.getInsetsController(it.window, it.window.decorView) }
+        val previousStatus = controller?.isAppearanceLightStatusBars ?: false
+        val previousNavigation = controller?.isAppearanceLightNavigationBars ?: false
+        controller?.isAppearanceLightStatusBars = false
+        controller?.isAppearanceLightNavigationBars = false
+        onDispose {
+            controller?.isAppearanceLightStatusBars = previousStatus
+            controller?.isAppearanceLightNavigationBars = previousNavigation
+        }
     }
 
     BackHandler(onBack = onBack)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            loading -> CircularProgressIndicator(
-                Modifier.align(Alignment.Center),
-                color = Color.White,
-            )
+            loading -> AppLoadingIndicator(Modifier.align(Alignment.Center), color = Color.White)
             clips.isEmpty() -> Text(
                 "Cuplix belum tersedia.",
                 Modifier.align(Alignment.Center).padding(24.dp),
@@ -111,108 +119,35 @@ fun CuplixShortsScreen(
                     key = { page -> clipKey(clips[page]) },
                 ) { page ->
                     val clip = clips[page]
-                    Box(Modifier.fillMaxSize().background(Color.Black)) {
-                        if (page == pagerState.currentPage && !clip.id_episode.isNullOrBlank()) {
-                            val startAtMs = clip.time_start?.toLongOrNull()?.coerceAtLeast(0L)
-                            val epIndex = remember(clip.episode) {
-                                Regex("\\d+").find(clip.episode.orEmpty())?.value
-                            }
-                            key(clip.id_episode, clip.id, clip.time_start) {
-                                PlayerScreen(
-                                    epId = clip.id_episode.orEmpty(),
-                                    title = listOfNotNull(
-                                        clip.anime?.takeIf { it.isNotBlank() },
-                                        clip.episode?.takeIf { it.isNotBlank() },
-                                    ).joinToString(" - "),
-                                    movieId = clip.id_movie?.takeIf { it.isNotBlank() },
-                                    epIndex = epIndex,
-                                    startAtMs = startAtMs,
-                                    shortsMode = true,
-                                    onBack = onBack,
-                                    onOpenAnime = onOpenAnime,
-                                    onNeedLogin = onNeedLogin,
-                                )
-                            }
-                        } else {
-                            Poster(clip.url_thumbnail, Modifier.fillMaxSize(), radius = 0.dp)
-                        }
-                        Box(
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f)),
-                                    ),
-                                ).navigationBarsPadding()
-                                .padding(start = 20.dp, end = 76.dp, top = 64.dp, bottom = 26.dp),
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                clip.anime?.takeIf { it.isNotBlank() }?.let {
-                                    Text(
-                                        it,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                clip.caption?.takeIf { it.isNotBlank() }?.let {
-                                    Text(
-                                        it,
-                                        color = Color.White,
-                                        fontSize = 14.sp,
-                                        maxLines = 3,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                val details = listOfNotNull(
-                                    clip.episode?.takeIf { it.isNotBlank() },
-                                    clip.count_views?.takeIf { it.isNotBlank() }?.let { "$it ditonton" },
-                                ).joinToString(" · ")
-                                if (details.isNotBlank()) {
-                                    Text(details, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp)
-                                }
-                            }
-                        }
-                    }
+                    val key = clipKey(clip)
+                    CuplixClipPage(
+                        clip = clip,
+                        active = positioned && page == pagerState.currentPage,
+                        liked = liked[key] == true,
+                        onLikedChange = { liked[key] = it },
+                        onOpenAnime = { clip.id_movie?.takeIf { it.isNotBlank() }?.let(onOpenAnime) },
+                    )
                 }
             }
         }
-        if (loadingMore) {
-            CircularProgressIndicator(
-                Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp).zIndex(2f),
-                color = Color.White,
-            )
-        }
 
-        Row(
+        Box(
             Modifier
                 .align(Alignment.TopStart)
                 .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)))
                 .statusBarsPadding()
-                .padding(start = 8.dp, end = 18.dp, top = 4.dp)
+                .padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
                 .zIndex(3f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
-                }
-                Text("Cuplix", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-            if (clips.isNotEmpty()) {
-                Text(
-                    "${pagerState.currentPage + 1} / ${if (hasMore) "…" else clips.size}",
-                    color = Color.White.copy(alpha = 0.9f),
-                    style = MaterialTheme.typography.labelLarge,
-                )
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
             }
         }
     }
 }
+
+private fun List<Cuplix>.playable(): List<Cuplix> = filter { !it.id_episode.isNullOrBlank() }
 
 private fun clipKey(clip: Cuplix): String =
     clip.id?.takeIf { it.isNotBlank() } ?: "${clip.id_episode}:${clip.time_start}:${clip.anime}"

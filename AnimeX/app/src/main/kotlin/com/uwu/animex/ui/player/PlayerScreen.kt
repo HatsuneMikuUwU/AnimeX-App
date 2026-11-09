@@ -25,11 +25,9 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -37,14 +35,11 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.HighQuality
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -167,7 +162,6 @@ fun PlayerScreen(
     movieId: String? = null,
     epIndex: String? = null,
     startAtMs: Long? = null,
-    shortsMode: Boolean = false,
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit = {},
     onNeedLogin: () -> Unit = {},
@@ -305,7 +299,7 @@ fun PlayerScreen(
 
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
-    val fullscreen = shortsMode || isLandscape || inPip
+    val fullscreen = isLandscape || inPip
     val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
     var manualLock by remember { mutableStateOf<Int?>(null) }
 
@@ -485,7 +479,7 @@ fun PlayerScreen(
         runCatching { playerRef?.pause() }
         onBack()
     }
-    val backOrExit: () -> Unit = { if (fullscreen && !shortsMode) exitFullscreen() else leavePlayer() }
+    val backOrExit: () -> Unit = { if (fullscreen) exitFullscreen() else leavePlayer() }
 
     BackHandler {
         when {
@@ -494,7 +488,7 @@ fun PlayerScreen(
             showDialog -> showDialog = false
             showEpisodes -> showEpisodes = false
             showComments -> showComments = false
-            fullscreen && !shortsMode -> exitFullscreen()
+            fullscreen -> exitFullscreen()
             else -> leavePlayer()
         }
     }
@@ -572,23 +566,21 @@ fun PlayerScreen(
             resize = resize,
             isFinished = { epId in finishedEps.value },
             onEnded = {
-                if (!shortsMode) {
-                    Progress.markDone(epId)
-                    applyResume(true)
+                Progress.markDone(epId)
+                applyResume(true)
 
-                    if (sleepAfterEpisode) {
-                        sleepAfterEpisode = false
-                    } else if (nextEp != null &&
-                        autoNext == null &&
-                        PlayerPrefs.autoplayEnabled.value
-                    ) {
-                        autoNext = AUTO_NEXT_SECONDS
-                    } else if (nextEp == null &&
-                        (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
-                        movieId != null
-                    ) {
-                        showEndSuggestions = true
-                    }
+                if (sleepAfterEpisode) {
+                    sleepAfterEpisode = false
+                } else if (nextEp != null &&
+                    autoNext == null &&
+                    PlayerPrefs.autoplayEnabled.value
+                ) {
+                    autoNext = AUTO_NEXT_SECONDS
+                } else if (nextEp == null &&
+                    (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
+                    movieId != null
+                ) {
+                    showEndSuggestions = true
                 }
             },
             onProgressSaved = { crossedDone ->
@@ -606,9 +598,7 @@ fun PlayerScreen(
             DisposableEffect(player) {
                 onDispose { if (playerRef === player) playerRef = null }
             }
-            if (shortsMode) {
-                CuplixPauseButton(player)
-            } else PlayerChrome(
+            PlayerChrome(
                 player = player,
                 title = title,
                 subtitle = subtitle,
@@ -993,37 +983,5 @@ fun PlayerScreen(
                     .safeDrawingPadding()
                     .padding(bottom = if (fullscreen) 72.dp else 0.dp),
         )
-    }
-}
-
-@Composable
-private fun CuplixPauseButton(player: Player) {
-    var playWhenReady by remember(player) { mutableStateOf(player.playWhenReady) }
-    DisposableEffect(player) {
-        val listener =
-            object : Player.Listener {
-                override fun onPlayWhenReadyChanged(
-                    isReady: Boolean,
-                    reason: Int,
-                ) {
-                    playWhenReady = isReady
-                }
-            }
-        player.addListener(listener)
-        playWhenReady = player.playWhenReady
-        onDispose { player.removeListener(listener) }
-    }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        IconButton(
-            onClick = { if (playWhenReady) player.pause() else player.play() },
-            modifier = Modifier.size(68.dp).background(Color.Black.copy(alpha = 0.52f), CircleShape),
-        ) {
-            Icon(
-                imageVector = if (playWhenReady) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                contentDescription = if (playWhenReady) "Jeda Cuplix" else "Putar Cuplix",
-                tint = Color.White,
-                modifier = Modifier.size(38.dp),
-            )
-        }
     }
 }
