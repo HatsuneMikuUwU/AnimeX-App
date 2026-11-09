@@ -30,7 +30,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.PauseCircle
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -442,10 +443,10 @@ internal fun CuplixClipPage(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = if (flashShowsPause) Icons.Outlined.PauseCircle else Icons.Outlined.PlayCircleOutline,
+                imageVector = if (flashShowsPause) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(52.dp),
+                modifier = Modifier.size(46.dp),
             )
         }
 

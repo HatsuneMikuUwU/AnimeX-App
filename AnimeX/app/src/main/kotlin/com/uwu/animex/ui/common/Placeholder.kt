@@ -306,6 +306,36 @@ fun WaitingCardPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun CuplixCardPlaceholder(modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(8.dp),
+    ) {
+        Ph(Modifier.fillMaxWidth().height(218.dp), RoundedCornerShape(16.dp))
+        Column(
+            Modifier.padding(start = 3.dp, top = 8.dp, bottom = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            PhLine(fraction = 0.8f, style = MaterialTheme.typography.labelMedium)
+            PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
+private fun CuplixRowPlaceholder() {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        userScrollEnabled = false,
+    ) {
+        items(3) { CuplixCardPlaceholder(Modifier.width(154.dp)) }
+    }
+}
+
+@Composable
 private fun HotRowPlaceholder() {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -335,6 +365,8 @@ private fun HeroBannerPlaceholder() {
 fun HomePlaceholder() {
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = 16.dp + LocalTopInset.current)) {
         HeroBannerPlaceholder()
+        SectionHeaderPlaceholder()
+        CuplixRowPlaceholder()
         SectionHeaderPlaceholder()
         ContinueRowPlaceholder()
         SectionHeaderPlaceholder()
