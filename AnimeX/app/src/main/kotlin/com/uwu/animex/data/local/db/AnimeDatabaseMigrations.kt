@@ -234,14 +234,27 @@ internal object AnimeDatabaseMigrations {
                     "ON `tracker_pending_ops` (`source`, `syncId`)",
             ),
         ),
+        Table(
+            name = "cuplix_seen",
+            createSql = """
+                CREATE TABLE `cuplix_seen` (
+                    `clipKey` TEXT NOT NULL,
+                    `seenAt` INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY(`clipKey`)
+                )
+            """.trimIndent(),
+            columns = listOf("clipKey", "seenAt"),
+        ),
     )
 
-    val all: Array<Migration> = (1..5)
+    // Versi 1..5 membangun ulang semua tabel; versi 6 sudah lengkap kecuali cuplix_seen.
+    val all: Array<Migration> = (1..6)
         .map { from ->
-            object : Migration(from, 6) {
+            object : Migration(from, 7) {
                 override fun migrate(db: SupportSQLiteDatabase) {
-                    tables.forEach { table -> rebuildTable(db, table) }
-                    tables.flatMap { it.indexes }.forEach { db.execSQL(it) }
+                    val target = if (from < 6) tables else tables.filter { it.name == "cuplix_seen" }
+                    target.forEach { table -> rebuildTable(db, table) }
+                    target.flatMap { it.indexes }.forEach { db.execSQL(it) }
                 }
             }
         }.toTypedArray()
