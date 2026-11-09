@@ -1,8 +1,11 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.semantics.Role
@@ -300,13 +303,27 @@ internal fun PlayerWatchPage(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-            item(key = "sections") {
-                WatchSectionToggleGroup(
-                    labels = WATCH_SECTIONS,
-                    selected = section,
-                    onSelect = { section = it },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+            stickyHeader(key = "sections") {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(cs.surface.copy(alpha = 0.94f))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    WatchSectionToggleGroup(
+                        labels = WATCH_SECTIONS,
+                        selected = section,
+                        onSelect = { section = it },
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (section == 0 && movieId != null) {
+                        WatchSortButton(
+                            newestFirst = episodeList.newestFirst,
+                            onClick = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
+                        )
+                    }
+                }
             }
             if (section == 0) {
                 watchEpisodeItems(
@@ -478,6 +495,41 @@ private fun WatchAnimeRow(
                 modifier = Modifier.size(20.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun WatchSortButton(
+    newestFirst: Boolean,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
+    val flip by animateFloatAsState(
+        targetValue = if (newestFirst) 1f else -1f,
+        animationSpec = motion.defaultSpatialSpec(),
+        label = "sortFlip",
+    )
+    val container by animateColorAsState(
+        targetValue = if (newestFirst) cs.surfaceContainerHigh else cs.secondaryContainer,
+        animationSpec = motion.fastEffectsSpec(),
+        label = "sortContainer",
+    )
+    Box(
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(container)
+                .clickable(onClick = hapticClick(block = onClick)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.AutoMirrored.Outlined.Sort,
+            contentDescription = if (newestFirst) "Urutan: terbaru dulu" else "Urutan: terlama dulu",
+            tint = if (newestFirst) cs.onSurface else cs.onSecondaryContainer,
+            modifier = Modifier.size(20.dp).graphicsLayer { scaleY = flip },
+        )
     }
 }
 

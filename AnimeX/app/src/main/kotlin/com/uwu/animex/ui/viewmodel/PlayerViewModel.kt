@@ -29,6 +29,7 @@ data class PlayerEpisodeList(
     val error: String? = null,
     val moreError: Boolean = false,
     val pinned: Episode? = null,
+    val newestFirst: Boolean = true,
 )
 
 class PlayerViewModel(
@@ -58,6 +59,7 @@ class PlayerViewModel(
     private var listMovieId: String? = null
     private var aniZipMovieId: String? = null
     private var nextPage = -1
+    private var ascending = false
     private var currentEpId: String = initialEpId
     private var serversGeneration = 0
     private var loadedEpId: String? = null
@@ -177,23 +179,37 @@ class PlayerViewModel(
         listJob?.cancel()
         listJob =
             viewModelScope.launch {
-                _episodeList.value = PlayerEpisodeList(pinned = _episodeList.value.pinned)
+                _episodeList.value =
+                    PlayerEpisodeList(pinned = _episodeList.value.pinned, newestFirst = !ascending)
                 try {
                     val newest = Api.episodes(movieId, force = force)
-                    nextPage = 1
-                    _episodeList.value =
-                        PlayerEpisodeList(
-                            episodes = newest.sortedByDescending(::episodeNumber).distinctBy { it.id },
+                    val last = if (ascending) Api.lastEpisodePage(movieId) else 0
+                    val first = if (ascending && last > 0) Api.episodes(movieId, page = last) else newest
+                    nextPage = if (ascending) last - 1 else 1
+                    _episodeList.update {
+                        it.copy(
+                            episodes = sortEpisodes(first).distinctBy { e -> e.id },
                             loading = false,
-                            hasMore = newest.isNotEmpty(),
+                            hasMore = if (ascending) last > 0 else newest.isNotEmpty(),
                         )
+                    }
                     appendPages(movieId, PAGE_SIZE)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    _episodeList.value = PlayerEpisodeList(loading = false, error = e.toUserMessage())
+                    _episodeList.update { it.copy(loading = false, error = e.toUserMessage()) }
                 }
             }
+    }
+
+    fun setEpisodeOrder(
+        movieId: String,
+        newestFirst: Boolean,
+    ) {
+        if (ascending == !newestFirst) return
+        ascending = !newestFirst
+        listMovieId = null
+        openEpisodeList(movieId, null)
     }
 
     fun pinEpisode(
@@ -238,14 +254,14 @@ class PlayerViewModel(
         try {
             while (_episodeList.value.hasMore && _episodeList.value.episodes.size < minimum) {
                 val page = nextPage
-                val batch = Api.episodes(movieId, page = page).sortedByDescending(::episodeNumber)
-                nextPage = page + 1
+                val batch = sortEpisodes(Api.episodes(movieId, page = page))
+                nextPage = if (ascending) page - 1 else page + 1
                 _episodeList.update { cur ->
                     val seen = cur.episodes.mapNotNull { it.id }.toHashSet()
                     val fresh = batch.filter { it.id != null && it.id !in seen }
                     cur.copy(
                         episodes = cur.episodes + fresh,
-                        hasMore = fresh.isNotEmpty(),
+                        hasMore = if (ascending) nextPage >= 0 else fresh.isNotEmpty(),
                     )
                 }
             }
@@ -258,6 +274,9 @@ class PlayerViewModel(
     }
 
     private fun episodeNumber(e: Episode): Double = e.index?.trim()?.toDoubleOrNull() ?: -1.0
+
+    private fun sortEpisodes(list: List<Episode>): List<Episode> =
+        if (ascending) list.sortedBy(::episodeNumber) else list.sortedByDescending(::episodeNumber)
 
     fun loadAniZip(movieId: String?) {
         if (movieId.isNullOrBlank()) {
