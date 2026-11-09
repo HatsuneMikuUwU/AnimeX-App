@@ -505,29 +505,28 @@ fun PlayerScreen(
     val chips =
         buildList {
             add(WatchChip(Icons.Outlined.Speed, speedLabel(speed)) { showSpeed = true })
-            val q = currentServer?.quality?.takeIf { it.isNotBlank() } ?: "Kualitas"
-            add(
-                WatchChip(Icons.Outlined.HighQuality, q) {
-                    if (servers.isEmpty()) showMessage("Server belum siap") else showDialog = true
-                },
-            )
+            if (servers.size > 1) {
+                val q = currentServer?.quality?.takeIf { it.isNotBlank() } ?: "Kualitas"
+                add(WatchChip(Icons.Outlined.HighQuality, q) { showDialog = true })
+            }
             add(
                 WatchChip(
                     Icons.Outlined.Bedtime,
                     sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
                 ) { showSleep = true },
             )
-            add(
-                WatchChip(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
-                    val link = currentServer?.takeIf { it.isDirect }?.link
-                    if (link.isNullOrBlank()) {
-                        showMessage("Server belum siap")
-                    } else {
+            if (currentServer != null &&
+                currentServer.isDirect &&
+                !currentServer.link.isNullOrBlank()
+            ) {
+                val link = currentServer.link.orEmpty()
+                add(
+                    WatchChip(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
                         playerRef?.pause()
                         ExternalPlayer.open(ctx, chipExternalLauncher, epId, link, title, showMessage)
-                    }
-                },
-            )
+                    },
+                )
+            }
         }
 
     val liveUrl: String? =
