@@ -3,6 +3,13 @@
 package com.uwu.animex.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -158,7 +165,6 @@ internal data class WatchChip(
     val icon: ImageVector,
     val label: String,
     val highlighted: Boolean = false,
-    val secondary: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -175,6 +181,8 @@ internal fun PlayerWatchPage(
     onOpenComments: () -> Unit,
     onCloseComments: () -> Unit,
     chips: List<WatchChip>,
+    onPrev: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
     onPickEpisode: (Episode) -> Unit,
     onOpenAnime: (String) -> Unit,
     onNeedLogin: () -> Unit,
@@ -262,6 +270,15 @@ internal fun PlayerWatchPage(
                     enabled = movie != null && movieId != null,
                     onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                 )
+            }
+            if (onPrev != null || onNext != null) {
+                item(key = "nav-buttons") {
+                    WatchNavButtons(
+                        onPrev = onPrev,
+                        onNext = onNext,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
             if (chips.isNotEmpty()) {
                 item(key = "chips") {
@@ -819,20 +836,97 @@ private fun InlineHotRecCard(
 }
 
 @Composable
+private fun WatchNavButtons(
+    onPrev: (() -> Unit)?,
+    onNext: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
+    val prevSource = remember { MutableInteractionSource() }
+    val nextSource = remember { MutableInteractionSource() }
+    val prevPressed by prevSource.collectIsPressedAsState()
+    val nextPressed by nextSource.collectIsPressedAsState()
+    val prevWeight by animateFloatAsState(
+        targetValue = if (prevPressed) 4.8f else if (nextPressed) 3.4f else 4f,
+        animationSpec = motion.fastSpatialSpec(),
+        label = "prevWeight",
+    )
+    val nextWeight by animateFloatAsState(
+        targetValue = if (nextPressed) 7.2f else if (prevPressed) 5.2f else 6f,
+        animationSpec = motion.fastSpatialSpec(),
+        label = "nextWeight",
+    )
+    val outer = 24.dp
+    val prevInner by animateDpAsState(
+        targetValue = if (prevPressed) outer else 8.dp,
+        animationSpec = motion.fastSpatialSpec(),
+        label = "prevInner",
+    )
+    val nextInner by animateDpAsState(
+        targetValue = if (nextPressed) outer else 8.dp,
+        animationSpec = motion.fastSpatialSpec(),
+        label = "nextInner",
+    )
+    val both = onPrev != null && onNext != null
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (onPrev != null) {
+            FilledTonalButton(
+                onClick = hapticClick(block = onPrev),
+                modifier = Modifier.weight(if (both) prevWeight else 1f).height(48.dp),
+                shape =
+                    if (both) {
+                        RoundedCornerShape(
+                            topStart = outer,
+                            bottomStart = outer,
+                            topEnd = prevInner.coerceAtLeast(0.dp),
+                            bottomEnd = prevInner.coerceAtLeast(0.dp),
+                        )
+                    } else {
+                        RoundedCornerShape(outer)
+                    },
+                colors =
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = cs.secondaryContainer,
+                        contentColor = cs.onSecondaryContainer,
+                    ),
+                interactionSource = prevSource,
+            ) {
+                Icon(Icons.Outlined.SkipPrevious, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Sebelumnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            }
+        }
+        if (onNext != null) {
+            Button(
+                onClick = hapticClick(block = onNext),
+                modifier = Modifier.weight(if (both) nextWeight else 1f).height(48.dp),
+                shape =
+                    if (both) {
+                        RoundedCornerShape(
+                            topStart = nextInner.coerceAtLeast(0.dp),
+                            bottomStart = nextInner.coerceAtLeast(0.dp),
+                            topEnd = outer,
+                            bottomEnd = outer,
+                        )
+                    } else {
+                        RoundedCornerShape(outer)
+                    },
+                interactionSource = nextSource,
+            ) {
+                Text("Selanjutnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Outlined.SkipNext, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
 private fun WatchChipButton(chip: WatchChip) {
     val cs = MaterialTheme.colorScheme
-    val container =
-        when {
-            chip.highlighted -> cs.primaryContainer
-            chip.secondary -> cs.secondaryContainer
-            else -> cs.surfaceContainerHigh
-        }
-    val content =
-        when {
-            chip.highlighted -> cs.onPrimaryContainer
-            chip.secondary -> cs.onSecondaryContainer
-            else -> cs.onSurface
-        }
+    val container = if (chip.highlighted) cs.primaryContainer else cs.surfaceContainerHigh
+    val content = if (chip.highlighted) cs.onPrimaryContainer else cs.onSurface
     Row(
         Modifier
             .clip(RoundedCornerShape(50))

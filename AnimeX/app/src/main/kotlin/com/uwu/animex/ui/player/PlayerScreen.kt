@@ -38,8 +38,6 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.HighQuality
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -498,12 +496,6 @@ fun PlayerScreen(
 
     val chips =
         buildList {
-            if (prevEp != null) {
-                add(WatchChip(Icons.Outlined.SkipPrevious, "Sebelumnya", secondary = true) { goPrev() })
-            }
-            if (nextEp != null) {
-                add(WatchChip(Icons.Outlined.SkipNext, "Selanjutnya", highlighted = true) { goNext() })
-            }
             if (PlayerButton.SPEED !in hiddenButtons) {
                 add(WatchChip(Icons.Outlined.Speed, speedLabel(speed)) { showSpeed = true })
             }
@@ -834,6 +826,8 @@ fun PlayerScreen(
                     onOpenComments = { showComments = true },
                     onCloseComments = { showComments = false },
                     chips = chips,
+                    onPrev = if (prevEp != null) goPrev else null,
+                    onNext = if (nextEp != null) goNext else null,
                     onPickEpisode = { switchTo(it, false) },
                     onOpenAnime = onOpenAnime,
                     onNeedLogin = onNeedLogin,
