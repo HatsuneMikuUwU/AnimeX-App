@@ -15,6 +15,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,7 +33,10 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaController
@@ -48,7 +53,19 @@ import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.net.UnknownServiceException
+
+private const val BUFFER_MIN_MS = 30_000
+private const val BUFFER_MAX_MS = 90_000
+private const val BUFFER_FOR_PLAYBACK_MS = 1_500
+private const val BUFFER_FOR_REBUFFER_MS = 3_000
+private const val MAX_AUTO_RETRIES = 2
+private const val RETRY_DELAY_MS = 1_500L
+
+private fun PlaybackException.isTransientNetworkError(): Boolean =
+    errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+        errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -67,6 +84,11 @@ internal fun ExoView(
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val latestIsFinished by rememberUpdatedState(isFinished)
+    val latestOnEnded by rememberUpdatedState(onEnded)
+    val latestOnProgressSaved by rememberUpdatedState(onProgressSaved)
+    val latestOnStreamError by rememberUpdatedState(onStreamError)
 
     val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
     val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
@@ -100,9 +122,22 @@ internal fun ExoView(
                     OkHttpDataSource
                         .Factory(client)
                         .setUserAgent(browserUa)
+                val renderers = DefaultRenderersFactory(ctx).setEnableDecoderFallback(true)
+                val loadControl =
+                    DefaultLoadControl
+                        .Builder()
+                        .setBufferDurationsMs(
+                            BUFFER_MIN_MS,
+                            BUFFER_MAX_MS,
+                            BUFFER_FOR_PLAYBACK_MS,
+                            BUFFER_FOR_REBUFFER_MS,
+                        ).setPrioritizeTimeOverSizeThresholds(true)
+                        .build()
                 ExoPlayer
-                    .Builder(ctx)
+                    .Builder(ctx, renderers)
                     .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
+                    .setLoadControl(loadControl)
+                    .setWakeMode(C.WAKE_MODE_NETWORK)
                     .build()
             }
         }
@@ -150,19 +185,29 @@ internal fun ExoView(
     LaunchedEffect(player) {
         while (true) {
             delay(5_000)
-            if (player.isPlaying && !isFinished()) {
+            if (player.isPlaying && !latestIsFinished()) {
                 val crossed = Progress.save(epId, player.currentPosition, player.duration)
-                onProgressSaved(crossed)
+                latestOnProgressSaved(crossed)
             }
         }
     }
 
     var keepOn by remember(player) { mutableStateOf(player.shouldKeepScreenOn()) }
     DisposableEffect(player) {
+        var retries = 0
         val listener =
             object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (isPlaying) History.commit(epId)
+                    if (isPlaying) {
+                        History.commit(epId)
+                    } else if (player.playbackState == Player.STATE_READY && !player.playWhenReady) {
+                        runCatching {
+                            if (!latestIsFinished()) {
+                                val crossed = Progress.save(epId, player.currentPosition, player.duration)
+                                latestOnProgressSaved(crossed)
+                            }
+                        }
+                    }
                 }
 
                 override fun onPlayWhenReadyChanged(
@@ -174,20 +219,30 @@ internal fun ExoView(
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     keepOn = player.shouldKeepScreenOn()
-                    if (playbackState == Player.STATE_ENDED && player.mediaItemCount > 0) onEnded()
+                    if (playbackState == Player.STATE_READY) retries = 0
+                    if (playbackState == Player.STATE_ENDED && player.mediaItemCount > 0) latestOnEnded()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    onStreamError(error)
+                    if (error.isTransientNetworkError() && retries < MAX_AUTO_RETRIES && ConnectivityMonitor.isOnline()) {
+                        retries++
+                        val attempt = retries
+                        scope.launch {
+                            delay(RETRY_DELAY_MS * attempt)
+                            runCatching { if (player.playerError != null) player.prepare() }
+                        }
+                    } else {
+                        latestOnStreamError(error)
+                    }
                 }
             }
         player.addListener(listener)
-        if (reusing && player.playbackState == Player.STATE_ENDED) onEnded()
+        if (reusing && player.playbackState == Player.STATE_ENDED) latestOnEnded()
         onDispose {
             player.removeListener(listener)
-            if (PlaybackSessions.current?.player === player && !isFinished()) {
+            if (PlaybackSessions.current?.player === player && !latestIsFinished()) {
                 val crossed = Progress.save(epId, player.currentPosition, player.duration)
-                onProgressSaved(crossed)
+                latestOnProgressSaved(crossed)
                 Progress.flush()
             }
         }
@@ -278,11 +333,11 @@ private fun ExoPlayer.onAppBackgrounded(backgroundPlay: Boolean) {
     if (backgroundPlay) setVideoDisabled(true) else pause()
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 internal fun PlaybackException.toStreamMessage(): String {
     val chain = generateSequence<Throwable>(this) { it.cause }
-    val networkFailure =
-        errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-            errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+    val networkFailure = isTransientNetworkError()
+    val httpStatus = chain.filterIsInstance<HttpDataSource.InvalidResponseCodeException>().firstOrNull()?.responseCode
     return when {
         chain.any {
             it.javaClass.simpleName == "CleartextNotPermittedException" || it is UnknownServiceException
@@ -294,6 +349,23 @@ internal fun PlaybackException.toStreamMessage(): String {
             "Servernya kelamaan jawab."
         errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ->
             "Gak bisa nyambung ke server stream."
+        httpStatus == 401 || httpStatus == 403 ->
+            "Link videonya ditolak server (kemungkinan udah kedaluwarsa)."
+        httpStatus == 404 || httpStatus == 410 ->
+            "Videonya udah gak ada di server ini."
+        httpStatus == 429 ->
+            "Server lagi kebanjiran request, coba lagi sebentar."
+        httpStatus != null && httpStatus >= 500 ->
+            "Server streamnya lagi bermasalah."
+        errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
+            "File videonya gak ketemu."
+        errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+            errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ->
+            "Format videonya rusak atau gak didukung."
+        errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ->
+            "HP kamu gak bisa decode video ini."
         else -> message ?: "Gagal putar stream"
     }
 }

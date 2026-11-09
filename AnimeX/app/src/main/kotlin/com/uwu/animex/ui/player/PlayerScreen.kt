@@ -12,7 +12,6 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.OrientationEventListener
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -42,6 +41,8 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,6 +55,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -277,6 +279,9 @@ fun PlayerScreen(
         )
     val ctx = LocalContext.current
     val activity = ctx.findActivity()
+    val snackbar = remember { SnackbarHostState() }
+    val snackScope = rememberCoroutineScope()
+    val showMessage: (String) -> Unit = { message -> snackbar.show(snackScope, message) }
 
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
@@ -341,6 +346,12 @@ fun PlayerScreen(
         PipHelper.updateParams(activity)
         onDispose {
             controller?.isAppearanceLightStatusBars = previousLightStatus
+            activity?.window?.let { w ->
+                w.attributes =
+                    w.attributes.apply {
+                        screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    }
+            }
             PipHelper.onPlayerDisposed(activity)
             setFullscreen(activity, false)
             applyPlayerOrientation(activity, false)
@@ -513,7 +524,7 @@ fun PlayerScreen(
                 add(
                     WatchChip(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
                         playerRef?.pause()
-                        ExternalPlayer.open(ctx, chipExternalLauncher, epId, link, title)
+                        ExternalPlayer.open(ctx, chipExternalLauncher, epId, link, title, showMessage)
                     },
                 )
             }
@@ -611,6 +622,7 @@ fun PlayerScreen(
                 compact = !fullscreen,
                 onToggleFullscreen = { toggleFullscreen() },
                 streamUrl = url,
+                onMessage = showMessage,
                 onProgressSaved = { crossedDone ->
                     if (crossedDone) applyResume(true)
                 },
@@ -886,7 +898,7 @@ fun PlayerScreen(
             showSleep = false
             sleepDeadlineMs = deadlineMs
             sleepAfterEpisode = afterEpisode
-            Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+            showMessage(message)
         }
 
         AnimatedVisibility(
@@ -925,7 +937,7 @@ fun PlayerScreen(
                     showSleep = false
                     sleepDeadlineMs = choice.deadlineMs
                     sleepAfterEpisode = choice.afterEpisode
-                    Toast.makeText(ctx, choice.message, Toast.LENGTH_SHORT).show()
+                    showMessage(choice.message)
                 }
             }
             if (showDialog && servers.isNotEmpty()) {
@@ -937,5 +949,14 @@ fun PlayerScreen(
                 )
             }
         }
+
+        SnackbarHost(
+            hostState = snackbar,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .safeDrawingPadding()
+                    .padding(bottom = if (fullscreen) 72.dp else 0.dp),
+        )
     }
 }

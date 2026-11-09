@@ -63,6 +63,7 @@ object PlayerPrefs {
     private const val KEY_PAUSE_ON_NOISY = "pause_on_headset_unplug"
     private const val KEY_VOLUME_BOOST = "volume_boost"
     private const val KEY_BACKGROUND_PLAY = "background_play"
+    private const val KEY_SKIP_INTRO_MS = "skip_intro_ms"
 
     private val DEFAULT_SPEED_PRESETS =
         setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0")
@@ -154,6 +155,11 @@ object PlayerPrefs {
     private val _backgroundPlay = MutableStateFlow(false)
     val backgroundPlay: StateFlow<Boolean> = _backgroundPlay.asStateFlow()
 
+    const val DEFAULT_SKIP_INTRO_MS = 85_000
+
+    private val _skipIntroMs = MutableStateFlow(DEFAULT_SKIP_INTRO_MS)
+    val skipIntroMs: StateFlow<Int> = _skipIntroMs.asStateFlow()
+
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
@@ -204,6 +210,7 @@ object PlayerPrefs {
         _pauseOnNoisy.value = sp.getBoolean(KEY_PAUSE_ON_NOISY, true)
         _volumeBoost.value = sp.getBoolean(KEY_VOLUME_BOOST, false)
         _backgroundPlay.value = sp.getBoolean(KEY_BACKGROUND_PLAY, false)
+        _skipIntroMs.value = sp.getInt(KEY_SKIP_INTRO_MS, DEFAULT_SKIP_INTRO_MS).coerceIn(10_000, 300_000)
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -339,6 +346,12 @@ object PlayerPrefs {
         edit { putBoolean(KEY_BACKGROUND_PLAY, value) }
     }
 
+    fun setSkipIntroMs(value: Int) {
+        val v = value.coerceIn(10_000, 300_000)
+        _skipIntroMs.value = v
+        edit { putInt(KEY_SKIP_INTRO_MS, v) }
+    }
+
     fun exportJson(): JSONObject =
         JSONObject()
             .put("quality", quality)
@@ -364,6 +377,7 @@ object PlayerPrefs {
             .put("pauseOnNoisy", _pauseOnNoisy.value)
             .put("volumeBoost", _volumeBoost.value)
             .put("backgroundPlay", _backgroundPlay.value)
+            .put("skipIntroMs", _skipIntroMs.value)
 
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
@@ -397,5 +411,6 @@ object PlayerPrefs {
         if (o.has("pauseOnNoisy")) setPauseOnNoisy(o.optBoolean("pauseOnNoisy"))
         if (o.has("volumeBoost")) setVolumeBoost(o.optBoolean("volumeBoost"))
         if (o.has("backgroundPlay")) setBackgroundPlay(o.optBoolean("backgroundPlay"))
+        if (o.has("skipIntroMs")) setSkipIntroMs(o.optInt("skipIntroMs", _skipIntroMs.value))
     }
 }

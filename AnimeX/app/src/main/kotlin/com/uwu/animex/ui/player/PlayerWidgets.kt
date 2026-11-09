@@ -2,6 +2,8 @@
 
 package com.uwu.animex.ui.player
 
+import android.net.Uri
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
@@ -486,13 +488,30 @@ internal fun WebEmbed(url: String) {
     }
 
     key(url) {
+        val originalHost = remember(url) { Uri.parse(url).host }
         AndroidView(
             factory = { c ->
                 WebView(c).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
                     settings.mediaPlaybackRequiresUserGesture = false
-                    webViewClient = WebViewClient()
+                    settings.allowFileAccess = false
+                    settings.allowContentAccess = false
+                    settings.javaScriptCanOpenWindowsAutomatically = false
+                    webViewClient =
+                        object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                            ): Boolean {
+                                val target = request?.url ?: return false
+                                val scheme = target.scheme?.lowercase()
+                                if (scheme != "http" && scheme != "https") return true
+                                return request.isForMainFrame &&
+                                    request.hasGesture() &&
+                                    target.host != originalHost
+                            }
+                        }
                     loadUrl(url)
                     holder[0] = this
                 }

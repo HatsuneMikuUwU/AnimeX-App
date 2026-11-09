@@ -7,7 +7,6 @@ import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
 import android.provider.Settings
-import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -87,6 +86,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
+import com.uwu.animex.data.api.SkipType
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.AppMotion
@@ -119,8 +119,6 @@ private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
-
-private const val SKIP_OP_MS = 85_000L
 
 private const val SKIP_OP_UNTIL_PERCENT = 50
 
@@ -171,6 +169,7 @@ fun PlayerChrome(
     onToggleFullscreen: () -> Unit = {},
     onComment: (() -> Unit)? = null,
     streamUrl: String = "",
+    onMessage: (String) -> Unit = {},
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
@@ -192,6 +191,7 @@ fun PlayerChrome(
     val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
     val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
     val swapIndicator by PlayerPrefs.swapIndicator.collectAsStateWithLifecycle()
+    val skipIntroMs by PlayerPrefs.skipIntroMs.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -236,6 +236,7 @@ fun PlayerChrome(
 
     var stamps by remember { mutableStateOf<List<SkipStamp>>(emptyList()) }
     var stampsRequested by remember { mutableStateOf(false) }
+    var stampsLoaded by remember { mutableStateOf(false) }
     var dismissedStamp by remember { mutableStateOf<SkipStamp?>(null) }
 
     fun showHint(text: String) {
@@ -364,7 +365,6 @@ fun PlayerChrome(
             object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying2: Boolean) {
                     isPlaying = isPlaying2
-                    PipHelper.isPlaying = isPlaying2
                 }
 
                 override fun onPlayWhenReadyChanged(
@@ -384,17 +384,6 @@ fun PlayerChrome(
         onDispose { player.removeListener(listener) }
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            activity?.window?.let { w ->
-                w.attributes =
-                    w.attributes.apply {
-                        screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                    }
-            }
-        }
-    }
-
     LaunchedEffect(player, visible) {
         while (true) {
             pos = player.currentPosition.coerceAtLeast(0)
@@ -404,6 +393,8 @@ fun PlayerChrome(
         }
     }
 
+    LaunchedEffect(isPlaying) { PipHelper.isPlaying = isPlaying }
+
     LaunchedEffect(ended) { if (ended) visible = true }
     LaunchedEffect(playWhenReady) { if (!playWhenReady) visible = true }
 
@@ -411,6 +402,7 @@ fun PlayerChrome(
         if (dur > 0 && !stampsRequested) {
             stampsRequested = true
             stamps = runCatching { loadStamps(dur) }.getOrDefault(emptyList())
+            stampsLoaded = true
         }
     }
 
@@ -476,7 +468,8 @@ fun PlayerChrome(
         if (locked) visible = false
     }
 
-    val opVisible = dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
+    val hasOpeningStamp = stamps.any { it.type == SkipType.Opening || it.type == SkipType.MixedOpening }
+    val opVisible = stampsLoaded && !hasOpeningStamp && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
 
     val gestures: Modifier =
         if (locked) {
@@ -686,7 +679,7 @@ fun PlayerChrome(
                         Spacer(Modifier.weight(1f))
                         if (opVisible) {
                             PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                seekBy(SKIP_OP_MS)
+                                seekBy(skipIntroMs.toLong())
                                 poke++
                             }
                         }
@@ -860,7 +853,7 @@ fun PlayerChrome(
                             if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
                                 PillButton(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
                                     player.pause()
-                                    ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
+                                    ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title, onMessage)
                                     poke++
                                 }
                             }
@@ -906,7 +899,7 @@ fun PlayerChrome(
                             }
                             if (opVisible) {
                                 PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                    seekBy(SKIP_OP_MS)
+                                    seekBy(skipIntroMs.toLong())
                                     poke++
                                 }
                             } else if (hasNext) {

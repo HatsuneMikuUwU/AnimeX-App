@@ -19,6 +19,8 @@ fun rememberExternalLauncher(onResult: (Intent?) -> Unit): ActivityResultLaunche
     rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { onResult(it.data) }
 
 object ExternalPlayer {
+    private const val VLC_PACKAGE = "org.videolan.vlc"
+
     data class Result(
         val positionMs: Long,
         val durationMs: Long,
@@ -39,10 +41,8 @@ object ExternalPlayer {
             App("com.mxtech.videoplayer.pro", "MX Player Pro"),
             App("com.mxtech.videoplayer.free", "MX Player Free"),
             App("org.videolan.vlc", "VLC"),
+            App("live.mehiz.mpvkt", "mpvKt"),
             App("com.brouken.player", "Just Player"),
-            App("com.simplemobiletools.clock", "Simple Music Player"),
-            App("com.google.android.youtube", "YouTube"),
-            App("com.google.android.apps.youtube.unplugged", "YouTube"),
         )
 
     fun installed(context: Context): List<App> {
@@ -84,9 +84,11 @@ object ExternalPlayer {
         epId: String,
         url: String,
         title: String? = null,
+        onMessage: ((String) -> Unit)? = null,
     ): Boolean {
+        val showMessage: (String) -> Unit = onMessage ?: { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
         if (url.isBlank()) {
-            Toast.makeText(context, "Link videonya kosong nih", Toast.LENGTH_SHORT).show()
+            showMessage("Link videonya kosong nih")
             return false
         }
         val pkg = PlayerPrefs.externalPackage.value
@@ -98,7 +100,9 @@ object ExternalPlayer {
                 putExtra("title", title)
                 putExtra(Intent.EXTRA_TITLE, title)
                 putExtra("return_result", true)
-                if (start > 0) putExtra("position", start.toInt())
+                if (start > 0) {
+                    if (pkg == VLC_PACKAGE) putExtra("position", start) else putExtra("position", start.toInt())
+                }
                 if (needsUriReadGrant(uri.scheme)) addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 if (pkg.isNotBlank()) setPackage(pkg)
             }
@@ -115,7 +119,7 @@ object ExternalPlayer {
                 History.commit(epId)
                 true
             } catch (_: Exception) {
-                Toast.makeText(context, "Gak nemu player eksternal", Toast.LENGTH_SHORT).show()
+                showMessage("Gak nemu player eksternal")
                 false
             }
         }
