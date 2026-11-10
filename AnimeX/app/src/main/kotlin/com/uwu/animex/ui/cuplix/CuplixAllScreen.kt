@@ -37,6 +37,8 @@ import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CuplixCard
+import com.uwu.animex.data.local.CuplixWatched
+import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.ui.common.CuplixCardPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTopBar
@@ -54,6 +56,9 @@ fun CuplixAllScreen(
     onOpenSaved: () -> Unit,
 ) {
     val feed by CuplixAllFeed.state.collectAsStateWithLifecycle()
+    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
+    val watched by CuplixWatched.keys.collectAsStateWithLifecycle()
+    val clips = remember(feed.clips, hideWatched, watched) { feed.clips.withoutWatched(hideWatched, watched) }
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
@@ -68,8 +73,9 @@ fun CuplixAllScreen(
             total > 0 && lastVisible >= total - LOAD_MORE_THRESHOLD
         }
     }
-    LaunchedEffect(nearEnd, feed.hasMore, feed.loadingMore, feed.loadMoreFailed, feed.clips.size) {
-        if (nearEnd && feed.hasMore && !feed.loadingMore && !feed.loadMoreFailed) CuplixAllFeed.loadMore()
+    LaunchedEffect(nearEnd, clips.size, feed.hasMore, feed.loadingMore, feed.loadMoreFailed, feed.clips.size) {
+        val starved = clips.isEmpty() && feed.clips.isNotEmpty()
+        if ((nearEnd || starved) && feed.hasMore && !feed.loadingMore && !feed.loadMoreFailed) CuplixAllFeed.loadMore()
     }
 
     val backdrop = rememberBlurBackdrop()
@@ -117,13 +123,13 @@ fun CuplixAllScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(feed.clips, key = { cuplixKey(it) }, contentType = { "cuplix-card" }) { clip ->
+                    items(clips, key = { cuplixKey(it) }, contentType = { "cuplix-card" }) { clip ->
                         CuplixCard(clip = clip, onPlay = onPlay, modifier = Modifier.fillMaxWidth())
                     }
-                    if (feed.clips.isEmpty() && !feed.loadMoreFailed) {
+                    if (clips.isEmpty() && !feed.loadMoreFailed && (feed.clips.isEmpty() || feed.hasMore)) {
                         items(6) { CuplixCardPlaceholder(Modifier.fillMaxWidth()) }
                     }
-                    if (feed.clips.isNotEmpty() && feed.loadingMore && !feed.loadMoreFailed) {
+                    if (clips.isNotEmpty() && feed.loadingMore && !feed.loadMoreFailed) {
                         items(2) { CuplixCardPlaceholder(Modifier.fillMaxWidth()) }
                     }
                     if (feed.loadMoreFailed) {
@@ -132,7 +138,7 @@ fun CuplixAllScreen(
                                 onClick = CuplixAllFeed::retryLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text(if (feed.clips.isEmpty()) "Gagal memuat Cuplix. Coba lagi" else "Gagal muat lagi. Coba lagi")
+                                Text(if (clips.isEmpty()) "Gagal memuat Cuplix. Coba lagi" else "Gagal muat lagi. Coba lagi")
                             }
                         }
                     }

@@ -59,6 +59,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Update
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -97,6 +98,7 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.CuplixPrefs
+import com.uwu.animex.data.local.CuplixWatched
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
@@ -107,6 +109,7 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.clearLoadCache
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
@@ -281,17 +284,64 @@ private fun NotificationsGroup() {
 
 @Composable
 private fun CuplixGroup() {
+    val ctx = LocalContext.current
     val enabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
+    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
+    val watchedCount by remember { CuplixWatched.keys.map { it.size } }.collectAsStateWithLifecycle(0)
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(icon = Icons.Outlined.PlayCircleOutline, title = "Cuplix", initiallyExpanded = false) {
         SwitchItem(
             icon = Icons.Outlined.PlayCircleOutline,
             title = "Aktifkan Cuplix",
             subtitle = "Tampilkan Cuplix di beranda dan putar klip pendeknya. Matikan untuk menyembunyikan fitur ini",
-            shape = itemShape(0, 1),
+            shape = itemShape(0, 3),
             checked = enabled,
             enabled = true,
             onChange = CuplixPrefs::setEnabled,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.VisibilityOff,
+            title = "Sembunyikan yang sudah ditonton",
+            subtitle = "Cuplix yang sudah kamu tonton nggak muncul lagi di beranda, daftar Cuplix, dan feed",
+            shape = itemShape(1, 3),
+            checked = hideWatched,
+            enabled = enabled,
+            onChange = CuplixWatched::setHideWatched,
+        )
+        PrefItem(
+            icon = Icons.Outlined.DeleteSweep,
+            title = "Hapus riwayat Cuplix",
+            subtitle = if (watchedCount > 0) "$watchedCount Cuplix sudah ditonton" else "Belum ada riwayat tontonan",
+            shape = itemShape(2, 3),
+            container = itemContainer(),
+            content = MaterialTheme.colorScheme.onSurface,
+            badge = MaterialTheme.colorScheme.primary,
+            badgeTint = MaterialTheme.colorScheme.onPrimary,
+            enabled = watchedCount > 0,
+            onClick = { confirmClear = true },
+        )
+    }
+
+    if (confirmClear) {
+        AppDialog(
+            icon = Icons.Outlined.DeleteSweep,
+            onDismiss = { confirmClear = false },
+            title = "Hapus riwayat Cuplix?",
+            text = {
+                Text(
+                    "Daftar Cuplix yang sudah ditonton bakal dikosongkan, jadi semuanya muncul lagi. " +
+                        "Cuplix tersimpan nggak ikut terhapus.",
+                )
+            },
+            confirmButton = {
+                DialogDestructiveButton("Hapus") {
+                    confirmClear = false
+                    CuplixWatched.clear()
+                    Toast.makeText(ctx, "Riwayat Cuplix dihapus", Toast.LENGTH_SHORT).show()
+                }
+            },
+            dismissButton = { DialogCancelButton { confirmClear = false } },
         )
     }
 }

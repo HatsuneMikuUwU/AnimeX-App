@@ -38,6 +38,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
+import com.uwu.animex.data.local.CuplixWatched
+import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
@@ -58,7 +60,13 @@ fun CuplixShortsScreen(
     onNeedLogin: () -> Unit,
 ) {
     val feed by CuplixFeed.state.collectAsStateWithLifecycle()
-    val clips = remember(feed.clips) { feed.clips.playable() }
+    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
+    // Snapshot at entry so clips watched during this session don't vanish from the pager mid-scroll.
+    val watchedAtStart = remember { CuplixWatched.keys.value }
+    val clips =
+        remember(feed.clips, hideWatched) {
+            feed.clips.playable().withoutWatched(hideWatched, watchedAtStart, keep = startClipId)
+        }
     var loading by remember { mutableStateOf(CuplixFeed.state.value.clips.isEmpty()) }
     var positioned by remember { mutableStateOf(false) }
     val liked = remember { mutableStateMapOf<String, Boolean>() }
@@ -83,10 +91,15 @@ fun CuplixShortsScreen(
     LaunchedEffect(currentKey, positioned) {
         if (!positioned || currentKey == null) return@LaunchedEffect
         delay(VIEW_AFTER_MS)
+        clips.firstOrNull { clipKey(it) == currentKey }?.let(CuplixWatched::mark)
         val viewedId = clips.firstOrNull { clipKey(it) == currentKey }?.id
         if (!viewedId.isNullOrBlank() && viewed.add(viewedId)) {
             AppScope.io.launch { runCatching { UserApi.cuplixView(viewedId) } }
         }
+    }
+
+    LaunchedEffect(clips.isEmpty(), feed.clips.size, feed.hasMore) {
+        if (clips.isEmpty() && feed.clips.isNotEmpty() && feed.hasMore) CuplixFeed.loadMore()
     }
 
     LaunchedEffect(pagerState, positioned) {
