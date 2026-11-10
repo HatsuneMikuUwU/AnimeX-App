@@ -23,6 +23,7 @@ import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.CuplixPrefs
+import com.uwu.animex.data.local.CuplixSaved
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Onboarding
@@ -63,6 +64,7 @@ class MainActivity : ComponentActivity() {
         SyncSourcePref.init(this)
         Onboarding.init(this)
         CuplixPrefs.init(this)
+        CuplixSaved.init(this)
         PlayerPrefs.init(this)
         History.init(this)
         Progress.init(this)

@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
+import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
@@ -56,7 +57,11 @@ object Downloads {
         val quality: String? = null,
         val views: String? = null,
         val favorites: String? = null,
-    )
+        val clipStartMs: Long? = null,
+        val clipEndMs: Long? = null,
+    ) {
+        val isClip: Boolean get() = clipStartMs != null
+    }
 
     data class Item(
         val id: String,
@@ -323,7 +328,11 @@ object Downloads {
             val root = DocumentFile.fromTreeUri(ctx, Uri.parse(tree))
             if (root == null || !root.canWrite()) error("Folder unduhan gak bisa diakses. Pilih ulang foldernya ya.")
             val item = _items.value[id] ?: return
-            if (".m3u8" in item.url.lowercase()) hls(ctx, id, root) else progressive(ctx, id, root)
+            when {
+                item.meta.isClip -> clip(ctx, id, root)
+                ".m3u8" in item.url.lowercase() -> hls(ctx, id, root)
+                else -> progressive(ctx, id, root)
+            }
             update(id, save = true) { it.copy(status = Status.COMPLETED, percent = 100f, error = null) }
         } catch (e: CancellationException) {
             throw e
@@ -334,7 +343,13 @@ object Downloads {
     }
 
     private fun baseName(item: Item): String {
-        val raw = "${item.meta.movieTitle.orEmpty()} - Ep ${item.meta.epIndex.orEmpty()}".trim()
+        val raw =
+            if (item.meta.isClip) {
+                val tag = item.id.takeLast(6)
+                "${item.meta.movieTitle.orEmpty()} - Cuplix ${item.meta.epIndex.orEmpty()} $tag".trim()
+            } else {
+                "${item.meta.movieTitle.orEmpty()} - Ep ${item.meta.epIndex.orEmpty()}".trim()
+            }
         val clean = raw.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim()
         return clean.ifBlank { item.id }
     }
@@ -423,6 +438,30 @@ object Downloads {
                     if (total > 0 && written < total) error("Unduhan putus di tengah jalan")
                 }
             }
+        }
+    }
+
+    private suspend fun clip(
+        ctx: Context,
+        id: String,
+        root: DocumentFile,
+    ) {
+        val item = _items.value[id] ?: return
+        val start = item.meta.clipStartMs ?: 0L
+        val end = item.meta.clipEndMs ?: return
+        val temp = File(ctx.cacheDir, "cuplix_${id.replace(Regex("[^A-Za-z0-9]"), "_")}.mp4")
+        try {
+            CuplixClipExport.export(ctx, item.url, start, end, temp) { percent ->
+                progress(id, temp.length(), percent * 0.95f)
+            }
+            val (doc, _) = docFor(ctx, root, item, "video/mp4")
+            val out =
+                ctx.contentResolver.openOutputStream(doc.uri, "wt")
+                    ?: error("Gak bisa nulis ke folder unduhan")
+            out.use { o -> temp.inputStream().use { it.copyTo(o, 64 * 1024) } }
+            progress(id, temp.length(), 100f)
+        } finally {
+            temp.delete()
         }
     }
 

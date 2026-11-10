@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Scaffold
@@ -49,6 +51,7 @@ private const val LOAD_MORE_THRESHOLD = 4
 fun CuplixAllScreen(
     onBack: () -> Unit,
     onPlay: (Cuplix) -> Unit,
+    onOpenSaved: () -> Unit,
 ) {
     val feed by CuplixAllFeed.state.collectAsStateWithLifecycle()
     val gridState = rememberLazyGridState()
@@ -76,6 +79,9 @@ fun CuplixAllScreen(
                 backdrop = backdrop,
                 onBack = onBack,
                 title = { Text("Cuplix", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                trailingIcon = Icons.Outlined.BookmarkBorder,
+                trailingDescription = "Cuplix tersimpan",
+                onTrailingClick = onOpenSaved,
             )
         },
         containerColor = screenContainerColor(),

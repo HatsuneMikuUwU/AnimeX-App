@@ -42,6 +42,7 @@ import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.cuplix.CuplixAllScreen
+import com.uwu.animex.ui.cuplix.CuplixSavedScreen
 import com.uwu.animex.ui.cuplix.CuplixShortsScreen
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
@@ -369,6 +370,16 @@ fun App() {
                 }
                 composable("clips") {
                     CuplixAllScreen(
+                        onBack = { nav.popBackStack() },
+                        onPlay = { clip ->
+                            CuplixFeed.start(clip)
+                            nav.navigate("cuplix/${Uri.encode(cuplixKey(clip))}")
+                        },
+                        onOpenSaved = { nav.navigate("clips-saved") },
+                    )
+                }
+                composable("clips-saved") {
+                    CuplixSavedScreen(
                         onBack = { nav.popBackStack() },
                         onPlay = { clip ->
                             CuplixFeed.start(clip)

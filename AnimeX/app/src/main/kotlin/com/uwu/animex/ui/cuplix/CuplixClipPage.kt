@@ -1,6 +1,7 @@
 package com.uwu.animex.ui.cuplix
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
@@ -29,7 +30,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -38,9 +41,11 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +83,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -94,6 +100,9 @@ import androidx.media3.ui.PlayerView
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.cuplixKey
+import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.CuplixSaved
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.Movie
@@ -104,8 +113,8 @@ import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStableHapticAction
-import com.uwu.animex.ui.detail.bestDirect
 import com.uwu.animex.ui.detail.shareAnime
+import com.uwu.animex.ui.download.DownloadStatusButton
 import com.uwu.animex.ui.player.PlayerResize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -129,7 +138,7 @@ private val posterCache = java.util.concurrent.ConcurrentHashMap<String, String>
 
 private val OverlayShadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
 
-private fun List<Server>.clipServer(): Server? {
+internal fun List<Server>.clipServer(): Server? {
     val direct = filter { it.isDirect && !it.link.isNullOrBlank() }
     val target = if (PlayerPrefs.quality == 360) 360 else 480
     return direct
@@ -213,14 +222,7 @@ internal fun CuplixClipPage(
     var streamUrl by remember(episodeId, attempt) { mutableStateOf<String?>(null) }
     var failed by remember(episodeId, attempt) { mutableStateOf(false) }
     LaunchedEffect(episodeId, attempt) {
-        val clipId = clip.id.orEmpty()
-        val link =
-            (
-                clipId
-                    .takeIf { it.isNotBlank() }
-                    ?.let { runSuspendCatching { Api.cuplixServers(it).clipServer()?.link }.getOrNull() }
-                    ?.takeIf { it.isNotBlank() }
-            ) ?: runSuspendCatching { Api.servers(episodeId, force = attempt > 0).bestDirect()?.link }.getOrNull()
+        val link = resolveClipServer(clip, force = attempt > 0)?.link
         if (link.isNullOrBlank()) failed = true else streamUrl = link
     }
 
@@ -338,6 +340,13 @@ internal fun CuplixClipPage(
     val currentOnLikedChange by rememberUpdatedState(onLikedChange)
     val hapticHold = rememberStableHapticAction(HapticFeedbackType.LongPress)
     val hapticTap = rememberStableHapticAction(HapticFeedbackType.ContextClick)
+    val clipStateKey = remember(clip) { cuplixKey(clip) }
+    val savedClips by CuplixSaved.clips.collectAsStateWithLifecycle()
+    val isSaved = remember(savedClips, clipStateKey) { savedClips.any { cuplixKey(it) == clipStateKey } }
+    val downloadId = remember(clipStateKey) { cuplixDownloadId(clip) }
+    val download by remember(downloadId) { Downloads.itemFlow(downloadId) }
+        .collectAsStateWithLifecycle(initialValue = Downloads.item(downloadId))
+    val startDownload = rememberClipDownload()
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (!firstFrame) {
@@ -445,6 +454,14 @@ internal fun CuplixClipPage(
                 onToggleLike = { onLikedChange(!liked) },
                 onComment = { showComments = true },
                 onShare = { shareAnime(ctx, Movie(id = clip.id_movie, title = clip.anime ?: clip.caption)) },
+                saved = isSaved,
+                onToggleSave = {
+                    val nowSaved = CuplixSaved.toggle(clip)
+                    val message = if (nowSaved) "Cuplix disimpan" else "Dihapus dari tersimpan"
+                    Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                },
+                download = download,
+                onDownload = { startDownload(clip) },
                 onOpenAnime = onOpenAnime,
                 modifier =
                     Modifier
@@ -626,13 +643,17 @@ private fun ClipRail(
     onToggleLike: () -> Unit,
     onComment: () -> Unit,
     onShare: () -> Unit,
+    saved: Boolean,
+    onToggleSave: () -> Unit,
+    download: Downloads.Item?,
+    onDownload: () -> Unit,
     onOpenAnime: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         RailAction(
             icon = if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
@@ -655,6 +676,16 @@ private fun ClipRail(
             onClick = onComment,
         )
         RailAction(icon = Icons.Outlined.Share, label = "Bagikan", onClick = onShare)
+        RailAction(
+            icon = if (saved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+            label = if (saved) "Tersimpan" else "Simpan",
+            onClick = onToggleSave,
+        )
+        RailSlot(label = downloadLabel(download), onClick = null) {
+            CompositionLocalProvider(LocalContentColor provides Color.White) {
+                DownloadStatusButton(download, onStart = onDownload)
+            }
+        }
         val movieId = clip.id_movie
         var posterUrl by remember(movieId, clip.poster) {
             mutableStateOf(clip.poster?.takeIf { it.isNotBlank() } ?: movieId?.let { posterCache[it] ?: Api.peekDetail(it)?.movie?.image_poster })
@@ -679,11 +710,32 @@ private fun ClipRail(
     }
 }
 
+private fun downloadLabel(item: Downloads.Item?): String =
+    when (item?.status) {
+        null -> "Unduh"
+        Downloads.Status.QUEUED -> "Antre"
+        Downloads.Status.DOWNLOADING -> if (item.percent >= 0f) "${item.percent.toInt()}%" else "Unduh"
+        Downloads.Status.PAUSED -> "Pause"
+        Downloads.Status.COMPLETED -> "Diunduh"
+        Downloads.Status.FAILED -> "Gagal"
+    }
+
 @Composable
 private fun RailAction(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
+) {
+    RailSlot(label = label, onClick = onClick) {
+        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
+    }
+}
+
+@Composable
+private fun RailSlot(
+    label: String,
+    onClick: (() -> Unit)?,
+    content: @Composable () -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(
@@ -691,10 +743,10 @@ private fun RailAction(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.32f))
-                .hapticClick(onClick = onClick),
+                .then(if (onClick != null) Modifier.hapticClick(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
+            content()
         }
         Text(
             label,
