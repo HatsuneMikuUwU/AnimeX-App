@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.Clock
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.transformer.Composition
@@ -81,7 +82,7 @@ object CuplixClipExport {
                                     DefaultDecoderFactory.Builder(ctx).build(),
                                     Clock.DEFAULT,
                                     DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource),
-                                    null, // logSessionId
+                                    DataSourceBitmapLoader(ctx),
                                 ),
                             )
                             .addListener(
