@@ -111,6 +111,7 @@ import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.UserAvatar
+import com.uwu.animex.ui.common.cuplixCountText
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStableHapticAction
@@ -119,7 +120,6 @@ import com.uwu.animex.ui.download.DownloadStatusButton
 import com.uwu.animex.ui.player.PlayerResize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -575,11 +575,12 @@ private fun ClipInfo(
     val name = clip.username?.takeIf { it.isNotBlank() } ?: clip.anime?.takeIf { it.isNotBlank() }
     val caption = clip.caption?.takeIf { it.isNotBlank() }
     val hideStats = rememberHideStats()
+    val views = if (hideStats) null else cuplixCountText(clip.count_views)
     val pill =
         listOfNotNull(
             clip.anime?.takeIf { it.isNotBlank() },
             clip.episode?.takeIf { it.isNotBlank() },
-            clip.count_views?.takeIf { !hideStats && it.isNotBlank() && it.trim() != "0" }?.let { "$it dilihat" },
+            views?.let { "$it dilihat" },
         ).joinToString(" · ")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (name != null) {
@@ -662,7 +663,7 @@ private fun ClipRail(
                 if (rememberHideStats()) {
                     "Suka"
                 } else {
-                    formatCount(clip.count_likes, (if (liked) 1 else 0) - (if (clip.likedByMe) 1 else 0)) ?: "Suka"
+                    cuplixCountText(clip.count_likes, (if (liked) 1 else 0) - (if (clip.likedByMe) 1 else 0)) ?: "Suka"
                 },
             onClick = onToggleLike,
         )
@@ -672,7 +673,7 @@ private fun ClipRail(
                 if (rememberHideStats()) {
                     "Komentar"
                 } else {
-                    formatCount(clip.count_comments, 0) ?: "Komentar"
+                    cuplixCountText(clip.count_comments) ?: "Komentar"
                 },
             onClick = onComment,
         )
@@ -845,34 +846,6 @@ private fun HeartBurstView(
                     translationY = -90f * t
                 },
     )
-}
-
-private fun formatCount(
-    raw: String?,
-    extra: Int,
-): String? {
-    val parsed = raw?.trim()?.replace(".", "")?.replace(",", "")?.toLongOrNull()
-    if (parsed == null) return raw?.takeIf { it.isNotBlank() }
-    val value = parsed + extra
-    return when {
-        value <= 0 -> null
-        value >= 1_000_000 -> compactCount(value / 1_000_000.0, "jt")
-        value >= 1_000 -> compactCount(value / 1_000.0, "rb")
-        else -> value.toString()
-    }
-}
-
-private fun compactCount(
-    value: Double,
-    unit: String,
-): String {
-    val text =
-        if (value >= 10) {
-            value.toLong().toString()
-        } else {
-            String.format(Locale.forLanguageTag("id-ID"), "%.1f", value).removeSuffix(",0")
-        }
-    return "$text $unit"
 }
 
 private fun formatClock(ms: Long): String {

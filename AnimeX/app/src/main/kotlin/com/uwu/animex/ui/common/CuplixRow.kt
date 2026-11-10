@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -145,6 +147,33 @@ fun CuplixCard(
                     modifier = Modifier.size(30.dp),
                 )
             }
+            val views = if (rememberHideStats()) null else cuplixCountText(clip.count_views)
+            if (views != null) {
+                Row(
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.tertiaryContainer)
+                        .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.Visibility,
+                        null,
+                        Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                    Text(
+                        views,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
             Text(
                 clip.caption?.takeIf { it.isNotBlank() } ?: clip.anime.orEmpty(),
                 Modifier
@@ -168,4 +197,19 @@ fun CuplixCard(
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/**
+ * Formats a Cuplix counter (views, likes, comments) following the "Angka disingkat" setting.
+ * Returns null when the value is zero or negative, and the raw text when it isn't numeric.
+ */
+@Composable
+fun cuplixCountText(
+    raw: String?,
+    extra: Int = 0,
+): String? {
+    val parsed = raw?.trim()?.replace(".", "")?.replace(",", "")?.toLongOrNull()
+    if (parsed == null) return raw?.takeIf { it.isNotBlank() }
+    val value = parsed + extra
+    return if (value <= 0L) null else fmtNum(value.toString())
 }
