@@ -21,8 +21,7 @@ object CuplixWatched {
     private const val KEY_HIDE = "hide_watched"
     private const val KEY_KEYS = "keys"
     private const val KEY_CLIPS = "clips"
-    private const val MAX_KEYS = 5_000
-    private const val MAX_CLIPS = 200
+    private const val MAX_CLIPS = 500
 
     private val gson = Gson()
     private val writeMutex = Mutex()
@@ -48,7 +47,7 @@ object CuplixWatched {
         _hideWatched.value = p.getBoolean(KEY_HIDE, false)
         dao = AnimeDatabase.get(app).cuplixDao()
         scope.launch { importLegacy(p) }
-        scope.launch { dao.observeKeys(MAX_KEYS).collect { _keys.value = it.toSet() } }
+        scope.launch { dao.observeKeys().collect { _keys.value = it.toSet() } }
         scope.launch {
             dao.observeHistory(MAX_CLIPS).collect { rows ->
                 _clips.value = rows.mapNotNull { decode(it.clipJson) }
@@ -70,7 +69,6 @@ object CuplixWatched {
         scope.launch {
             writeMutex.withLock {
                 dao.upsert(CuplixWatchedEntity(key, json, System.currentTimeMillis()))
-                dao.trimKeys(MAX_KEYS)
                 dao.trimClips(MAX_CLIPS)
             }
         }
@@ -107,7 +105,6 @@ object CuplixWatched {
                 if (key.isNotBlank()) rows[key] = CuplixWatchedEntity(key, gson.toJson(clip), now - index)
             }
             dao.upsertAll(rows.values.toList())
-            dao.trimKeys(MAX_KEYS)
             dao.trimClips(MAX_CLIPS)
             p.edit().remove(KEY_KEYS).remove(KEY_CLIPS).apply()
         }
