@@ -41,12 +41,12 @@ import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
-import com.uwu.animex.ui.cuplix.CuplixAllScreen
-import com.uwu.animex.ui.cuplix.CuplixSavedScreen
-import com.uwu.animex.ui.cuplix.CuplixShortsScreen
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
+import com.uwu.animex.ui.cuplix.CuplixAllScreen
+import com.uwu.animex.ui.cuplix.CuplixSavedScreen
+import com.uwu.animex.ui.cuplix.CuplixShortsScreen
 import com.uwu.animex.ui.detail.DetailScreen
 import com.uwu.animex.ui.discussion.DiscussionScreen
 import com.uwu.animex.ui.download.DownloadsPage
@@ -426,7 +426,9 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpenAnime = { animeId ->
                             nav.navigate("detail/$animeId") {
-                                popUpTo("player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}&startAtMs={startAtMs}") {
+                                popUpTo(
+                                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}&startAtMs={startAtMs}",
+                                ) {
                                     inclusive = true
                                 }
                             }

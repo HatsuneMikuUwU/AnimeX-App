@@ -197,7 +197,11 @@ fun cuplixCountText(
     raw: String?,
     extra: Int = 0,
 ): String? {
-    val parsed = raw?.trim()?.replace(".", "")?.replace(",", "")?.toLongOrNull()
+    val parsed = raw
+        ?.trim()
+        ?.replace(".", "")
+        ?.replace(",", "")
+        ?.toLongOrNull()
     if (parsed == null) return raw?.takeIf { it.isNotBlank() }
     val value = parsed + extra
     return if (value <= 0L) null else fmtNum(value.toString())

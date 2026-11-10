@@ -32,12 +32,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.CuplixFeedState
 import com.uwu.animex.data.api.CuplixHomeFeed
-import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.api.isCuplixPlayable
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixWatched
-import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
@@ -114,7 +113,8 @@ private fun HomeContent(
         }
     val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
     val watched by CuplixWatched.keys.collectAsStateWithLifecycle()
-    val unwatchedCuplix = remember(cuplixView.clips, hideWatched, watched) { cuplixView.clips.withoutWatched(hideWatched, watched) }
+    val unwatchedCuplix =
+        remember(cuplixView.clips, hideWatched, watched) { cuplixView.clips.withoutWatched(hideWatched, watched) }
     val cuplixClips = if (cuplixEnabled) unwatchedCuplix else emptyList()
     LaunchedEffect(cuplixClips.isEmpty(), cuplixView.clips.size, cuplixView.hasMore) {
         if (cuplixEnabled && cuplixClips.isEmpty() && cuplixView.clips.isNotEmpty() && cuplixView.hasMore) {

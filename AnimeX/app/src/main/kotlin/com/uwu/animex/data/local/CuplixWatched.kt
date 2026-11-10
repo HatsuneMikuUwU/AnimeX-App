@@ -71,5 +71,8 @@ fun List<Cuplix>.withoutWatched(
     keep: String? = null,
 ): List<Cuplix> {
     if (!hide || watched.isEmpty()) return this
-    return filter { val key = cuplixKey(it); key == keep || key !in watched }
+    return filter {
+        val key = cuplixKey(it)
+        key == keep || key !in watched
+    }
 }

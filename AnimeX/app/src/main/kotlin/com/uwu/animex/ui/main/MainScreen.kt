@@ -84,9 +84,9 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.SearchHistory
-import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
+import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.notifications.subscription.NotificationHistory

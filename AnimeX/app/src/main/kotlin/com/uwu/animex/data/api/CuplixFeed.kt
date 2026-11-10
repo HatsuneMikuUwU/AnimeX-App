@@ -23,8 +23,7 @@ data class CuplixFeedState(
 fun cuplixKey(clip: Cuplix): String =
     clip.id?.takeIf { it.isNotBlank() } ?: "${clip.id_episode}:${clip.time_start}:${clip.anime}"
 
-fun isCuplixPlayable(clip: Cuplix): Boolean =
-    !clip.url_thumbnail.isNullOrBlank() && !clip.id_episode.isNullOrBlank()
+fun isCuplixPlayable(clip: Cuplix): Boolean = !clip.url_thumbnail.isNullOrBlank() && !clip.id_episode.isNullOrBlank()
 
 val CuplixFeed = CuplixPager()
 

@@ -33,12 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.CuplixAllFeed
 import com.uwu.animex.data.api.cuplixKey
+import com.uwu.animex.data.local.CuplixWatched
+import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CuplixCard
-import com.uwu.animex.data.local.CuplixWatched
-import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.ui.common.CuplixCardPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTopBar
@@ -84,7 +84,14 @@ fun CuplixAllScreen(
             FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text("Cuplix", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    Text(
+                        "Cuplix",
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 trailingIcon = Icons.Outlined.BookmarkBorder,
                 trailingDescription = "Cuplix tersimpan",
                 onTrailingClick = onOpenSaved,
@@ -138,7 +145,9 @@ fun CuplixAllScreen(
                                 onClick = CuplixAllFeed::retryLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text(if (clips.isEmpty()) "Gagal memuat Cuplix. Coba lagi" else "Gagal muat lagi. Coba lagi")
+                                Text(
+                                    if (clips.isEmpty()) "Gagal memuat Cuplix. Coba lagi" else "Gagal muat lagi. Coba lagi",
+                                )
                             }
                         }
                     }

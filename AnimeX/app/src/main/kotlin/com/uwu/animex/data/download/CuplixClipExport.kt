@@ -84,8 +84,7 @@ object CuplixClipExport {
                                     DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource),
                                     DataSourceBitmapLoader(ctx),
                                 ),
-                            )
-                            .addListener(
+                            ).addListener(
                                 object : Transformer.Listener {
                                     override fun onCompleted(
                                         composition: Composition,

@@ -305,7 +305,9 @@ fun MalEditSheet(
             try {
                 val s = state
                 if (s is MalState.Ready && !isNew) {
-                    val removed = s.anime.id.toIntOrNull()?.let { Mal.delete(it) } ?: true
+                    val removed = s.anime.id
+                        .toIntOrNull()
+                        ?.let { Mal.delete(it) } ?: true
                     if (!removed) throw IllegalStateException("Gagal menghapus dari MyAnimeList")
                 }
                 if (mirrorTo != null) {

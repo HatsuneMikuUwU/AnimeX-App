@@ -736,7 +736,8 @@ object Api {
                     err.isJsonPrimitive &&
                     (
                         (err.asJsonPrimitive.isBoolean && err.asBoolean) ||
-                            err.asJsonPrimitive.isString && err.asString.equals("true", ignoreCase = true)
+                            err.asJsonPrimitive.isString &&
+                            err.asString.equals("true", ignoreCase = true)
                     )
             if (isError) {
                 invalidateCachedResponse(cuplixScrollPath, params)
@@ -760,10 +761,22 @@ object Api {
             val nextCursor =
                 buildMap {
                     data?.get("cursor")?.takeIf { it.isJsonObject }?.asJsonObject?.entrySet()?.forEach { (k, v) ->
-                        put(k, v.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty())
+                        put(
+                            k,
+                            v
+                                .takeIf { it.isJsonPrimitive }
+                                ?.asString
+                                ?.trim()
+                                .orEmpty(),
+                        )
                     }
                 }
-            val idFyp = data?.get("id_fyp")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
+            val idFyp = data
+                ?.get("id_fyp")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString
+                ?.trim()
+                .orEmpty()
             CuplixPage(clips, nextCursor, idFyp)
         }
     }

@@ -303,6 +303,7 @@ internal fun CuplixClipPage(
     LaunchedEffect(player, active, shouldPlay) {
         val current = player ?: return@LaunchedEffect
         if (!active) return@LaunchedEffect
+
         fun sync() {
             val duration = current.duration
             if (!scrubbing && duration > 0 && duration != C.TIME_UNSET) {
@@ -690,7 +691,10 @@ private fun ClipRail(
         }
         val movieId = clip.id_movie
         var posterUrl by remember(movieId, clip.poster) {
-            mutableStateOf(clip.poster?.takeIf { it.isNotBlank() } ?: movieId?.let { posterCache[it] ?: Api.peekDetail(it)?.movie?.image_poster })
+            mutableStateOf(
+                clip.poster?.takeIf { it.isNotBlank() }
+                    ?: movieId?.let { posterCache[it] ?: Api.peekDetail(it)?.movie?.image_poster },
+            )
         }
         LaunchedEffect(movieId) {
             if (movieId.isNullOrBlank() || !posterUrl.isNullOrBlank()) return@LaunchedEffect
@@ -833,8 +837,7 @@ private fun HeartBurstView(
                 .offset {
                     val half = halfSize.roundToPx()
                     IntOffset(burst.x.roundToInt() - half, burst.y.roundToInt() - half)
-                }
-                .size(halfSize * 2)
+                }.size(halfSize * 2)
                 .graphicsLayer {
                     val t = anim.value
                     val pop = min(1f, t * 3f)

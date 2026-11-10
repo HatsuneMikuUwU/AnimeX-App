@@ -68,7 +68,12 @@ fun CuplixShortsScreen(
         remember(feed.clips, hideWatched) {
             feed.clips.playable().withoutWatched(hideWatched, watchedAtStart, keep = startClipId)
         }
-    var loading by remember { mutableStateOf(CuplixFeed.state.value.clips.isEmpty()) }
+    var loading by remember {
+        mutableStateOf(
+            CuplixFeed.state.value.clips
+                .isEmpty(),
+        )
+    }
     var positioned by remember { mutableStateOf(false) }
     val liked = remember { mutableStateMapOf<String, Boolean>() }
     val viewed = remember { mutableSetOf<String>() }

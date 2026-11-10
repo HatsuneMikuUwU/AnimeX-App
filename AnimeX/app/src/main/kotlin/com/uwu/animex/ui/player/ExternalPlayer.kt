@@ -67,7 +67,10 @@ object ExternalPlayer {
     ): Result? {
         val extras = data?.extras ?: return null
 
-        fun number(vararg keys: String): Long? = keys.firstNotNullOfOrNull { BundleCompat.getSerializable(extras, it, Number::class.java)?.toLong() }
+        fun number(vararg keys: String): Long? =
+            keys.firstNotNullOfOrNull {
+                BundleCompat.getSerializable(extras, it, Number::class.java)?.toLong()
+            }
         val duration = number("duration", "extra_duration") ?: return null
         val position = number("position", "extra_position") ?: return null
         if (duration <= 0) return null
