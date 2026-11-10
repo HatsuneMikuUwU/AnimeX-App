@@ -33,6 +33,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -122,6 +123,7 @@ internal fun ExoView(
                     OkHttpDataSource
                         .Factory(client)
                         .setUserAgent(browserUa)
+                val defaultDataSource = DefaultDataSource.Factory(ctx, dataSource)
                 val renderers = DefaultRenderersFactory(ctx).setEnableDecoderFallback(true)
                 val loadControl =
                     DefaultLoadControl
@@ -135,7 +137,7 @@ internal fun ExoView(
                         .build()
                 ExoPlayer
                     .Builder(ctx, renderers)
-                    .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
+                    .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(defaultDataSource))
                     .setLoadControl(loadControl)
                     .setWakeMode(C.WAKE_MODE_NETWORK)
                     .build()
