@@ -26,8 +26,8 @@ fun cuplixKey(clip: Cuplix): String =
 /** Feed untuk player shorts: dimulai dari klip yang ditap di Home, sisanya dari `list_scroll`. */
 val CuplixFeed = CuplixPager()
 
-/** Feed untuk row Cuplix di Home: 5 klip pertama dari `home/fyp`, lalu lanjut dari `list_scroll`. */
-val CuplixHomeFeed = CuplixPager(firstPageLimit = 5)
+/** Feed untuk row Cuplix di Home: 5 klip pertama dari `home/fyp`, lalu lanjut dari `list_scroll` urut like terbanyak. */
+val CuplixHomeFeed = CuplixPager(firstPageLimit = 5, fixedSort = "scroll_likes")
 
 /**
  * Paging Cuplix. Halaman pertama berasal dari `home/fyp` (atau [start]); halaman berikutnya diambil
@@ -38,6 +38,8 @@ val CuplixHomeFeed = CuplixPager(firstPageLimit = 5)
  */
 class CuplixPager(
     private val firstPageLimit: Int = Int.MAX_VALUE,
+    // Kalau diisi, semua halaman `list_scroll` memakai sort ini; kalau null, sort diacak seperti app ANIMEIN.
+    private val fixedSort: String? = null,
 ) {
     private const val MAX_PAGE_ATTEMPTS = 6
     private const val EMPTY_PAGES_TO_END = 3
@@ -116,6 +118,7 @@ class CuplixPager(
 
     // Pilihan sort sama seperti app ANIMEIN: 50% likes, 30% terbaru, 20% terlama.
     private fun randomSort(): String {
+        fixedSort?.let { return it }
         val roll = Random.nextInt(100)
         return when {
             roll < 50 -> "scroll_likes"

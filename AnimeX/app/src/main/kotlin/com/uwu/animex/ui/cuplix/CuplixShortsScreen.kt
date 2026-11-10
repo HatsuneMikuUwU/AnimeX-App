@@ -49,6 +49,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val SEEN_AFTER_MS = 3_000L
+private const val LOAD_MORE_REMAINING = 1
 
 @Composable
 fun CuplixShortsScreen(
@@ -96,12 +97,13 @@ fun CuplixShortsScreen(
         }
     }
 
-    // Muat halaman berikutnya saat mendekati ujung. Kalau feed sudah habis, loadMore() tidak melakukan apa-apa,
+    // Muat halaman berikutnya saat sampai di klip terakhir, sama seperti FypActivity di app ANIMEIN
+    // (`daftar.size - posisi < 2`). Kalau feed sudah habis, loadMore() tidak melakukan apa-apa,
     // jadi daftar berhenti di klip terakhir dan tidak berputar ke awal.
     LaunchedEffect(pagerState, positioned) {
         if (!positioned) return@LaunchedEffect
         snapshotFlow { pagerState.currentPage to pagerState.pageCount }.collect { (page, count) ->
-            if (count > 0 && page >= count - 4) CuplixFeed.loadMore()
+            if (count > 0 && count - page <= LOAD_MORE_REMAINING) CuplixFeed.loadMore()
         }
     }
 
