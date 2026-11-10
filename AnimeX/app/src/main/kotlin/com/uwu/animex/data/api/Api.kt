@@ -676,14 +676,17 @@ object Api {
     suspend fun cuplixScroll(
         sort: String,
         cursor: Map<String, String> = emptyMap(),
+        keyIdFyp: String = "",
+        idUserFyp: String = "",
+        movieIds: String = "",
         force: Boolean = true,
     ): CuplixPage {
         val params =
             buildMap {
                 put("sort", sort)
-                put("key_id_fyp", "")
-                put("id_user_fyp", "")
-                put("movie_ids", "")
+                put("key_id_fyp", keyIdFyp)
+                put("id_user_fyp", idUserFyp)
+                put("movie_ids", movieIds)
                 CUPLIX_CURSOR_KEYS.forEach { key -> put(key, cursor[key].orEmpty()) }
             }
         val json = fetchCached(cuplixScrollPath, params, force)

@@ -52,6 +52,9 @@ class CuplixPager(
     private var scrollCursor: Map<String, String> = emptyMap()
 
     @Volatile
+    private var seedKeyIdFyp: String = ""
+
+    @Volatile
     private var generation = 0
 
     private fun resetPaging() {
@@ -59,6 +62,7 @@ class CuplixPager(
         legacyPage = 2
         scrollUnavailable = false
         scrollCursor = emptyMap()
+        seedKeyIdFyp = ""
     }
 
     fun replace(first: List<Cuplix>) {
@@ -75,6 +79,7 @@ class CuplixPager(
     fun start(first: Cuplix) {
         generation++
         resetPaging()
+        seedKeyIdFyp = first.id.orEmpty()
         _state.value = CuplixFeedState(clips = listOf(first), hasMore = true)
         loadMore()
     }
@@ -118,7 +123,11 @@ class CuplixPager(
             val page = scrollPage
             val result =
                 try {
-                    Api.cuplixScroll(sort = randomSort(), cursor = scrollCursor)
+                    Api.cuplixScroll(
+                        sort = randomSort(),
+                        cursor = scrollCursor,
+                        keyIdFyp = seedKeyIdFyp,
+                    )
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -130,6 +139,7 @@ class CuplixPager(
             if (gen != generation) return emptyList()
             scrollPage = page + 1
             if (result.cursor.isNotEmpty()) scrollCursor = result.cursor
+            if (result.clips.isNotEmpty() && seedKeyIdFyp.isNotEmpty()) seedKeyIdFyp = ""
             if (result.clips.isNotEmpty()) return result.clips
             if (page > 1) return emptyList()
             scrollUnavailable = true
