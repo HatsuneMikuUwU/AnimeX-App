@@ -40,4 +40,19 @@ interface CuplixDao {
         """,
     )
     suspend fun trimClips(keep: Int)
+
+    @Query("SELECT * FROM cuplix_saved ORDER BY savedAt DESC")
+    fun observeSaved(): Flow<List<CuplixSavedEntity>>
+
+    @Upsert
+    suspend fun upsertSaved(entity: CuplixSavedEntity)
+
+    @Upsert
+    suspend fun upsertSavedAll(entities: List<CuplixSavedEntity>)
+
+    @Query("DELETE FROM cuplix_saved WHERE clipKey = :key")
+    suspend fun deleteSaved(key: String)
+
+    @Query("DELETE FROM cuplix_saved")
+    suspend fun clearSaved()
 }

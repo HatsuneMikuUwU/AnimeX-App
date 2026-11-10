@@ -93,3 +93,13 @@ data class CuplixWatchedEntity(
     val clipJson: String? = null,
     @ColumnInfo(defaultValue = "0") val watchedAt: Long = System.currentTimeMillis(),
 )
+
+@Entity(
+    tableName = "cuplix_saved",
+    indices = [Index(value = ["savedAt"])],
+)
+data class CuplixSavedEntity(
+    @PrimaryKey val clipKey: String,
+    val clipJson: String,
+    @ColumnInfo(defaultValue = "0") val savedAt: Long = System.currentTimeMillis(),
+)
