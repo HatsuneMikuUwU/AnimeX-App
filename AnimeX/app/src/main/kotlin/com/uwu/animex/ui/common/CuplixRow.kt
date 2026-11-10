@@ -50,7 +50,6 @@ fun CuplixRow(
     onRetryLoadMore: () -> Unit = {},
 ) {
     val scale = rememberHomeCardScale()
-    val hideStats = rememberHideStats()
     val listState = rememberLazyListState()
     val nearEnd by remember(listState) {
         derivedStateOf {
@@ -129,26 +128,6 @@ fun CuplixRow(
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    buildString {
-                        if (!hideStats) {
-                            clip.count_views?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.let {
-                                append(it)
-                                append(" dilihat")
-                            }
-                            clip.count_likes?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.let {
-                                if (isNotEmpty()) append(" · ")
-                                append("♥ ")
-                                append(it)
-                            }
-                        }
-                    },
-                    Modifier.padding(start = 3.dp, top = 2.dp, bottom = 2.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

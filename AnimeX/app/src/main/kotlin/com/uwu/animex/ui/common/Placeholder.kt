@@ -319,7 +319,6 @@ internal fun CuplixCardPlaceholder(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             PhLine(fraction = 0.8f, style = MaterialTheme.typography.labelMedium)
-            PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

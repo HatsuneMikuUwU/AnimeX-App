@@ -560,7 +560,7 @@ object Api {
         return UrlSecurity.secureOrNull(candidate)
     }
 
-    private const val HOME_CUPLIX_COUNT = 5
+    private const val HOME_CUPLIX_COUNT = 3
 
     suspend fun home(
         force: Boolean = false,
@@ -590,7 +590,6 @@ object Api {
             } else {
                 emptyList()
             }
-        // Row Home hanya menampilkan 5 klip pertama dari `home/fyp`; sisanya dimuat dari `list_scroll`.
         val firstClips = cuplix.take(HOME_CUPLIX_COUNT)
         if (refreshCuplix && firstClips.isNotEmpty()) CuplixHomeFeed.replace(firstClips) else CuplixHomeFeed.seedIfEmpty(firstClips)
         val h =
