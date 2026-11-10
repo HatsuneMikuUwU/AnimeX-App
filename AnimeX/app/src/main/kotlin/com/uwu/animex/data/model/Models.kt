@@ -134,6 +134,12 @@ data class CuplixListData(
     val fyp: List<Cuplix>? = null,
 )
 
+data class CuplixNext(
+    val cursor: Map<String, String> = emptyMap(),
+    val idFyp: String = "",
+    val legacy: Boolean = false,
+)
+
 data class HomeData(
     val slider: List<Slider> = emptyList(),
     val history: List<Movie> = emptyList(),
@@ -145,6 +151,8 @@ data class HomeData(
     val waiting: List<Movie> = emptyList(),
     val popular: List<Movie> = emptyList(),
     val cuplix: List<Cuplix> = emptyList(),
+    val cuplixNext: CuplixNext? = null,
+    val cuplixToken: Long = 0L,
 )
 
 data class ExploreItem(

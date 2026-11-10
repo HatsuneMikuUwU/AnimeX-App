@@ -2,6 +2,7 @@ package com.uwu.animex.data.api
 
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.model.Cuplix
+import com.uwu.animex.data.model.CuplixNext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,7 @@ data class CuplixFeedState(
     val hasMore: Boolean = true,
     val loadingMore: Boolean = false,
     val loadMoreFailed: Boolean = false,
+    val baseToken: Long = 0L,
 )
 
 fun cuplixKey(clip: Cuplix): String =
@@ -58,9 +60,6 @@ class CuplixPager(
     private var generation = 0
 
     @Volatile
-    private var replaceOnNext = false
-
-    @Volatile
     private var scrollFailures = 0
 
     private fun resetPaging() {
@@ -80,7 +79,6 @@ class CuplixPager(
     fun start(first: Cuplix) {
         generation++
         resetPaging()
-        replaceOnNext = false
         excludedFypIds = first.id.orEmpty()
         _state.value = CuplixFeedState(clips = listOf(first), hasMore = true)
         loadMore()
@@ -89,16 +87,28 @@ class CuplixPager(
     fun clear() {
         generation++
         resetPaging()
-        replaceOnNext = false
         _state.value = CuplixFeedState()
     }
 
-    fun refresh() {
+    fun seed(
+        base: List<Cuplix>,
+        next: CuplixNext?,
+        token: Long,
+    ) {
+        if (token != 0L && _state.value.baseToken == token) return
         generation++
         resetPaging()
-        replaceOnNext = true
-        _state.update { it.copy(hasMore = true, loadingMore = false, loadMoreFailed = false) }
-        loadMore()
+        if (next != null) {
+            scrollCursor = next.cursor
+            excludedFypIds = next.idFyp
+            if (next.legacy) {
+                scrollUnavailable = true
+                legacyPage = 2
+            } else {
+                scrollPage = 2
+            }
+        }
+        _state.value = CuplixFeedState(clips = base, hasMore = true, baseToken = token)
     }
 
     suspend fun ensureLoaded() {
@@ -197,8 +207,7 @@ class CuplixPager(
             if (!current.hasMore) return
             _state.update { it.copy(loadingMore = true, loadMoreFailed = false) }
 
-            val replace = replaceOnNext
-            val seen = if (replace) emptySet<String>() else current.clips.mapTo(mutableSetOf(), ::cuplixKey)
+            val seen = current.clips.mapTo(mutableSetOf(), ::cuplixKey)
             var fresh = emptyList<Cuplix>()
             var sawNovel = false
             var reachedEnd = false
@@ -228,13 +237,7 @@ class CuplixPager(
                 if (gen != generation) {
                     it
                 } else {
-                    val clips =
-                        when {
-                            fresh.isEmpty() -> it.clips
-                            replace -> fresh
-                            else -> it.clips + fresh
-                        }
-                    if (fresh.isNotEmpty() || exhausted) replaceOnNext = false
+                    val clips = if (fresh.isEmpty()) it.clips else it.clips + fresh
                     val nothingToShow = clips.isEmpty()
                     it.copy(
                         clips = clips,

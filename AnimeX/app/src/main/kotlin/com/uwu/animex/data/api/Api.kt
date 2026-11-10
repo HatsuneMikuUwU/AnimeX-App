@@ -22,8 +22,10 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.CuplixListData
+import com.uwu.animex.data.model.CuplixNext
 import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.EpisodeListData
@@ -51,12 +53,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
+import java.util.concurrent.atomic.AtomicLong
 
 object Api {
     const val API_LIMIT = 30
@@ -165,6 +169,15 @@ object Api {
     }
 
     private val inflight = HashMap<String, Deferred<String>>()
+
+    private const val HOME_CUPLIX_SORT = "scroll_likes"
+    private const val HOME_CUPLIX_TIMEOUT_MS = 4_000L
+    private val cuplixTokenSeq = AtomicLong(0L)
+
+    private class HomeCuplixPage(
+        val clips: List<Cuplix>,
+        val next: CuplixNext,
+    )
 
     @Volatile
     private var homeMem: HomeData? = null
@@ -564,15 +577,28 @@ object Api {
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
             return cached
         }
-        val listResult = runSuspendCatching {
-            getData(
-                NativeCore.path(NativeCore.HOME_LIST),
-                mapOf(
-                    "limit" to "$API_LIMIT",
-                ),
-                force,
-            )
-        }
+        val (listResult, cuplixPage) =
+            coroutineScope {
+                val cuplixJob = async { fetchHomeCuplix(force) }
+                val list =
+                    runSuspendCatching {
+                        getData(
+                            NativeCore.path(NativeCore.HOME_LIST),
+                            mapOf(
+                                "limit" to "$API_LIMIT",
+                            ),
+                            force,
+                        )
+                    }
+                val page =
+                    if (list.getOrNull() != null) {
+                        cuplixJob.await()
+                    } else {
+                        cuplixJob.cancel()
+                        null
+                    }
+                list to page
+            }
         val d =
             listResult.getOrElse { e ->
                 if (cached != null) return cached
@@ -596,11 +622,31 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
+                    cuplix = cuplixPage?.clips ?: cached?.cuplix.orEmpty(),
+                    cuplixNext = if (cuplixPage != null) cuplixPage.next else cached?.cuplixNext,
+                    cuplixToken =
+                        if (cuplixPage != null) {
+                            cuplixTokenSeq.incrementAndGet()
+                        } else {
+                            cached?.cuplixToken ?: 0L
+                        },
                 )
             }
         homeMem = h
         homeMemAt = SystemClock.elapsedRealtime()
         return h
+    }
+
+    private suspend fun fetchHomeCuplix(force: Boolean): HomeCuplixPage? {
+        if (!CuplixPrefs.enabled.value) return null
+        return withTimeoutOrNull(HOME_CUPLIX_TIMEOUT_MS) {
+            val scroll = runSuspendCatching { cuplixScroll(sort = HOME_CUPLIX_SORT, force = force) }.getOrNull()
+            if (scroll != null && scroll.clips.isNotEmpty()) {
+                return@withTimeoutOrNull HomeCuplixPage(scroll.clips, CuplixNext(scroll.cursor, scroll.idFyp))
+            }
+            val legacy = runSuspendCatching { homeCuplix(force = force) }.getOrNull().orEmpty()
+            if (legacy.isNotEmpty()) HomeCuplixPage(legacy, CuplixNext(legacy = true)) else null
+        }
     }
 
     suspend fun homeMovies(

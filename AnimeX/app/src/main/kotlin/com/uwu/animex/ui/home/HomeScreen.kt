@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.data.api.CuplixFeedState
 import com.uwu.animex.data.api.CuplixHomeFeed
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.CuplixPrefs
@@ -73,7 +74,6 @@ fun HomeScreen(
         isRefreshing = isRefreshing,
         onRefresh = {
             previewCache = null
-            if (CuplixPrefs.enabled.value) CuplixHomeFeed.refresh()
             viewModel.refresh()
         },
         errors = viewModel.refreshError,
@@ -102,10 +102,17 @@ private fun HomeContent(
     val continueWatching = rememberContinueWatching(localHistory)
     val cuplixFeed by CuplixHomeFeed.state.collectAsStateWithLifecycle()
     val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
-    val cuplixClips = if (cuplixEnabled) cuplixFeed.clips else emptyList()
-    val cuplixEmpty = cuplixFeed.clips.isEmpty()
-    LaunchedEffect(cuplixEnabled, cuplixEmpty) {
-        if (cuplixEnabled && cuplixEmpty) CuplixHomeFeed.ensureLoaded()
+    val cuplixSeeded = cuplixFeed.baseToken == h.cuplixToken
+    val cuplixView = if (cuplixSeeded) cuplixFeed else CuplixFeedState(clips = h.cuplix, hasMore = false)
+    val cuplixClips = if (cuplixEnabled) cuplixView.clips else emptyList()
+    LaunchedEffect(h.cuplixToken, cuplixFeed.baseToken) {
+        if (CuplixHomeFeed.state.value.baseToken != h.cuplixToken) {
+            CuplixHomeFeed.seed(h.cuplix, h.cuplixNext, h.cuplixToken)
+        }
+    }
+    val needsInitialCuplix = cuplixEnabled && cuplixView.clips.isEmpty()
+    LaunchedEffect(needsInitialCuplix) {
+        if (needsInitialCuplix) CuplixHomeFeed.ensureLoaded()
     }
     val scheduleViewModel: ScheduleViewModel = viewModel()
     val scheduleState by scheduleViewModel.state.collectAsStateWithLifecycle()
@@ -130,7 +137,7 @@ private fun HomeContent(
                 RandomPreviewPager(previewList, onOpen, onPlay)
             }
         }
-        if (cuplixEnabled && (cuplixClips.isNotEmpty() || cuplixFeed.loadingMore || cuplixFeed.loadMoreFailed)) {
+        if (cuplixEnabled && (cuplixClips.isNotEmpty() || cuplixView.loadingMore || cuplixView.loadMoreFailed)) {
             item(key = "header:Cuplix") {
                 Box(animateItemExpressive()) {
                     SectionHeader("Cuplix", null, icon = Icons.Outlined.PlayCircleOutline)
@@ -141,9 +148,9 @@ private fun HomeContent(
                     CuplixRow(
                         clips = cuplixClips,
                         onPlay = onPlayCuplix,
-                        hasMore = cuplixFeed.hasMore,
-                        loadingMore = cuplixFeed.loadingMore,
-                        loadMoreFailed = cuplixFeed.loadMoreFailed,
+                        hasMore = cuplixView.hasMore,
+                        loadingMore = cuplixView.loadingMore,
+                        loadMoreFailed = cuplixView.loadMoreFailed,
                         onLoadMore = CuplixHomeFeed::loadMore,
                         onRetryLoadMore = CuplixHomeFeed::retryLoadMore,
                     )
