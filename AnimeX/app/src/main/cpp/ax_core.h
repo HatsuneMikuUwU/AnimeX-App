@@ -42,6 +42,11 @@ enum Op {
     FYP_VIEW = 32,
     FYP_LIKE = 33,
     FYP_SERVER = 34,
+    FYP_COMMENT_LIST = 35,
+    FYP_COMMENT_POST = 36,
+    FYP_COMMENT_DELETE = 37,
+    FYP_COMMENT_EDIT = 38,
+    FYP_COMMENT_REPORT = 39,
 };
 
 std::string secret(int id, const char* masked_hex);

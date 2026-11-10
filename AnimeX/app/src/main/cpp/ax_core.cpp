@@ -255,6 +255,11 @@ std::string endpoint(int op, const std::string& arg) {
         case FYP_VIEW: return OBF("data/fyp/view");
         case FYP_LIKE: return OBF("data/user/fyp/like");
         case FYP_SERVER: return OBF("data/fyp/server");
+        case FYP_COMMENT_LIST: return OBF("data/fyp/comment");
+        case FYP_COMMENT_POST: return OBF("data/fyp/comment");
+        case FYP_COMMENT_DELETE: return OBF("data/fyp/delete_comment");
+        case FYP_COMMENT_EDIT: return OBF("data/fyp/edit_comment");
+        case FYP_COMMENT_REPORT: return OBF("data/fyp/comment_report");
         default: return "";
     }
 }

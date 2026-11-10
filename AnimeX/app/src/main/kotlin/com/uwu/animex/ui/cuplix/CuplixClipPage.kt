@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
@@ -250,6 +251,7 @@ internal fun CuplixClipPage(
     var scrubbing by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
     var captionExpanded by remember { mutableStateOf(false) }
+    var showComments by remember { mutableStateOf(false) }
     var firstFrame by remember(player) { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(true) }
     var aspect by remember(player) { mutableStateOf<Float?>(null) }
@@ -440,6 +442,7 @@ internal fun CuplixClipPage(
                 clip = clip,
                 liked = liked,
                 onToggleLike = { onLikedChange(!liked) },
+                onComment = { showComments = true },
                 onShare = { shareAnime(ctx, Movie(id = clip.id_movie, title = clip.anime ?: clip.caption)) },
                 onOpenAnime = onOpenAnime,
                 modifier =
@@ -448,6 +451,15 @@ internal fun CuplixClipPage(
                         .navigationBarsPadding()
                         .padding(end = 10.dp, bottom = 44.dp),
             )
+        }
+
+        if (showComments) {
+            val clipId = clip.id.orEmpty()
+            if (clipId.isNotBlank()) {
+                CuplixCommentSheet(clipId = clipId, onDismiss = { showComments = false })
+            } else {
+                showComments = false
+            }
         }
 
         Box(
@@ -604,6 +616,7 @@ private fun ClipRail(
     clip: Cuplix,
     liked: Boolean,
     onToggleLike: () -> Unit,
+    onComment: () -> Unit,
     onShare: () -> Unit,
     onOpenAnime: () -> Unit,
     modifier: Modifier = Modifier,
@@ -622,6 +635,16 @@ private fun ClipRail(
                     formatCount(clip.count_likes, (if (liked) 1 else 0) - (if (clip.likedByMe) 1 else 0)) ?: "Suka"
                 },
             onClick = onToggleLike,
+        )
+        RailAction(
+            icon = Icons.Outlined.Forum,
+            label =
+                if (rememberHideStats()) {
+                    "Komentar"
+                } else {
+                    formatCount(clip.count_comments, 0) ?: "Komentar"
+                },
+            onClick = onComment,
         )
         RailAction(icon = Icons.Outlined.Share, label = "Bagikan", onClick = onShare)
         val movieId = clip.id_movie

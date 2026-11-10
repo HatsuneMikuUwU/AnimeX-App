@@ -198,7 +198,10 @@ object UserApi {
         @com.google.gson.annotations.SerializedName("message") val message: String? = null,
         @com.google.gson.annotations.SerializedName("content") val content: String? = null,
         @com.google.gson.annotations.SerializedName("created_at") val createdAt: String? = null,
-        @com.google.gson.annotations.SerializedName("time") val time: String? = null,
+        @com.google.gson.annotations.SerializedName(
+            value = "time",
+            alternate = ["key_time"],
+        ) val time: String? = null,
         @com.google.gson.annotations.SerializedName("time_updated") val timeUpdated: String? = null,
         @com.google.gson.annotations.SerializedName("type") val type: String? = null,
         @com.google.gson.annotations.SerializedName("pro") val pro: String? = null,
@@ -357,6 +360,65 @@ object UserApi {
             "POST",
             NativeCore.path(NativeCore.FYP_LIKE),
             form = mapOf("id_fyp" to clipId, "action" to if (liked) "Y" else "N"),
+            authed = true,
+        )
+    }
+
+    suspend fun cuplixCommentList(clipId: String): List<Discussion> {
+        val root =
+            request(
+                "GET",
+                NativeCore.path(NativeCore.FYP_COMMENT_LIST),
+                query = mapOf("id_fyp" to clipId),
+                authed = UserSession.isLoggedIn(),
+            )
+        return parseList(root, Discussion::class.java)
+    }
+
+    suspend fun cuplixCommentPost(
+        clipId: String,
+        text: String,
+    ) {
+        request(
+            "POST",
+            NativeCore.path(NativeCore.FYP_COMMENT_POST),
+            form = mapOf("id_fyp" to clipId, "comment" to text),
+            authed = true,
+        )
+    }
+
+    suspend fun cuplixCommentEdit(
+        clipId: String,
+        commentId: String,
+        text: String,
+    ) {
+        request(
+            "POST",
+            NativeCore.path(NativeCore.FYP_COMMENT_EDIT),
+            form =
+                mapOf(
+                    "id_fyp" to clipId,
+                    "id_fyp_comment" to commentId,
+                    "comment" to text,
+                ),
+            authed = true,
+        )
+    }
+
+    suspend fun cuplixCommentDelete(commentId: String) {
+        request(
+            "POST",
+            NativeCore.path(NativeCore.FYP_COMMENT_DELETE),
+            form = mapOf("id_fyp_comment" to commentId),
+            authed = true,
+        )
+    }
+
+    suspend fun cuplixCommentReport(commentId: String) {
+        request(
+            "POST",
+            NativeCore.path(NativeCore.FYP_COMMENT_REPORT),
+            form = mapOf("id_comment" to commentId),
             authed = true,
         )
     }
