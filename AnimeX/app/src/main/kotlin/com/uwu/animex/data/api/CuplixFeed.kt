@@ -1,7 +1,6 @@
 package com.uwu.animex.data.api
 
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Cuplix
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,13 +23,12 @@ fun cuplixKey(clip: Cuplix): String =
 
 val CuplixFeed = CuplixPager()
 
-val CuplixHomeFeed = CuplixPager(firstPageLimit = 5, fixedSort = "scroll_likes")
+val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes")
 
 private const val MAX_PAGE_ATTEMPTS = 6
 private const val EMPTY_PAGES_TO_END = 3
 
 class CuplixPager(
-    private val firstPageLimit: Int = Int.MAX_VALUE,
     private val fixedSort: String? = null,
 ) {
     private val _state = MutableStateFlow(CuplixFeedState())
@@ -42,7 +40,7 @@ class CuplixPager(
     private var scrollPage = 1
 
     @Volatile
-    private var legacyPage = 2
+    private var legacyPage = 1
 
     @Volatile
     private var scrollUnavailable = false
@@ -51,34 +49,23 @@ class CuplixPager(
     private var scrollCursor: Map<String, String> = emptyMap()
 
     @Volatile
-    private var seedKeyIdFyp: String = ""
+    private var excludedFypIds = ""
 
     @Volatile
     private var generation = 0
 
     private fun resetPaging() {
         scrollPage = 1
-        legacyPage = 2
+        legacyPage = 1
         scrollUnavailable = false
         scrollCursor = emptyMap()
-        seedKeyIdFyp = ""
-    }
-
-    fun replace(first: List<Cuplix>) {
-        val distinct = first.distinctBy(::cuplixKey)
-        resetPaging()
-        _state.value = CuplixFeedState(clips = distinct, hasMore = first.isNotEmpty())
-        if (distinct.isEmpty() && first.isNotEmpty()) loadMore()
-    }
-
-    fun seedIfEmpty(first: List<Cuplix>) {
-        if (first.isNotEmpty() && _state.value.clips.isEmpty() && scrollPage == 1 && legacyPage == 2) replace(first)
+        excludedFypIds = ""
     }
 
     fun start(first: Cuplix) {
         generation++
         resetPaging()
-        seedKeyIdFyp = first.id.orEmpty()
+        excludedFypIds = first.id.orEmpty()
         _state.value = CuplixFeedState(clips = listOf(first), hasMore = true)
         loadMore()
     }
@@ -89,15 +76,22 @@ class CuplixPager(
         _state.value = CuplixFeedState()
     }
 
+    fun refresh() {
+        generation++
+        resetPaging()
+        _state.value = CuplixFeedState()
+        loadMore()
+    }
+
     suspend fun ensureLoaded() {
-        if (_state.value.clips.isNotEmpty()) return
-        val batch = runSuspendCatching { Api.homeCuplix(page = 1) }.getOrDefault(emptyList())
-        seedIfEmpty(batch.take(firstPageLimit))
+        if (_state.value.clips.isNotEmpty() || _state.value.loadingMore || !_state.value.hasMore) return
+        if (_state.value.loadMoreFailed) _state.update { it.copy(loadMoreFailed = false) }
+        fetchNextPage()
     }
 
     fun loadMore() {
-        val s = _state.value
-        if (!s.hasMore || s.loadingMore || s.loadMoreFailed) return
+        val current = _state.value
+        if (!current.hasMore || current.loadingMore || current.loadMoreFailed) return
         AppScope.io.launch { fetchNextPage() }
     }
 
@@ -125,7 +119,7 @@ class CuplixPager(
                     Api.cuplixScroll(
                         sort = randomSort(),
                         cursor = scrollCursor,
-                        keyIdFyp = seedKeyIdFyp,
+                        keyIdFyp = excludedFypIds,
                     )
                 } catch (e: CancellationException) {
                     throw e
@@ -138,12 +132,25 @@ class CuplixPager(
             if (gen != generation) return emptyList()
             scrollPage = page + 1
             if (result.cursor.isNotEmpty()) scrollCursor = result.cursor
-            if (result.clips.isNotEmpty() && seedKeyIdFyp.isNotEmpty()) seedKeyIdFyp = ""
+            excludedFypIds = mergeFypIds(excludedFypIds, result.idFyp, result.clips)
             if (result.clips.isNotEmpty()) return result.clips
             if (page > 1) return emptyList()
             scrollUnavailable = true
         }
         return fetchLegacyBatch(gen)
+    }
+
+    private fun mergeFypIds(
+        current: String,
+        fromResponse: String,
+        clips: List<Cuplix>,
+    ): String {
+        val ids = LinkedHashSet<String>()
+        (current.split(",") + fromResponse.split(",") + clips.mapNotNull { it.id })
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .forEach(ids::add)
+        return ids.joinToString(",")
     }
 
     private suspend fun fetchLegacyBatch(gen: Int): List<Cuplix> {

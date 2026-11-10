@@ -22,7 +22,6 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
-import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.CuplixListData
 import com.uwu.animex.data.model.Envelope
@@ -560,12 +559,7 @@ object Api {
         return UrlSecurity.secureOrNull(candidate)
     }
 
-    private const val HOME_CUPLIX_COUNT = 5
-
-    suspend fun home(
-        force: Boolean = false,
-        refreshCuplix: Boolean = true,
-    ): HomeData {
+    suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
             return cached
@@ -584,20 +578,6 @@ object Api {
                 if (cached != null) return cached
                 throw e
             } ?: return cached ?: HomeData()
-        val cuplix =
-            if (CuplixPrefs.enabled.value) {
-                runSuspendCatching { homeCuplix(refreshCuplix) }.getOrElse {
-                    if (refreshCuplix) {
-                        runSuspendCatching { homeCuplix(false) }.getOrDefault(emptyList())
-                    } else {
-                        emptyList()
-                    }
-                }
-            } else {
-                emptyList()
-            }
-        val firstClips = cuplix.take(HOME_CUPLIX_COUNT)
-        if (refreshCuplix && firstClips.isNotEmpty()) CuplixHomeFeed.replace(firstClips) else CuplixHomeFeed.seedIfEmpty(firstClips)
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =
@@ -616,7 +596,6 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
-                    cuplix = cuplix,
                 )
             }
         homeMem = h
@@ -671,6 +650,7 @@ object Api {
     data class CuplixPage(
         val clips: List<Cuplix>,
         val cursor: Map<String, String>,
+        val idFyp: String = "",
     )
 
     suspend fun cuplixScroll(
@@ -680,9 +660,11 @@ object Api {
         idUserFyp: String = "",
         movieIds: String = "",
         force: Boolean = true,
+        limit: Int = API_LIMIT,
     ): CuplixPage {
         val params =
             buildMap {
+                put("limit", limit.coerceAtLeast(1).toString())
                 put("sort", sort)
                 put("key_id_fyp", keyIdFyp)
                 put("id_user_fyp", idUserFyp)
@@ -734,7 +716,8 @@ object Api {
                         put(k, v.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty())
                     }
                 }
-            CuplixPage(clips, nextCursor)
+            val idFyp = data?.get("id_fyp")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
+            CuplixPage(clips, nextCursor, idFyp)
         }
     }
 

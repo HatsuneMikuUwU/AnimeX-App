@@ -73,6 +73,7 @@ fun HomeScreen(
         isRefreshing = isRefreshing,
         onRefresh = {
             previewCache = null
+            if (CuplixPrefs.enabled.value) CuplixHomeFeed.refresh()
             viewModel.refresh()
         },
         errors = viewModel.refreshError,
@@ -101,15 +102,7 @@ private fun HomeContent(
     val continueWatching = rememberContinueWatching(localHistory)
     val cuplixFeed by CuplixHomeFeed.state.collectAsStateWithLifecycle()
     val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
-    val cuplixClips =
-        if (cuplixEnabled) {
-            cuplixFeed.clips.ifEmpty { h.cuplix.take(5) }
-        } else {
-            emptyList()
-        }
-    LaunchedEffect(cuplixEnabled, cuplixFeed.clips.size, cuplixClips.isEmpty(), cuplixFeed.loadingMore) {
-        if (cuplixEnabled && cuplixClips.isEmpty() && cuplixFeed.clips.isNotEmpty()) CuplixHomeFeed.loadMore()
-    }
+    val cuplixClips = if (cuplixEnabled) cuplixFeed.clips else emptyList()
     LaunchedEffect(cuplixEnabled) {
         if (cuplixEnabled) CuplixHomeFeed.ensureLoaded()
     }
