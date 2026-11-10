@@ -26,8 +26,11 @@ fun cuplixKey(clip: Cuplix): String =
 /** Feed untuk player shorts: dimulai dari klip yang ditap di Home, sisanya dari `list_scroll`. */
 val CuplixFeed = CuplixPager()
 
-/** Feed untuk row Cuplix di Home: 5 klip pertama dari `home/fyp`, lalu lanjut dari `list_scroll` urut like terbanyak. */
-val CuplixHomeFeed = CuplixPager(firstPageLimit = 5, fixedSort = "scroll_likes")
+/** Feed untuk row Cuplix di Home: seluruhnya dari `list_scroll`, urut like terbanyak dulu. */
+val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes", startFromScroll = true)
+
+private const val MAX_PAGE_ATTEMPTS = 6
+private const val EMPTY_PAGES_TO_END = 3
 
 /**
  * Paging Cuplix. Halaman pertama berasal dari `home/fyp` (atau [start]); halaman berikutnya diambil
@@ -37,13 +40,11 @@ val CuplixHomeFeed = CuplixPager(firstPageLimit = 5, fixedSort = "scroll_likes")
  * kembali ke halaman 1).
  */
 class CuplixPager(
-    private val firstPageLimit: Int = Int.MAX_VALUE,
     // Kalau diisi, semua halaman `list_scroll` memakai sort ini; kalau null, sort diacak seperti app ANIMEIN.
     private val fixedSort: String? = null,
+    // true: halaman pertama juga dari `list_scroll`, bukan `home/fyp`.
+    private val startFromScroll: Boolean = false,
 ) {
-    private const val MAX_PAGE_ATTEMPTS = 6
-    private const val EMPTY_PAGES_TO_END = 3
-
     private val _state = MutableStateFlow(CuplixFeedState())
     val state: StateFlow<CuplixFeedState> = _state.asStateFlow()
 
@@ -53,7 +54,7 @@ class CuplixPager(
     private var scrollPage = 1
 
     @Volatile
-    private var legacyPage = 2
+    private var legacyPage = firstLegacyPage()
 
     @Volatile
     private var scrollUnavailable = false
@@ -65,9 +66,12 @@ class CuplixPager(
     @Volatile
     private var generation = 0
 
+    // Kalau halaman pertama sudah dari `list_scroll`, cadangan `home/fyp` mulai dari halaman 1.
+    private fun firstLegacyPage() = if (startFromScroll) 1 else 2
+
     private fun resetPaging() {
         scrollPage = 1
-        legacyPage = 2
+        legacyPage = firstLegacyPage()
         scrollUnavailable = false
         scrollCursor = emptyMap()
     }
@@ -81,7 +85,7 @@ class CuplixPager(
     }
 
     fun seedIfEmpty(first: List<Cuplix>) {
-        if (first.isNotEmpty() && _state.value.clips.isEmpty() && scrollPage == 1 && legacyPage == 2) replace(first)
+        if (first.isNotEmpty() && _state.value.clips.isEmpty() && scrollPage == 1 && legacyPage == firstLegacyPage()) replace(first)
     }
 
     /** Mulai feed dari klip yang ditap di Home; sisanya dimuat dari `list_scroll`. */
@@ -89,6 +93,14 @@ class CuplixPager(
         generation++
         resetPaging()
         _state.value = CuplixFeedState(clips = listOf(first), hasMore = true)
+        loadMore()
+    }
+
+    /** Mulai ulang feed dari awal (pull-to-refresh), lalu muat halaman pertama dari `list_scroll`. */
+    fun restart() {
+        generation++
+        resetPaging()
+        _state.value = CuplixFeedState()
         loadMore()
     }
 
@@ -100,8 +112,13 @@ class CuplixPager(
 
     suspend fun ensureLoaded() {
         if (_state.value.clips.isNotEmpty()) return
+        if (startFromScroll) {
+            // Row Home tersembunyi selama kosong, jadi tidak ada tombol retry: coba lagi di sini.
+            if (_state.value.loadMoreFailed) retryLoadMore() else loadMore()
+            return
+        }
         val batch = runSuspendCatching { Api.homeCuplix(page = 1) }.getOrDefault(emptyList())
-        seedIfEmpty(batch.take(firstPageLimit))
+        seedIfEmpty(batch)
     }
 
     fun loadMore() {
