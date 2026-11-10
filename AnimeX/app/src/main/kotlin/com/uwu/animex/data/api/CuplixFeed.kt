@@ -23,13 +23,15 @@ fun cuplixKey(clip: Cuplix): String =
 
 val CuplixFeed = CuplixPager()
 
-val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes")
+val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes", filterPlayable = false, deduplicate = false)
 
 private const val MAX_PAGE_ATTEMPTS = 6
 private const val EMPTY_PAGES_TO_END = 3
 
 class CuplixPager(
     private val fixedSort: String? = null,
+    private val filterPlayable: Boolean = true,
+    private val deduplicate: Boolean = true,
 ) {
     private val _state = MutableStateFlow(CuplixFeedState())
     val state: StateFlow<CuplixFeedState> = _state.asStateFlow()
@@ -132,8 +134,9 @@ class CuplixPager(
             if (gen != generation) return emptyList()
             scrollPage = page + 1
             if (result.cursor.isNotEmpty()) scrollCursor = result.cursor
-            excludedFypIds = mergeFypIds(excludedFypIds, result.idFyp, result.clips)
-            if (result.clips.isNotEmpty()) return result.clips
+            excludedFypIds = mergeFypIds(excludedFypIds, result.idFyp)
+            val clips = if (filterPlayable) result.clips.filter(::isPlayable) else result.clips
+            if (clips.isNotEmpty()) return clips
             if (page > 1) return emptyList()
             scrollUnavailable = true
         }
@@ -143,22 +146,24 @@ class CuplixPager(
     private fun mergeFypIds(
         current: String,
         fromResponse: String,
-        clips: List<Cuplix>,
     ): String {
         val ids = LinkedHashSet<String>()
-        (current.split(",") + fromResponse.split(",") + clips.mapNotNull { it.id })
+        (current.split(",") + fromResponse.split(","))
             .map(String::trim)
             .filter(String::isNotEmpty)
             .forEach(ids::add)
         return ids.joinToString(",")
     }
 
+    private fun isPlayable(clip: Cuplix): Boolean =
+        !clip.url_thumbnail.isNullOrBlank() && !clip.id_episode.isNullOrBlank()
+
     private suspend fun fetchLegacyBatch(gen: Int): List<Cuplix> {
         val page = legacyPage
         val batch = Api.homeCuplix(force = true, page = page)
         if (gen != generation) return emptyList()
         legacyPage = page + 1
-        return batch
+        return if (filterPlayable) batch.filter(::isPlayable) else batch
     }
 
     private suspend fun fetchNextPage() {
@@ -184,7 +189,12 @@ class CuplixPager(
                     if (scrollUnavailable || emptyScroll >= EMPTY_PAGES_TO_END) reachedEnd = true
                 } else {
                     emptyScroll = 0
-                    val novel = batch.filter { cuplixKey(it) !in seen }.distinctBy(::cuplixKey)
+                    val novel =
+                        if (deduplicate) {
+                            batch.filter { cuplixKey(it) !in seen }.distinctBy(::cuplixKey)
+                        } else {
+                            batch
+                        }
                     if (novel.isNotEmpty()) sawNovel = true
                     fresh = novel
                 }

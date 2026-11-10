@@ -644,7 +644,7 @@ object Api {
                 params,
                 force,
             )
-        return data?.fyp.orEmpty().filter { it.isPlayable() }
+        return data?.fyp.orEmpty()
     }
 
     data class CuplixPage(
@@ -708,7 +708,7 @@ object Api {
                             invalidateCachedResponse(cuplixScrollPath, params)
                             throw ApiException.Parse(e)
                         }
-                    parsed.filter { it.isPlayable() }
+                    parsed
                 }
             val nextCursor =
                 buildMap {
@@ -733,8 +733,6 @@ object Api {
             .mapNotNull { server ->
                 UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
             }
-
-    private fun Cuplix.isPlayable(): Boolean = !url_thumbnail.isNullOrBlank() && !id_episode.isNullOrBlank()
 
     private fun homeListParams(page: Int): Map<String, String> =
         buildMap {
