@@ -4,10 +4,13 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.Clock
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.transformer.Composition
+import androidx.media3.transformer.DefaultAssetLoaderFactory
+import androidx.media3.transformer.DefaultDecoderFactory
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
@@ -72,7 +75,14 @@ object CuplixClipExport {
                     val transformer =
                         Transformer
                             .Builder(ctx)
-                            .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
+                            .setAssetLoaderFactory(
+                                DefaultAssetLoaderFactory(
+                                    ctx,
+                                    DefaultDecoderFactory.Builder(ctx).build(),
+                                    Clock.DEFAULT,
+                                    DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource),
+                                ),
+                            )
                             .addListener(
                                 object : Transformer.Listener {
                                     override fun onCompleted(
