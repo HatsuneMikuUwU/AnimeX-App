@@ -34,6 +34,7 @@ enum class PlayerOrientation(
 object PlayerPrefs {
     private const val PREFS = "player"
     private const val KEY_QUALITY = "quality"
+    private const val KEY_AUTO_QUALITY = "auto_quality"
     private const val KEY_HIDDEN_BUTTONS = "hidden_buttons"
     private const val KEY_GESTURES = "gestures_enabled"
 
@@ -152,6 +153,9 @@ object PlayerPrefs {
     private val _volumeBoost = MutableStateFlow(false)
     val volumeBoost: StateFlow<Boolean> = _volumeBoost.asStateFlow()
 
+    private val _autoQuality = MutableStateFlow(true)
+    val autoQuality: StateFlow<Boolean> = _autoQuality.asStateFlow()
+
     private val _backgroundPlay = MutableStateFlow(false)
     val backgroundPlay: StateFlow<Boolean> = _backgroundPlay.asStateFlow()
 
@@ -210,6 +214,7 @@ object PlayerPrefs {
         _pauseOnNoisy.value = sp.getBoolean(KEY_PAUSE_ON_NOISY, true)
         _volumeBoost.value = sp.getBoolean(KEY_VOLUME_BOOST, false)
         _backgroundPlay.value = sp.getBoolean(KEY_BACKGROUND_PLAY, false)
+        _autoQuality.value = sp.getBoolean(KEY_AUTO_QUALITY, true)
         _skipIntroMs.value = sp.getInt(KEY_SKIP_INTRO_MS, DEFAULT_SKIP_INTRO_MS).coerceIn(10_000, 300_000)
     }
 
@@ -224,6 +229,11 @@ object PlayerPrefs {
     fun setQuality(value: Int) {
         quality = value
         edit { putInt(KEY_QUALITY, value) }
+    }
+
+    fun setAutoQuality(value: Boolean) {
+        _autoQuality.value = value
+        edit { putBoolean(KEY_AUTO_QUALITY, value) }
     }
 
     fun setHiddenButtons(value: Set<PlayerButton>) {
@@ -355,6 +365,7 @@ object PlayerPrefs {
     fun exportJson(): JSONObject =
         JSONObject()
             .put("quality", quality)
+            .put("autoQuality", _autoQuality.value)
             .put("gesturesEnabled", _gesturesEnabled.value)
             .put("hiddenButtons", JSONArray(_hiddenButtons.value.map { it.name }))
             .put("progressPreference", _progressPreference.value.toDouble())
@@ -381,6 +392,7 @@ object PlayerPrefs {
 
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
+        if (o.has("autoQuality")) setAutoQuality(o.optBoolean("autoQuality", true))
         if (o.has("gesturesEnabled")) setGesturesEnabled(o.optBoolean("gesturesEnabled"))
         o.optJSONArray("hiddenButtons")?.let { arr ->
             val names = (0 until arr.length()).map { arr.optString(it) }.toSet()

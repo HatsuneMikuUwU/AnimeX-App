@@ -49,6 +49,7 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
+import com.uwu.animex.data.model.Server
 import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper
@@ -62,6 +63,11 @@ private const val BUFFER_FOR_PLAYBACK_MS = 1_500
 private const val BUFFER_FOR_REBUFFER_MS = 3_000
 private const val MAX_AUTO_RETRIES = 2
 private const val RETRY_DELAY_MS = 1_500L
+
+internal class AdaptiveSources(
+    val servers: List<Server>,
+    val onSwitched: (Server) -> Unit,
+)
 
 private fun PlaybackException.isTransientNetworkError(): Boolean =
     errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
@@ -82,6 +88,7 @@ internal fun ExoView(
     onEnded: () -> Unit,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     onStreamError: (PlaybackException) -> Unit = {},
+    adaptive: AdaptiveSources? = null,
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -90,6 +97,8 @@ internal fun ExoView(
     val latestOnEnded by rememberUpdatedState(onEnded)
     val latestOnProgressSaved by rememberUpdatedState(onProgressSaved)
     val latestOnStreamError by rememberUpdatedState(onStreamError)
+    val latestOnSwitched by rememberUpdatedState(adaptive?.onSwitched)
+    val abrHolder = remember { arrayOfNulls<AdaptiveQualityController>(1) }
 
     val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
     val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
@@ -167,17 +176,7 @@ internal fun ExoView(
             } else {
                 0L
             }
-        val item =
-            MediaItem
-                .Builder()
-                .setUri(url)
-                .setMediaMetadata(
-                    MediaMetadata
-                        .Builder()
-                        .setTitle(title)
-                        .setArtist(subtitle)
-                        .build(),
-                ).build()
+        val item = mediaItemFor(url, title, subtitle)
         player.setMediaItem(item, start)
         player.prepare()
         player.playWhenReady = true
@@ -224,6 +223,7 @@ internal fun ExoView(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
+                    if (abrHolder[0]?.onError(error) == true) return
                     if (error.isTransientNetworkError() &&
                         retries < MAX_AUTO_RETRIES &&
                         ConnectivityMonitor.isOnline()
@@ -248,6 +248,25 @@ internal fun ExoView(
                 latestOnProgressSaved(crossed)
                 Progress.flush()
             }
+        }
+    }
+    val adaptiveServers = adaptive?.servers
+    DisposableEffect(player, adaptiveServers) {
+        if (adaptiveServers == null || adaptiveServers.size < 2) return@DisposableEffect onDispose { }
+        val currentUri = player.currentMediaItem?.localConfiguration?.uri?.toString() ?: url
+        val controller =
+            AdaptiveQualityController(
+                player = player,
+                candidates = adaptiveServers,
+                initialUrl = currentUri,
+                buildItem = { server -> mediaItemFor(server.link.orEmpty(), title, subtitle) },
+                onSwitched = { server -> latestOnSwitched?.invoke(server) },
+            )
+        abrHolder[0] = controller
+        controller.start(scope)
+        onDispose {
+            controller.stop()
+            if (abrHolder[0] === controller) abrHolder[0] = null
         }
     }
     val backgroundPlay by PlayerPrefs.backgroundPlay.collectAsStateWithLifecycle()
@@ -321,6 +340,22 @@ internal fun ExoView(
         overlay(player)
     }
 }
+
+private fun mediaItemFor(
+    url: String,
+    title: String,
+    subtitle: String,
+): MediaItem =
+    MediaItem
+        .Builder()
+        .setUri(url)
+        .setMediaMetadata(
+            MediaMetadata
+                .Builder()
+                .setTitle(title)
+                .setArtist(subtitle)
+                .build(),
+        ).build()
 
 private fun Player.shouldKeepScreenOn(): Boolean =
     playWhenReady && (playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY)

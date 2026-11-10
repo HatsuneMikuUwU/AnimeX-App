@@ -37,6 +37,7 @@ import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
 import com.uwu.animex.ui.navigation.NotificationRouter
+import com.uwu.animex.ui.player.AdaptiveQuality
 import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.theme.AppTheme
 import com.uwu.animex.ui.theme.UiScaled
@@ -68,6 +69,7 @@ class MainActivity : ComponentActivity() {
         CuplixSaved.init(this)
         CuplixWatched.init(this)
         PlayerPrefs.init(this)
+        AdaptiveQuality.init(this)
         History.init(this)
         Progress.init(this)
         Bookmarks.init(this)
