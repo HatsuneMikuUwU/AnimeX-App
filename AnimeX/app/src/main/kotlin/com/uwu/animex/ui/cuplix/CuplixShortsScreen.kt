@@ -3,6 +3,7 @@ package com.uwu.animex.ui.cuplix
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -16,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -131,7 +133,22 @@ fun CuplixShortsScreen(
     BackHandler(onBack = onBack)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            loading -> AppLoadingIndicator(Modifier.align(Alignment.Center), color = Color.White)
+            loading || (clips.isEmpty() && feed.loadingMore) ->
+                AppLoadingIndicator(Modifier.align(Alignment.Center), color = Color.White)
+            clips.isEmpty() && feed.loadMoreFailed ->
+                Column(
+                    Modifier.align(Alignment.Center).padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "Gagal memuat Cuplix.",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    TextButton(onClick = CuplixFeed::retryLoadMore) {
+                        Text("Coba lagi", color = Color.White)
+                    }
+                }
             clips.isEmpty() -> Text(
                 "Cuplix belum tersedia.",
                 Modifier.align(Alignment.Center).padding(24.dp),
@@ -152,12 +169,17 @@ fun CuplixShortsScreen(
                         active = positioned && page == pagerState.currentPage,
                         liked = liked[key] ?: clip.likedByMe,
                         onLikedChange = { value ->
-                            liked[key] = value
-                            val clipId = clip.id
-                            if (!clipId.isNullOrBlank() && UserSession.isLoggedIn()) {
-                                scope.launch {
-                                    runCatching { UserApi.cuplixLike(clipId, value) }
-                                        .onFailure { liked[key] = !value }
+                            if (!UserSession.isLoggedIn()) {
+                                onNeedLogin()
+                            } else {
+                                val clipId = clip.id
+                                if (!clipId.isNullOrBlank()) {
+                                    val previous = liked[key] ?: clip.likedByMe
+                                    liked[key] = value
+                                    scope.launch {
+                                        runCatching { UserApi.cuplixLike(clipId, value) }
+                                            .onFailure { liked[key] = previous }
+                                    }
                                 }
                             }
                         },

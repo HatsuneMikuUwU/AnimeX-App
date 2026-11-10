@@ -160,7 +160,7 @@ private fun buildClipPlayer(
     ctx: Context,
     url: String,
     startMs: Long,
-    endMs: Long?,
+    endMs: Long,
 ): ExoPlayer {
     val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient).setUserAgent(BROWSER_UA)
     val loadControl =
@@ -173,7 +173,7 @@ private fun buildClipPlayer(
         MediaItem.ClippingConfiguration
             .Builder()
             .setStartPositionMs(startMs)
-            .apply { if (endMs != null) setEndPositionMs(endMs) }
+            .setEndPositionMs(endMs)
             .build()
     val item =
         MediaItem
@@ -216,8 +216,8 @@ internal fun CuplixClipPage(
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     val episodeId = clip.id_episode.orEmpty()
-    val startMs = remember(clip.time_start) { clip.time_start?.trim()?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L }
-    val endMs = remember(clip.time_end, startMs) { clip.time_end?.trim()?.toLongOrNull()?.takeIf { it > startMs } }
+    val startMs = remember(clip.time_start) { clip.clipStartTimeMs() }
+    val endMs = remember(clip.time_end, startMs) { clip.clipEndTimeMs(startMs) }
 
     var attempt by remember { mutableIntStateOf(0) }
     var streamUrl by remember(episodeId, attempt) { mutableStateOf<String?>(null) }

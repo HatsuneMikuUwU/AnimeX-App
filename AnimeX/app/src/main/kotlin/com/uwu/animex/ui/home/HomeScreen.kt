@@ -33,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.CuplixFeedState
 import com.uwu.animex.data.api.CuplixHomeFeed
 import com.uwu.animex.data.api.cuplixKey
+import com.uwu.animex.data.api.isCuplixPlayable
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixWatched
 import com.uwu.animex.data.local.withoutWatched
@@ -105,7 +106,12 @@ private fun HomeContent(
     val cuplixFeed by CuplixHomeFeed.state.collectAsStateWithLifecycle()
     val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
     val cuplixSeeded = cuplixFeed.baseToken == h.cuplixToken
-    val cuplixView = if (cuplixSeeded) cuplixFeed else CuplixFeedState(clips = h.cuplix, hasMore = false)
+    val cuplixView =
+        if (cuplixSeeded) {
+            cuplixFeed
+        } else {
+            CuplixFeedState(clips = h.cuplix.filter(::isCuplixPlayable), hasMore = false)
+        }
     val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
     val watched by CuplixWatched.keys.collectAsStateWithLifecycle()
     val unwatchedCuplix = remember(cuplixView.clips, hideWatched, watched) { cuplixView.clips.withoutWatched(hideWatched, watched) }

@@ -23,9 +23,12 @@ data class CuplixFeedState(
 fun cuplixKey(clip: Cuplix): String =
     clip.id?.takeIf { it.isNotBlank() } ?: "${clip.id_episode}:${clip.time_start}:${clip.anime}"
 
+fun isCuplixPlayable(clip: Cuplix): Boolean =
+    !clip.url_thumbnail.isNullOrBlank() && !clip.id_episode.isNullOrBlank()
+
 val CuplixFeed = CuplixPager()
 
-val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes", filterPlayable = false, deduplicate = false)
+val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes")
 
 val CuplixAllFeed = CuplixPager(fixedSort = "scroll_likes")
 
@@ -110,7 +113,11 @@ class CuplixPager(
                 scrollPage = 2
             }
         }
-        _state.value = CuplixFeedState(clips = base, hasMore = true, baseToken = token)
+        val seededClips =
+            base
+                .let { if (filterPlayable) it.filter(::isCuplixPlayable) else it }
+                .let { if (deduplicate) it.distinctBy(::cuplixKey) else it }
+        _state.value = CuplixFeedState(clips = seededClips, hasMore = true, baseToken = token)
     }
 
     suspend fun reload() {
@@ -170,7 +177,7 @@ class CuplixPager(
             if (gen != generation) return emptyList()
             if (result.cursor.isNotEmpty()) scrollCursor = result.cursor
             excludedFypIds = mergeFypIds(excludedFypIds, result.idFyp)
-            val clips = if (filterPlayable) result.clips.filter(::isPlayable) else result.clips
+            val clips = if (filterPlayable) result.clips.filter(::isCuplixPlayable) else result.clips
             if (clips.isNotEmpty()) {
                 scrollPage = page + 1
                 scrollFailures = 0
@@ -197,15 +204,12 @@ class CuplixPager(
         return ids.joinToString(",")
     }
 
-    private fun isPlayable(clip: Cuplix): Boolean =
-        !clip.url_thumbnail.isNullOrBlank() && !clip.id_episode.isNullOrBlank()
-
     private suspend fun fetchLegacyBatch(gen: Int): List<Cuplix> {
         val page = legacyPage
         val batch = Api.homeCuplix(force = true, page = page)
         if (gen != generation) return emptyList()
         legacyPage = page + 1
-        return if (filterPlayable) batch.filter(::isPlayable) else batch
+        return if (filterPlayable) batch.filter(::isCuplixPlayable) else batch
     }
 
     private suspend fun fetchNextPage() {

@@ -28,9 +28,14 @@ import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.detail.bestDirect
 import kotlinx.coroutines.launch
 
-private const val OPEN_ENDED_CLIP_MS = 60_000L
+internal const val OPEN_ENDED_CLIP_MS = 60_000L
 
 internal fun cuplixDownloadId(clip: Cuplix): String = "cuplix:${cuplixKey(clip)}"
+
+internal fun Cuplix.clipStartTimeMs(): Long = time_start?.trim()?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+
+internal fun Cuplix.clipEndTimeMs(startMs: Long = clipStartTimeMs()): Long =
+    time_end?.trim()?.toLongOrNull()?.takeIf { it > startMs } ?: (startMs + OPEN_ENDED_CLIP_MS)
 
 internal suspend fun resolveClipServer(
     clip: Cuplix,
@@ -71,9 +76,8 @@ internal fun rememberClipDownload(): (Cuplix) -> Unit {
                 Toast.makeText(ctx, "Gak ada server yang bisa dipakai buat unduh", Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            val start = clip.time_start?.trim()?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
-            val end =
-                clip.time_end?.trim()?.toLongOrNull()?.takeIf { it > start } ?: (start + OPEN_ENDED_CLIP_MS)
+            val start = clip.clipStartTimeMs()
+            val end = clip.clipEndTimeMs(start)
             Downloads.enqueue(
                 ctx,
                 cuplixDownloadId(clip),
