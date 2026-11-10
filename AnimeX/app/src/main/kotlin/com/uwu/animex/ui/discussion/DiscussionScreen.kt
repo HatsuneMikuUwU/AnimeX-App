@@ -812,6 +812,7 @@ internal fun DiscussionRow(
     onReact: (UserApi.Discussion, String) -> Unit,
     modifier: Modifier = Modifier,
     readOnly: Boolean = false,
+    socialActions: Boolean = isEpisode,
 ) {
     val cs = MaterialTheme.colorScheme
     val isMine = !currentUserId.isNullOrBlank() && discussion.userId == currentUserId
@@ -822,7 +823,7 @@ internal fun DiscussionRow(
     var reportDialog by remember(discussion.id) { mutableStateOf(false) }
     var editText by remember(discussion.id, discussion.body()) { mutableStateOf(discussion.body()) }
     val canOpenActions = !readOnly && loggedIn && hasId && !actionBusy
-    val canReply = !readOnly && isEpisode && loggedIn && hasId && !actionBusy
+    val canReply = !readOnly && socialActions && loggedIn && hasId && !actionBusy
     val replyCount = discussion.replyCount?.toIntOrNull() ?: 0
     val expanded = thread?.expanded == true
     val showThreadLine =
@@ -956,7 +957,7 @@ internal fun DiscussionRow(
                                 modifier = Modifier.weight(1f, fill = false).padding(horizontal = 8.dp),
                             )
                         }
-                        if (isEpisode) {
+                        if (socialActions) {
                             if (!readOnly) ActionLabel("Balas", enabled = canReply, onClick = replyToComment)
                             ActionLabel(
                                 text = discussion.likeCount ?: "0",
@@ -979,7 +980,7 @@ internal fun DiscussionRow(
                 }
             }
         }
-        if (isEpisode && (replyCount > 0 || expanded)) {
+        if (socialActions && (replyCount > 0 || expanded)) {
             Column(
                 Modifier.fillMaxWidth().padding(start = ThreadIndent),
                 verticalArrangement = Arrangement.spacedBy(8.dp),

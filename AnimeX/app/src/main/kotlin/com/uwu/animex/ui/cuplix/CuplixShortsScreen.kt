@@ -55,6 +55,7 @@ fun CuplixShortsScreen(
     startClipId: String,
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit,
+    onNeedLogin: () -> Unit,
 ) {
     val feed by CuplixFeed.state.collectAsStateWithLifecycle()
     val clips = remember(feed.clips) { feed.clips.playable() }
@@ -148,6 +149,7 @@ fun CuplixShortsScreen(
                             }
                         },
                         onOpenAnime = { clip.id_movie?.takeIf { it.isNotBlank() }?.let(onOpenAnime) },
+                        onNeedLogin = onNeedLogin,
                     )
                 }
             }

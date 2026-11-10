@@ -381,6 +381,7 @@ fun App() {
                         startClipId = Uri.decode(e.arguments?.getString("clipId").orEmpty()),
                         onBack = { nav.popBackStack() },
                         onOpenAnime = { animeId -> nav.navigate("detail/$animeId") },
+                        onNeedLogin = { nav.navigate("login") },
                     )
                 }
                 composable(

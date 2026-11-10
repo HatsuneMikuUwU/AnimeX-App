@@ -1353,7 +1353,7 @@ private fun EpisodeCommentsPanel(
 }
 
 @Composable
-private fun CommentInputBar(
+internal fun CommentInputBar(
     draft: String,
     onDraftChange: (String) -> Unit,
     loggedIn: Boolean,

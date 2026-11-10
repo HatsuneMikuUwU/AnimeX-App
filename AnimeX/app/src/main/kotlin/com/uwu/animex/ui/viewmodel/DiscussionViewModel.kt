@@ -21,6 +21,7 @@ private const val DISCUSSION_PAGE_SIZE = 30
 enum class DiscussionScope {
     Movie,
     Episode,
+    Cuplix,
 }
 
 private class DiscussionPager(
@@ -36,6 +37,8 @@ private class DiscussionPager(
         when (scope) {
             DiscussionScope.Movie -> UserApi.discussionList(targetId, page)
             DiscussionScope.Episode -> UserApi.episodeCommentList(targetId, page)
+            DiscussionScope.Cuplix ->
+                if (page == initialPage) UserApi.cuplixCommentList(targetId) else emptyList()
         }
 
     suspend fun loadFirst(force: Boolean): List<UserApi.Discussion> {
@@ -78,7 +81,9 @@ class DiscussionViewModel private constructor(
             _hasMore.value = true
             _loadMoreError.value = false
         }
-        pager.onFirstPage = { size -> _hasMore.value = size >= DISCUSSION_PAGE_SIZE }
+        pager.onFirstPage = { size ->
+            _hasMore.value = scope != DiscussionScope.Cuplix && size >= DISCUSSION_PAGE_SIZE
+        }
     }
 
     private val _loadingMore = MutableStateFlow(false)
@@ -140,6 +145,7 @@ class DiscussionViewModel private constructor(
                 when (scope) {
                     DiscussionScope.Movie -> UserApi.discussionPost(targetId, text)
                     DiscussionScope.Episode -> UserApi.episodeCommentPost(targetId, text)
+                    DiscussionScope.Cuplix -> UserApi.cuplixCommentPost(targetId, text)
                 }
                 onSent()
                 reloadLoadedPages()
@@ -246,6 +252,7 @@ class DiscussionViewModel private constructor(
             when (scope) {
                 DiscussionScope.Movie -> UserApi.discussionEdit(targetId, id, text)
                 DiscussionScope.Episode -> UserApi.episodeCommentEdit(targetId, id, text)
+                DiscussionScope.Cuplix -> UserApi.cuplixCommentEdit(targetId, id, text)
             }
         }
     }
@@ -259,6 +266,7 @@ class DiscussionViewModel private constructor(
             when (scope) {
                 DiscussionScope.Movie -> UserApi.discussionDelete(id)
                 DiscussionScope.Episode -> UserApi.episodeCommentDelete(id)
+                DiscussionScope.Cuplix -> UserApi.cuplixCommentDelete(id)
             }
         }
     }
@@ -272,6 +280,7 @@ class DiscussionViewModel private constructor(
             when (scope) {
                 DiscussionScope.Movie -> UserApi.discussionReport(id)
                 DiscussionScope.Episode -> UserApi.episodeCommentReport(id)
+                DiscussionScope.Cuplix -> UserApi.cuplixCommentReport(id)
             }
         }
     }

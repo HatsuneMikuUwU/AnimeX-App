@@ -200,6 +200,7 @@ internal fun CuplixClipPage(
     liked: Boolean,
     onLikedChange: (Boolean) -> Unit,
     onOpenAnime: () -> Unit,
+    onNeedLogin: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -456,7 +457,14 @@ internal fun CuplixClipPage(
         if (showComments) {
             val clipId = clip.id.orEmpty()
             if (clipId.isNotBlank()) {
-                CuplixCommentSheet(clipId = clipId, onDismiss = { showComments = false })
+                CuplixCommentSheet(
+                    clipId = clipId,
+                    onDismiss = { showComments = false },
+                    onNeedLogin = {
+                        showComments = false
+                        onNeedLogin()
+                    },
+                )
             } else {
                 showComments = false
             }
