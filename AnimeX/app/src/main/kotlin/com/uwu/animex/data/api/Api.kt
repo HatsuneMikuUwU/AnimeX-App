@@ -560,6 +560,8 @@ object Api {
         return UrlSecurity.secureOrNull(candidate)
     }
 
+    private const val HOME_CUPLIX_COUNT = 5
+
     suspend fun home(
         force: Boolean = false,
         refreshCuplix: Boolean = force,
@@ -582,8 +584,15 @@ object Api {
                 if (cached != null) return cached
                 throw e
             } ?: return cached ?: HomeData()
-        // Row Cuplix di Home sepenuhnya dari `list_scroll`; pull-to-refresh memulainya dari awal.
-        if (refreshCuplix && CuplixPrefs.enabled.value) CuplixHomeFeed.restart()
+        val cuplix =
+            if (CuplixPrefs.enabled.value) {
+                runSuspendCatching { homeCuplix(refreshCuplix) }.getOrDefault(emptyList())
+            } else {
+                emptyList()
+            }
+        // Row Home hanya menampilkan 5 klip pertama dari `home/fyp`; sisanya dimuat dari `list_scroll`.
+        val firstClips = cuplix.take(HOME_CUPLIX_COUNT)
+        if (refreshCuplix && firstClips.isNotEmpty()) CuplixHomeFeed.replace(firstClips) else CuplixHomeFeed.seedIfEmpty(firstClips)
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =
@@ -602,6 +611,7 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
+                    cuplix = cuplix,
                 )
             }
         homeMem = h

@@ -134,8 +134,11 @@ fun CuplixRow(
                 )
                 Text(
                     buildString {
-                        append(clip.episode.orEmpty())
                         if (!hideStats) {
+                            clip.count_views?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.let {
+                                append(it)
+                                append(" dilihat")
+                            }
                             clip.count_likes?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.let {
                                 if (isNotEmpty()) append(" · ")
                                 append("♥ ")

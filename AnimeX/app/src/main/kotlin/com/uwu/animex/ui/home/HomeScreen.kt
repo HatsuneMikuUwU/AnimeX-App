@@ -105,7 +105,7 @@ private fun HomeContent(
     val seenClips by CuplixSeen.seen.collectAsStateWithLifecycle()
     val cuplixClips =
         if (cuplixEnabled) {
-            cuplixFeed.clips.filterNot { cuplixKey(it) in seenClips }
+            cuplixFeed.clips.ifEmpty { h.cuplix.take(5) }.filterNot { cuplixKey(it) in seenClips }
         } else {
             emptyList()
         }
