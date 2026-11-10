@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Public
@@ -115,23 +114,17 @@ internal fun QualitySheet(
     selected: Int,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
-    autoAvailable: Boolean = false,
-    autoSelected: Boolean = false,
-    autoLabel: String = "Otomatis",
-    onAuto: () -> Unit = {},
 ) {
-    val offset = if (autoAvailable) 1 else 0
     PlayerOptionSheet(
         options =
-            (if (autoAvailable) listOf(PlayerSheetOption(Icons.Outlined.AutoAwesome, autoLabel)) else emptyList()) +
-                servers.map { server ->
-                    PlayerSheetOption(
-                        if (server.isDirect) Icons.Outlined.HighQuality else Icons.Outlined.Public,
-                        server.label(),
-                    )
-                },
-        selected = if (autoAvailable && autoSelected) 0 else selected + offset,
+            servers.map { server ->
+                PlayerSheetOption(
+                    if (server.isDirect) Icons.Outlined.HighQuality else Icons.Outlined.Public,
+                    server.label(),
+                )
+            },
+        selected = selected,
         onDismiss = onDismiss,
-        onSelect = { i -> if (autoAvailable && i == 0) onAuto() else onSelect(i - offset) },
+        onSelect = onSelect,
     )
 }

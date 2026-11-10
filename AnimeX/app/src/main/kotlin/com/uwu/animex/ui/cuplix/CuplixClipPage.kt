@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,23 +33,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -109,16 +103,13 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.download.Downloads
-import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixSaved
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.Poster
-import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.cuplixCountText
 import com.uwu.animex.ui.common.hapticClick
@@ -126,8 +117,6 @@ import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.detail.shareAnime
 import com.uwu.animex.ui.download.DownloadStatusButton
-import com.uwu.animex.ui.player.AdaptiveQuality
-import com.uwu.animex.ui.player.AdaptiveQualityController
 import com.uwu.animex.ui.player.PlayerResize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -150,13 +139,9 @@ private val posterCache = java.util.concurrent.ConcurrentHashMap<String, String>
 
 private val OverlayShadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
 
-internal fun List<Server>.clipServer(adaptiveStart: Boolean = false): Server? {
+internal fun List<Server>.clipServer(): Server? {
     val direct = filter { it.isDirect && !it.link.isNullOrBlank() }
-    val chosen = CuplixPrefs.quality.value
-    if (chosen == 0 && adaptiveStart) {
-        AdaptiveQuality.pick(AdaptiveQuality.candidates(direct))?.let { return it }
-    }
-    val target = if (chosen > 0) chosen else if (PlayerPrefs.quality == 360) 360 else 480
+    val target = if (PlayerPrefs.quality == 360) 360 else 480
     return direct
         .filter { it.qualityValue > 0 }
         .minWithOrNull(compareBy<Server>({ abs(it.qualityValue - target) }, { it.qualityValue }))
@@ -170,31 +155,12 @@ private data class HeartBurst(
     val tilt: Float,
 )
 
-private fun buildClipItem(
-    url: String,
-    startMs: Long,
-    endMs: Long,
-): MediaItem {
-    val clipping =
-        MediaItem.ClippingConfiguration
-            .Builder()
-            .setStartPositionMs(startMs)
-            .setEndPositionMs(endMs)
-            .build()
-    return MediaItem
-        .Builder()
-        .setUri(url)
-        .setClippingConfiguration(clipping)
-        .build()
-}
-
 @androidx.annotation.OptIn(UnstableApi::class)
 private fun buildClipPlayer(
     ctx: Context,
     url: String,
     startMs: Long,
     endMs: Long,
-    resumeMs: Long = 0L,
 ): ExoPlayer {
     val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient).setUserAgent(BROWSER_UA)
     val loadControl =
@@ -203,7 +169,18 @@ private fun buildClipPlayer(
             .setBufferDurationsMs(BUFFER_MIN_MS, BUFFER_MAX_MS, BUFFER_FOR_PLAYBACK_MS, BUFFER_FOR_REBUFFER_MS)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
-    val item = buildClipItem(url, startMs, endMs)
+    val clipping =
+        MediaItem.ClippingConfiguration
+            .Builder()
+            .setStartPositionMs(startMs)
+            .setEndPositionMs(endMs)
+            .build()
+    val item =
+        MediaItem
+            .Builder()
+            .setUri(url)
+            .setClippingConfiguration(clipping)
+            .build()
     return ExoPlayer
         .Builder(ctx, DefaultRenderersFactory(ctx).setEnableDecoderFallback(true))
         .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
@@ -219,7 +196,7 @@ private fun buildClipPlayer(
         ).build()
         .apply {
             repeatMode = Player.REPEAT_MODE_ONE
-            if (resumeMs > 0L) setMediaItem(item, resumeMs) else setMediaItem(item)
+            setMediaItem(item)
             prepare()
             playWhenReady = false
         }
@@ -243,51 +220,20 @@ internal fun CuplixClipPage(
     val endMs = remember(clip.time_end, startMs) { clip.clipEndTimeMs(startMs) }
 
     var attempt by remember { mutableIntStateOf(0) }
-    var servers by remember(episodeId, attempt) { mutableStateOf<List<Server>>(emptyList()) }
+    var streamUrl by remember(episodeId, attempt) { mutableStateOf<String?>(null) }
     var failed by remember(episodeId, attempt) { mutableStateOf(false) }
-    val preferredQuality by CuplixPrefs.quality.collectAsStateWithLifecycle()
-    val currentServer = remember(servers, preferredQuality) { servers.clipServer(adaptiveStart = true) }
-    val streamUrl = currentServer?.link
     LaunchedEffect(episodeId, attempt) {
-        val list = resolveClipServers(clip, force = attempt > 0)
-        if (list.isEmpty()) failed = true else servers = list
+        val link = resolveClipServer(clip, force = attempt > 0)?.link
+        if (link.isNullOrBlank()) failed = true else streamUrl = link
     }
-    var showQuality by remember { mutableStateOf(false) }
 
-    val resume = remember { longArrayOf(0L) }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
-    val abrHolder = remember { arrayOfNulls<AdaptiveQualityController>(1) }
-    var autoActive by remember(episodeId, attempt) { mutableStateOf<Server?>(null) }
     DisposableEffect(streamUrl, startMs, endMs) {
-        val created = streamUrl?.let { buildClipPlayer(ctx, it, startMs, endMs, resume[0]) }
+        val created = streamUrl?.let { buildClipPlayer(ctx, it, startMs, endMs) }
         player = created
         onDispose {
             player = null
-            if (created != null) resume[0] = created.currentPosition.coerceAtLeast(0L)
             created?.release()
-        }
-    }
-
-    val adaptiveList = remember(servers) { AdaptiveQuality.candidates(servers) }
-    DisposableEffect(player, preferredQuality, adaptiveList) {
-        val current = player
-        if (current == null || preferredQuality != 0 || adaptiveList.size < 2) {
-            autoActive = null
-            return@DisposableEffect onDispose { }
-        }
-        val controller =
-            AdaptiveQualityController(
-                player = current,
-                candidates = adaptiveList,
-                initialUrl = streamUrl,
-                buildItem = { server -> buildClipItem(server.link.orEmpty(), startMs, endMs) },
-                onSwitched = { server -> autoActive = server },
-            )
-        abrHolder[0] = controller
-        controller.start(scope)
-        onDispose {
-            controller.stop()
-            if (abrHolder[0] === controller) abrHolder[0] = null
         }
     }
 
@@ -339,7 +285,6 @@ internal fun CuplixClipPage(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    if (abrHolder[0]?.onError(error) == true) return
                     failed = true
                 }
             }
@@ -520,35 +465,11 @@ internal fun CuplixClipPage(
                 download = download,
                 onDownload = { startDownload(clip) },
                 onOpenAnime = onOpenAnime,
-                qualityLabel =
-                    if (preferredQuality == 0 && adaptiveList.size >= 2) {
-                        "Auto"
-                    } else {
-                        currentServer?.qualityValue?.takeIf { it > 0 }?.let { "${it}p" } ?: "Kualitas"
-                    },
-                canPickQuality = servers.map { it.qualityValue }.filter { it > 0 }.distinct().size > 1,
-                onQuality = { showQuality = true },
                 modifier =
                     Modifier
                         .align(Alignment.BottomEnd)
                         .navigationBarsPadding()
                         .padding(end = 10.dp, bottom = 44.dp),
-            )
-        }
-
-        if (showQuality) {
-            ClipQualitySheet(
-                servers = servers,
-                chosen = preferredQuality,
-                activeQuality = (autoActive ?: currentServer)?.qualityValue ?: 0,
-                onPick = { q ->
-                    showQuality = false
-                    if (q != preferredQuality) {
-                        failed = false
-                        CuplixPrefs.setQuality(q)
-                    }
-                },
-                onDismiss = { showQuality = false },
             )
         }
 
@@ -730,9 +651,6 @@ private fun ClipRail(
     download: Downloads.Item?,
     onDownload: () -> Unit,
     onOpenAnime: () -> Unit,
-    qualityLabel: String,
-    canPickQuality: Boolean,
-    onQuality: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -761,9 +679,6 @@ private fun ClipRail(
             onClick = onComment,
         )
         RailAction(icon = Icons.Outlined.Share, label = "Bagikan anime", onClick = onShare)
-        if (canPickQuality) {
-            RailAction(icon = Icons.Outlined.HighQuality, label = qualityLabel, onClick = onQuality)
-        }
         RailAction(
             icon = if (saved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
             label = if (saved) "Tersimpan" else "Simpan",
@@ -810,59 +725,6 @@ private fun downloadLabel(item: Downloads.Item?): String =
         Downloads.Status.COMPLETED -> "Diunduh"
         Downloads.Status.FAILED -> "Gagal"
     }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ClipQualitySheet(
-    servers: List<Server>,
-    chosen: Int,
-    activeQuality: Int,
-    onPick: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState =
-        rememberBottomSheetState(
-            initialValue = SheetValue.Hidden,
-            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-        )
-    val qualities = remember(servers) { servers.map { it.qualityValue }.filter { it > 0 }.distinct().sortedDescending() }
-    AppModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            Text(
-                "Kualitas video",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
-            )
-            val count = qualities.size + 1
-            val autoTrailing: (@Composable RowScope.() -> Unit)? =
-                if (chosen == 0 && activeQuality > 0) {
-                    { Text("${activeQuality}p", style = MaterialTheme.typography.bodyMedium) }
-                } else {
-                    null
-                }
-            SheetOptionItem(
-                index = 0,
-                count = count,
-                icon = Icons.Outlined.AutoAwesome,
-                label = "Otomatis",
-                selected = chosen == 0,
-                onClick = { onPick(0) },
-                trailing = autoTrailing,
-            )
-            qualities.forEachIndexed { i, q ->
-                SheetOptionItem(
-                    index = i + 1,
-                    count = count,
-                    icon = Icons.Outlined.HighQuality,
-                    label = "${q}p",
-                    selected = chosen != 0 && activeQuality == q,
-                    onClick = { onPick(q) },
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun RailAction(

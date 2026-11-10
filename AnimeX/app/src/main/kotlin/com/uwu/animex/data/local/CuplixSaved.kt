@@ -50,6 +50,11 @@ object CuplixSaved {
         return saved
     }
 
+    fun clear() {
+        _clips.value = emptyList()
+        persist()
+    }
+
     private fun persist() {
         prefs?.edit()?.putString(KEY_ITEMS, gson.toJson(_clips.value))?.apply()
     }

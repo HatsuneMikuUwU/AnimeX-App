@@ -13,8 +13,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +47,8 @@ import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.detail.DetailActionButton
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import kotlinx.coroutines.launch
 
@@ -54,6 +59,7 @@ fun CuplixAllScreen(
     onBack: () -> Unit,
     onPlay: (Cuplix) -> Unit,
     onOpenSaved: () -> Unit,
+    onOpenHistory: () -> Unit,
 ) {
     val feed by CuplixAllFeed.state.collectAsStateWithLifecycle()
     val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
@@ -92,9 +98,22 @@ fun CuplixAllScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                trailingIcon = Icons.Outlined.BookmarkBorder,
-                trailingDescription = "Cuplix tersimpan",
-                onTrailingClick = onOpenSaved,
+                actions = {
+                    DetailActionButton(enabled = true, onClick = hapticClick(block = onOpenSaved)) {
+                        Icon(
+                            Icons.Outlined.BookmarkBorder,
+                            contentDescription = "Cuplix tersimpan",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    DetailActionButton(enabled = true, onClick = hapticClick(block = onOpenHistory)) {
+                        Icon(
+                            Icons.Outlined.History,
+                            contentDescription = "Riwayat Cuplix",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                },
             )
         },
         containerColor = screenContainerColor(),

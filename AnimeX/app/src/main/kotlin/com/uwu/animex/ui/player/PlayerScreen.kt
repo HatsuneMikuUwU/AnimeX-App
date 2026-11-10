@@ -426,16 +426,7 @@ fun PlayerScreen(
             }
         }
 
-    val autoQuality by PlayerPrefs.autoQuality.collectAsStateWithLifecycle()
-    val autoCandidates = remember(servers) { AdaptiveQuality.candidates(servers) }
-    val autoMode = autoQuality && sel < 0 && autoCandidates.size >= 2
-    val autoStart = remember(autoCandidates) { AdaptiveQuality.pick(autoCandidates) }
-    var autoActive by remember(epId) { mutableStateOf<Server?>(null) }
-
     fun preferredIndex(servers: List<Server>): Int {
-        if (autoQuality && autoStart != null) {
-            servers.indexOfFirst { it.link == autoStart.link }.takeIf { it >= 0 }?.let { return it }
-        }
         val preferred = PlayerPrefs.quality
         if (preferred <= 0) return 0
         return servers
@@ -511,30 +502,14 @@ fun PlayerScreen(
                 PlayerPrefs.setQuality(picked.qualityValue)
             }
         }
-        PlayerPrefs.setAutoQuality(false)
         showDialog = false
     }
-
-    val pickAuto: () -> Unit = {
-        streamError = null
-        failedSel = emptySet()
-        sel = -1
-        PlayerPrefs.setAutoQuality(true)
-        showDialog = false
-    }
-    val autoLabel =
-        "Otomatis" + (autoActive?.qualityValue?.takeIf { it > 0 && autoMode }?.let { " (${it}p)" } ?: "")
 
     val chips =
         buildList {
             add(WatchChip(Icons.Outlined.Speed, speedLabel(speed)) { showSpeed = true })
             if (servers.size > 1) {
-                val q =
-                    if (autoMode) {
-                        "Auto" + (autoActive?.qualityValue?.takeIf { it > 0 }?.let { " · ${it}p" } ?: "")
-                    } else {
-                        currentServer?.quality?.takeIf { it.isNotBlank() } ?: "Kualitas"
-                    }
+                val q = currentServer?.quality?.takeIf { it.isNotBlank() } ?: "Kualitas"
                 add(WatchChip(Icons.Outlined.HighQuality, q) { showDialog = true })
             }
             add(
@@ -611,12 +586,6 @@ fun PlayerScreen(
             onProgressSaved = { crossedDone ->
                 if (crossedDone) applyResume(true)
             },
-            adaptive =
-                if (autoMode) {
-                    AdaptiveSources(autoCandidates) { autoActive = it }
-                } else {
-                    null
-                },
             onStreamError = { err ->
                 if (PlayerPrefs.switchOnFailure.value) {
                     tryNextServer(servers, fromIdx, err.toStreamMessage())
@@ -965,21 +934,10 @@ fun PlayerScreen(
             if (servers.isNotEmpty()) {
                 PlayerOptionPanel(
                     title = "Kualitas",
-                    options = (if (autoCandidates.size >= 2) listOf(autoLabel) else emptyList()) + servers.map { it.label() },
-                    selected =
-                        if (autoCandidates.size >= 2) {
-                            if (autoMode) 0 else resolveSel(servers) + 1
-                        } else {
-                            resolveSel(servers)
-                        },
+                    options = servers.map { it.label() },
+                    selected = resolveSel(servers),
                     onDismiss = { showDialog = false },
-                    onSelect = { i ->
-                        if (autoCandidates.size >= 2) {
-                            if (i == 0) pickAuto() else pickServer(i - 1)
-                        } else {
-                            pickServer(i)
-                        }
-                    },
+                    onSelect = pickServer,
                 )
             }
         }
@@ -1013,10 +971,6 @@ fun PlayerScreen(
                     selected = resolveSel(servers),
                     onDismiss = { showDialog = false },
                     onSelect = pickServer,
-                    autoAvailable = autoCandidates.size >= 2,
-                    autoSelected = autoMode,
-                    autoLabel = autoLabel,
-                    onAuto = pickAuto,
                 )
             }
         }

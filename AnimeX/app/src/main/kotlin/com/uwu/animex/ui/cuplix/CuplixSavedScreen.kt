@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.cuplix
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,12 +12,17 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,7 +44,9 @@ fun CuplixSavedScreen(
     onBack: () -> Unit,
     onPlay: (Cuplix) -> Unit,
 ) {
+    val ctx = LocalContext.current
     val saved by CuplixSaved.clips.collectAsStateWithLifecycle()
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
     val backdrop = rememberBlurBackdrop()
     Scaffold(
         topBar = {
@@ -53,6 +61,9 @@ fun CuplixSavedScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
+                trailingIcon = if (saved.isNotEmpty()) Icons.Outlined.DeleteSweep else null,
+                trailingDescription = "Hapus semua tersimpan",
+                onTrailingClick = { confirmClear = true },
             )
         },
         containerColor = screenContainerColor(),
@@ -84,5 +95,18 @@ fun CuplixSavedScreen(
                 }
             }
         }
+    }
+
+    if (confirmClear) {
+        CuplixClearDialog(
+            title = "Hapus semua tersimpan?",
+            message = "Semua Cuplix yang kamu simpan bakal dihapus dari daftar ini. Riwayat tontonan nggak ikut terhapus.",
+            onConfirm = {
+                confirmClear = false
+                CuplixSaved.clear()
+                Toast.makeText(ctx, "Semua Cuplix tersimpan dihapus", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { confirmClear = false },
+        )
     }
 }
