@@ -313,7 +313,7 @@ internal fun CuplixCardPlaceholder(modifier: Modifier = Modifier) {
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),
     ) {
-        Ph(Modifier.fillMaxWidth().height(218.dp), RoundedCornerShape(16.dp))
+        Ph(Modifier.fillMaxWidth().aspectRatio(CUPLIX_POSTER_RATIO), RoundedCornerShape(16.dp))
         Column(
             Modifier.padding(start = 3.dp, top = 8.dp, bottom = 2.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -325,12 +325,13 @@ internal fun CuplixCardPlaceholder(modifier: Modifier = Modifier) {
 
 @Composable
 private fun CuplixRowPlaceholder() {
+    val scale = rememberHomeCardScale()
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         userScrollEnabled = false,
     ) {
-        items(3) { CuplixCardPlaceholder(Modifier.width(154.dp)) }
+        items(3) { CuplixCardPlaceholder(Modifier.width(154.dp * scale)) }
     }
 }
 

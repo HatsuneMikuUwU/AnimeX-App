@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,11 +36,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.model.Cuplix
+
+internal const val CUPLIX_POSTER_RATIO = 154f / 218f
 
 @Composable
 fun CuplixRow(
@@ -76,7 +76,6 @@ fun CuplixRow(
                 clip = clip,
                 onPlay = onPlay,
                 modifier = Modifier.width(154.dp * scale),
-                posterHeight = 218.dp * scale,
             )
         }
         if (loadingMore && !loadMoreFailed) {
@@ -85,7 +84,7 @@ fun CuplixRow(
         if (loadMoreFailed) {
             item(key = "cuplix:load-more-retry") {
                 Box(
-                    Modifier.width(154.dp * scale).height(218.dp * scale),
+                    Modifier.width(154.dp * scale).aspectRatio(CUPLIX_POSTER_RATIO),
                     contentAlignment = Alignment.Center,
                 ) {
                     TextButton(onClick = onRetryLoadMore) { Text("Gagal muat lagi. Coba lagi") }
@@ -100,7 +99,6 @@ fun CuplixCard(
     clip: Cuplix,
     onPlay: (Cuplix) -> Unit,
     modifier: Modifier = Modifier,
-    posterHeight: Dp? = null,
 ) {
     Column(
         modifier
@@ -113,13 +111,8 @@ fun CuplixCard(
         Box(
             Modifier
                 .fillMaxWidth()
-                .then(
-                    if (posterHeight != null) {
-                        Modifier.height(posterHeight)
-                    } else {
-                        Modifier.aspectRatio(154f / 218f)
-                    },
-                ).clip(RoundedCornerShape(16.dp)),
+                .aspectRatio(CUPLIX_POSTER_RATIO)
+                .clip(RoundedCornerShape(16.dp)),
         ) {
             Poster(clip.url_thumbnail, Modifier.fillMaxSize(), radius = 16.dp)
             Box(
