@@ -81,6 +81,7 @@ object CuplixClipExport {
                                     DefaultDecoderFactory.Builder(ctx).build(),
                                     Clock.DEFAULT,
                                     DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource),
+                                    null, // logSessionId
                                 ),
                             )
                             .addListener(
