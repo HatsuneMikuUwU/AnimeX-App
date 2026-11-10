@@ -213,6 +213,7 @@ object Api {
         homeMemAt = 0L
         CuplixFeed.clear()
         CuplixHomeFeed.clear()
+        CuplixAllFeed.clear()
     }
 
     private fun normalizeBase(raw: String): String {

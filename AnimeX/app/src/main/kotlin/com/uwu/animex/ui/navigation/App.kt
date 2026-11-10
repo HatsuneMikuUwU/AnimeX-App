@@ -41,6 +41,7 @@ import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
+import com.uwu.animex.ui.cuplix.CuplixAllScreen
 import com.uwu.animex.ui.cuplix.CuplixShortsScreen
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
@@ -190,7 +191,7 @@ fun App() {
                     MainScreen(
                         onOpenUpdate = { nav.navigate("update") },
                         onOpen = { nav.navigate("detail/$it") },
-                        onMore = { nav.navigate("list/$it") },
+                        onMore = { nav.navigate(if (it == "cuplix") "clips" else "list/$it") },
                         onFilter = { kind, id, title -> openFilter(kind, id, title) },
                         onOpenCategory = { nav.navigate("category") },
                         onOpenStudio = { nav.navigate("studio") },
@@ -364,6 +365,15 @@ fun App() {
                     LoginScreen(
                         onBack = { nav.popBackStack() },
                         onLoggedIn = { nav.popBackStack() },
+                    )
+                }
+                composable("clips") {
+                    CuplixAllScreen(
+                        onBack = { nav.popBackStack() },
+                        onPlay = { clip ->
+                            CuplixFeed.start(clip)
+                            nav.navigate("cuplix/${Uri.encode(cuplixKey(clip))}")
+                        },
                     )
                 }
                 composable("cuplix/{clipId}") { e ->

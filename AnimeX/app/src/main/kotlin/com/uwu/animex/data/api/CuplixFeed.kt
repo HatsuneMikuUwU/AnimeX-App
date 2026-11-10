@@ -27,6 +27,8 @@ val CuplixFeed = CuplixPager()
 
 val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes", filterPlayable = false, deduplicate = false)
 
+val CuplixAllFeed = CuplixPager(fixedSort = "scroll_likes")
+
 private const val MAX_PAGE_ATTEMPTS = 6
 private const val EMPTY_PAGES_TO_END = 3
 private const val MAX_SCROLL_FAILURES = 2
@@ -109,6 +111,13 @@ class CuplixPager(
             }
         }
         _state.value = CuplixFeedState(clips = base, hasMore = true, baseToken = token)
+    }
+
+    suspend fun reload() {
+        generation++
+        resetPaging()
+        _state.value = CuplixFeedState()
+        fetchNextPage()
     }
 
     suspend fun ensureLoaded() {

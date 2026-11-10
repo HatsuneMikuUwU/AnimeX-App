@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.uwu.animex.data.api.cuplixKey
@@ -68,70 +70,12 @@ fun CuplixRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(clips, key = { cuplixKey(it) }) { clip ->
-            Column(
-                Modifier
-                    .width(154.dp * scale)
-                    .clip(RoundedCornerShape(22.dp))
-                    .cardBackground()
-                    .hapticClick {
-                        if (!clip.id_episode.isNullOrBlank()) onPlay(clip)
-                    }.padding(8.dp),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(218.dp * scale)
-                        .clip(RoundedCornerShape(16.dp)),
-                ) {
-                    Poster(clip.url_thumbnail, Modifier.fillMaxSize(), radius = 16.dp)
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)),
-                                    startY = 120f,
-                                ),
-                            ),
-                    )
-                    Box(
-                        Modifier
-                            .align(Alignment.Center)
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.48f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Outlined.PlayArrow,
-                            contentDescription = "Putar Cuplix",
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp),
-                        )
-                    }
-                    Text(
-                        clip.caption?.takeIf { it.isNotBlank() } ?: clip.anime.orEmpty(),
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 9.dp),
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    clip.anime.orEmpty(),
-                    Modifier.padding(start = 3.dp, top = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            CuplixCard(
+                clip = clip,
+                onPlay = onPlay,
+                modifier = Modifier.width(154.dp * scale),
+                posterHeight = 218.dp * scale,
+            )
         }
         if (loadingMore && !loadMoreFailed) {
             item(key = "cuplix:load-more") { CuplixCardPlaceholder(Modifier.width(154.dp * scale)) }
@@ -146,5 +90,82 @@ fun CuplixRow(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CuplixCard(
+    clip: Cuplix,
+    onPlay: (Cuplix) -> Unit,
+    modifier: Modifier = Modifier,
+    posterHeight: Dp? = null,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(22.dp))
+            .cardBackground()
+            .hapticClick {
+                if (!clip.id_episode.isNullOrBlank()) onPlay(clip)
+            }.padding(8.dp),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .then(
+                    if (posterHeight != null) {
+                        Modifier.height(posterHeight)
+                    } else {
+                        Modifier.aspectRatio(154f / 218f)
+                    },
+                ).clip(RoundedCornerShape(16.dp)),
+        ) {
+            Poster(clip.url_thumbnail, Modifier.fillMaxSize(), radius = 16.dp)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)),
+                            startY = 120f,
+                        ),
+                    ),
+            )
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.48f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.PlayArrow,
+                    contentDescription = "Putar Cuplix",
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp),
+                )
+            }
+            Text(
+                clip.caption?.takeIf { it.isNotBlank() } ?: clip.anime.orEmpty(),
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            clip.anime.orEmpty(),
+            Modifier.padding(start = 3.dp, top = 8.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

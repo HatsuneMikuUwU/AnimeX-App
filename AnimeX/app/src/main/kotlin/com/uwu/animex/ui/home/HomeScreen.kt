@@ -140,7 +140,7 @@ private fun HomeContent(
         if (cuplixEnabled && (cuplixClips.isNotEmpty() || cuplixView.loadingMore || cuplixView.loadMoreFailed)) {
             item(key = "header:Cuplix") {
                 Box(animateItemExpressive()) {
-                    SectionHeader("Cuplix", null, icon = Icons.Outlined.PlayCircleOutline)
+                    SectionHeader("Cuplix", { onMore("cuplix") }, icon = Icons.Outlined.PlayCircleOutline)
                 }
             }
             item(key = "content:Cuplix") {
