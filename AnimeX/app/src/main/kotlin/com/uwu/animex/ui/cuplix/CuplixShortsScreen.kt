@@ -38,7 +38,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
-import com.uwu.animex.data.local.CuplixSeen
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
@@ -48,7 +47,7 @@ import com.uwu.animex.ui.player.findActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private const val SEEN_AFTER_MS = 3_000L
+private const val VIEW_AFTER_MS = 3_000L
 private const val LOAD_MORE_REMAINING = 1
 
 @Composable
@@ -58,11 +57,7 @@ fun CuplixShortsScreen(
     onOpenAnime: (String) -> Unit,
 ) {
     val feed by CuplixFeed.state.collectAsStateWithLifecycle()
-    val seenAtOpen = remember { CuplixSeen.seen.value }
-    val clips =
-        remember(feed.clips) {
-            feed.clips.playable().filter { clipKey(it) == startClipId || clipKey(it) !in seenAtOpen }
-        }
+    val clips = remember(feed.clips) { feed.clips.playable() }
     var loading by remember { mutableStateOf(CuplixFeed.state.value.clips.isEmpty()) }
     var positioned by remember { mutableStateOf(false) }
     val liked = remember { mutableStateMapOf<String, Boolean>() }
@@ -86,8 +81,7 @@ fun CuplixShortsScreen(
     val currentKey = clips.getOrNull(pagerState.currentPage)?.let(::clipKey)
     LaunchedEffect(currentKey, positioned) {
         if (!positioned || currentKey == null) return@LaunchedEffect
-        delay(SEEN_AFTER_MS)
-        CuplixSeen.mark(currentKey)
+        delay(VIEW_AFTER_MS)
         val viewedId = clips.firstOrNull { clipKey(it) == currentKey }?.id
         if (!viewedId.isNullOrBlank() && viewed.add(viewedId)) {
             AppScope.io.launch { runCatching { UserApi.cuplixView(viewedId) } }

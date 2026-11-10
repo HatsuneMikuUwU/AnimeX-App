@@ -234,26 +234,17 @@ internal object AnimeDatabaseMigrations {
                     "ON `tracker_pending_ops` (`source`, `syncId`)",
             ),
         ),
-        Table(
-            name = "cuplix_seen",
-            createSql = """
-                CREATE TABLE `cuplix_seen` (
-                    `clipKey` TEXT NOT NULL,
-                    `seenAt` INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY(`clipKey`)
-                )
-            """.trimIndent(),
-            columns = listOf("clipKey", "seenAt"),
-        ),
     )
 
-    val all: Array<Migration> = (1..6)
+    val all: Array<Migration> = (1..7)
         .map { from ->
-            object : Migration(from, 7) {
+            object : Migration(from, 8) {
                 override fun migrate(db: SupportSQLiteDatabase) {
-                    val target = if (from < 6) tables else tables.filter { it.name == "cuplix_seen" }
-                    target.forEach { table -> rebuildTable(db, table) }
-                    target.flatMap { it.indexes }.forEach { db.execSQL(it) }
+                    if (from < 6) {
+                        tables.forEach { table -> rebuildTable(db, table) }
+                        tables.flatMap { it.indexes }.forEach { db.execSQL(it) }
+                    }
+                    db.execSQL("DROP TABLE IF EXISTS `cuplix_seen`")
                 }
             }
         }.toTypedArray()

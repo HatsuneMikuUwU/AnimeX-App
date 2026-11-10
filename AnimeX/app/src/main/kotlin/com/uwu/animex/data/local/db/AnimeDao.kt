@@ -129,16 +129,4 @@ interface AnimeDao {
         """,
     )
     suspend fun trimSearch(keep: Int = 20)
-
-    @Query("SELECT clipKey FROM cuplix_seen")
-    suspend fun getAllCuplixSeen(): List<String>
-
-    @Upsert
-    suspend fun upsertCuplixSeen(entity: CuplixSeenEntity)
-
-    @Upsert
-    suspend fun upsertCuplixSeenAll(entities: List<CuplixSeenEntity>)
-
-    @Query("DELETE FROM cuplix_seen")
-    suspend fun clearCuplixSeen()
 }

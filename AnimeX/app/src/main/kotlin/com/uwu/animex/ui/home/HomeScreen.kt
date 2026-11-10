@@ -33,7 +33,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.CuplixHomeFeed
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.CuplixPrefs
-import com.uwu.animex.data.local.CuplixSeen
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.HomeData
@@ -102,10 +101,9 @@ private fun HomeContent(
     val continueWatching = rememberContinueWatching(localHistory)
     val cuplixFeed by CuplixHomeFeed.state.collectAsStateWithLifecycle()
     val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
-    val seenClips by CuplixSeen.seen.collectAsStateWithLifecycle()
     val cuplixClips =
         if (cuplixEnabled) {
-            cuplixFeed.clips.ifEmpty { h.cuplix.take(5) }.filterNot { cuplixKey(it) in seenClips }
+            cuplixFeed.clips.ifEmpty { h.cuplix.take(5) }
         } else {
             emptyList()
         }

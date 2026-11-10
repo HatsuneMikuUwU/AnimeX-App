@@ -15,9 +15,8 @@ import androidx.room.RoomDatabase
         TrackerEntryEntity::class,
         TrackerMetaEntity::class,
         TrackerPendingOpEntity::class,
-        CuplixSeenEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class AnimeDatabase : RoomDatabase() {

@@ -2,7 +2,6 @@ package com.uwu.animex.data.api
 
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.network.runSuspendCatching
-import com.uwu.animex.data.local.CuplixSeen
 import com.uwu.animex.data.model.Cuplix
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +65,7 @@ class CuplixPager(
     }
 
     fun replace(first: List<Cuplix>) {
-        val distinct = first.distinctBy(::cuplixKey).filterNot { CuplixSeen.contains(cuplixKey(it)) }
+        val distinct = first.distinctBy(::cuplixKey)
         resetPaging()
         _state.value = CuplixFeedState(clips = distinct, hasMore = first.isNotEmpty())
         if (distinct.isEmpty() && first.isNotEmpty()) loadMore()
@@ -180,7 +179,7 @@ class CuplixPager(
                     emptyScroll = 0
                     val novel = batch.filter { cuplixKey(it) !in seen }.distinctBy(::cuplixKey)
                     if (novel.isNotEmpty()) sawNovel = true
-                    fresh = novel.filterNot { CuplixSeen.contains(cuplixKey(it)) }
+                    fresh = novel
                 }
             }
             val exhausted = reachedEnd || (fresh.isEmpty() && !sawNovel)

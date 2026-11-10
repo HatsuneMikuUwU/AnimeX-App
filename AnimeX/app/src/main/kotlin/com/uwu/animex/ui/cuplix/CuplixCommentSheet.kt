@@ -61,7 +61,10 @@ fun CuplixCommentSheet(
     onDismiss: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded, skipHiddenState = false)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     val comments = remember { mutableStateListOf<UserApi.Discussion>() }
     var loading by remember { mutableStateOf(true) }
     var sending by remember { mutableStateOf(false) }
@@ -230,8 +233,8 @@ private fun CommentRow(
     onReport: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    Row(Modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier = Modifier.weight(1f)) {
+    Row(Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     item.username?.takeIf { it.isNotBlank() } ?: "User",

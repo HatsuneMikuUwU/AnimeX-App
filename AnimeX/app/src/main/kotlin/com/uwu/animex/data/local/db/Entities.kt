@@ -83,9 +83,3 @@ data class EpisodeAlertEntity(
     @ColumnInfo(defaultValue = "0") val lastEpisode: Int = 0,
     @ColumnInfo(defaultValue = "0") val createdAt: Long = System.currentTimeMillis(),
 )
-
-@Entity(tableName = "cuplix_seen")
-data class CuplixSeenEntity(
-    @PrimaryKey val clipKey: String,
-    @ColumnInfo(defaultValue = "0") val seenAt: Long = System.currentTimeMillis(),
-)
