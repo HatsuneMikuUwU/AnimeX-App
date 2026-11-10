@@ -4,7 +4,9 @@ package com.uwu.animex.ui.player
 
 import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +32,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -40,6 +43,8 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.mp4.FragmentedMp4Extractor
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
@@ -53,9 +58,12 @@ import com.uwu.animex.data.local.Progress
 import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.UnknownServiceException
+import kotlin.math.abs
 
 private const val BUFFER_MIN_MS = 30_000
 private const val BUFFER_MAX_MS = 90_000
@@ -63,6 +71,35 @@ private const val BUFFER_FOR_PLAYBACK_MS = 1_500
 private const val BUFFER_FOR_REBUFFER_MS = 3_000
 private const val MAX_AUTO_RETRIES = 2
 private const val RETRY_DELAY_MS = 1_500L
+private const val RESEEK_TOLERANCE_MS = 2_000L
+
+private const val TS_PACKET_SIZE = 188
+private const val TS_SYNC_BYTE: Byte = 0x47
+
+private fun String.isOfflineUri(): Boolean = startsWith("content://") || startsWith("file://")
+
+private suspend fun sniffOfflineMime(
+    ctx: Context,
+    url: String,
+): String =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            ctx.contentResolver.openInputStream(Uri.parse(url))?.use { input ->
+                val head = ByteArray(TS_PACKET_SIZE + 1)
+                var read = 0
+                while (read < head.size) {
+                    val n = input.read(head, read, head.size - read)
+                    if (n < 0) break
+                    read += n
+                }
+                if (read == head.size && head[0] == TS_SYNC_BYTE && head[TS_PACKET_SIZE] == TS_SYNC_BYTE) {
+                    MimeTypes.VIDEO_MP2T
+                } else {
+                    MimeTypes.VIDEO_MP4
+                }
+            }
+        }.getOrNull() ?: MimeTypes.VIDEO_MP4
+    }
 
 private fun PlaybackException.isTransientNetworkError(): Boolean =
     errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
@@ -125,6 +162,9 @@ internal fun ExoView(
                         .setUserAgent(browserUa)
                 val defaultDataSource = DefaultDataSource.Factory(ctx, dataSource)
                 val renderers = DefaultRenderersFactory(ctx).setEnableDecoderFallback(true)
+                val extractors =
+                    DefaultExtractorsFactory()
+                        .setFragmentedMp4ExtractorFlags(FragmentedMp4Extractor.FLAG_MERGE_FRAGMENTED_SIDX)
                 val loadControl =
                     DefaultLoadControl
                         .Builder()
@@ -137,7 +177,9 @@ internal fun ExoView(
                         .build()
                 ExoPlayer
                     .Builder(ctx, renderers)
-                    .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(defaultDataSource))
+                    .setMediaSourceFactory(
+                        DefaultMediaSourceFactory(ctx, extractors).setDataSourceFactory(defaultDataSource),
+                    )
                     .setLoadControl(loadControl)
                     .setWakeMode(C.WAKE_MODE_NETWORK)
                     .build()
@@ -169,10 +211,13 @@ internal fun ExoView(
             } else {
                 0L
             }
+        val offline = url.isOfflineUri()
+        val offlineMime = if (offline) sniffOfflineMime(ctx, url) else null
         val item =
             MediaItem
                 .Builder()
                 .setUri(url)
+                .apply { offlineMime?.let { setMimeType(it) } }
                 .setMediaMetadata(
                     MediaMetadata
                         .Builder()
@@ -183,6 +228,17 @@ internal fun ExoView(
         player.setMediaItem(item, start)
         player.prepare()
         player.playWhenReady = true
+        if (offline && start > 0L) {
+            player.addListener(
+                object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (playbackState != Player.STATE_READY) return
+                        player.removeListener(this)
+                        if (abs(player.currentPosition - start) > RESEEK_TOLERANCE_MS) player.seekTo(start)
+                    }
+                },
+            )
+        }
     }
     LaunchedEffect(player) {
         while (true) {
