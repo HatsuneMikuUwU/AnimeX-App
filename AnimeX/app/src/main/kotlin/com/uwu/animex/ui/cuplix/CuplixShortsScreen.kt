@@ -63,7 +63,6 @@ fun CuplixShortsScreen(
 ) {
     val feed by CuplixFeed.state.collectAsStateWithLifecycle()
     val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
-    // Snapshot at entry so clips watched during this session don't vanish from the pager mid-scroll.
     val watchedAtStart = remember { CuplixWatched.keys.value }
     val clips =
         remember(feed.clips, hideWatched) {

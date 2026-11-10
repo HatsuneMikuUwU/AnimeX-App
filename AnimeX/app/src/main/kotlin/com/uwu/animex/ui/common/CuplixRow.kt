@@ -192,10 +192,6 @@ fun CuplixCard(
     }
 }
 
-/**
- * Formats a Cuplix counter (views, likes, comments) following the "Angka disingkat" setting.
- * Returns null when the value is zero or negative, and the raw text when it isn't numeric.
- */
 @Composable
 fun cuplixCountText(
     raw: String?,

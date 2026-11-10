@@ -20,7 +20,6 @@ object CuplixWatched {
     private val _hideWatched = MutableStateFlow(false)
     val hideWatched: StateFlow<Boolean> = _hideWatched.asStateFlow()
 
-    // Insertion-ordered so the oldest entries are dropped first when the cap is hit.
     private val _keys = MutableStateFlow<Set<String>>(emptySet())
     val keys: StateFlow<Set<String>> = _keys.asStateFlow()
 
@@ -66,7 +65,6 @@ object CuplixWatched {
     }
 }
 
-/** Drops watched clips when [hide] is on, always keeping the clip whose key is [keep]. */
 fun List<Cuplix>.withoutWatched(
     hide: Boolean,
     watched: Set<String>,
