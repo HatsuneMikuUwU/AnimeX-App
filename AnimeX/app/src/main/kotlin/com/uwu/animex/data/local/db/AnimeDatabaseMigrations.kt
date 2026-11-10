@@ -247,7 +247,6 @@ internal object AnimeDatabaseMigrations {
         ),
     )
 
-    // Versi 1..5 membangun ulang semua tabel; versi 6 sudah lengkap kecuali cuplix_seen.
     val all: Array<Migration> = (1..6)
         .map { from ->
             object : Migration(from, 7) {

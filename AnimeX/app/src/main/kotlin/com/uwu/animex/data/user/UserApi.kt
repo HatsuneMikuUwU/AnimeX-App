@@ -340,7 +340,6 @@ object UserApi {
         )
     }
 
-    /** Lapor satu tayangan klip Cuplix ke server (field `id_fyp`, sama seperti app ANIMEIN). */
     suspend fun cuplixView(clipId: String) {
         request(
             "POST",
@@ -350,7 +349,6 @@ object UserApi {
         )
     }
 
-    /** Suka/batal suka klip Cuplix; `action` Y = disukai, N = batal suka (sama seperti app ANIMEIN). */
     suspend fun cuplixLike(
         clipId: String,
         liked: Boolean,

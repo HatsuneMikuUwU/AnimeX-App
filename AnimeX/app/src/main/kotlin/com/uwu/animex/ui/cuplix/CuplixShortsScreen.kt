@@ -58,8 +58,6 @@ fun CuplixShortsScreen(
     onOpenAnime: (String) -> Unit,
 ) {
     val feed by CuplixFeed.state.collectAsStateWithLifecycle()
-    // Klip yang sudah ditonton sebelum layar ini dibuka disembunyikan. Daftarnya tidak berubah selama
-    // layar terbuka supaya halaman pager tidak bergeser saat klip ditandai ditonton.
     val seenAtOpen = remember { CuplixSeen.seen.value }
     val clips =
         remember(feed.clips) {
@@ -85,7 +83,6 @@ fun CuplixShortsScreen(
         positioned = true
     }
 
-    // Klip dianggap sudah ditonton setelah tampil beberapa detik.
     val currentKey = clips.getOrNull(pagerState.currentPage)?.let(::clipKey)
     LaunchedEffect(currentKey, positioned) {
         if (!positioned || currentKey == null) return@LaunchedEffect
@@ -97,9 +94,6 @@ fun CuplixShortsScreen(
         }
     }
 
-    // Muat halaman berikutnya saat sampai di klip terakhir, sama seperti FypActivity di app ANIMEIN
-    // (`daftar.size - posisi < 2`). Kalau feed sudah habis, loadMore() tidak melakukan apa-apa,
-    // jadi daftar berhenti di klip terakhir dan tidak berputar ke awal.
     LaunchedEffect(pagerState, positioned) {
         if (!positioned) return@LaunchedEffect
         snapshotFlow { pagerState.currentPage to pagerState.pageCount }.collect { (page, count) ->
@@ -107,7 +101,6 @@ fun CuplixShortsScreen(
         }
     }
 
-    // Kalau muat sebelumnya gagal, geser di klip terakhir dianggap coba lagi.
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.isScrollInProgress }.collect { scrolling ->
             if (scrolling && pagerState.currentPage >= pagerState.pageCount - 1) CuplixFeed.retryLoadMore()

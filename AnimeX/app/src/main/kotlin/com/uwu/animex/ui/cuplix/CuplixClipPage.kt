@@ -128,7 +128,6 @@ private val posterCache = java.util.concurrent.ConcurrentHashMap<String, String>
 
 private val OverlayShadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
 
-// Klip pendek: default 480p (360p kalau dipilih), sama seperti pemilihan kualitas di app ANIMEIN.
 private fun List<Server>.clipServer(): Server? {
     val direct = filter { it.isDirect && !it.link.isNullOrBlank() }
     val target = if (PlayerPrefs.quality == 360) 360 else 480
@@ -213,7 +212,6 @@ internal fun CuplixClipPage(
     var failed by remember(episodeId, attempt) { mutableStateOf(false) }
     LaunchedEffect(episodeId, attempt) {
         val clipId = clip.id.orEmpty()
-        // Sumber utama: fyp/server (seperti app ANIMEIN); cadangan: stream episode biasa.
         val link =
             (
                 clipId

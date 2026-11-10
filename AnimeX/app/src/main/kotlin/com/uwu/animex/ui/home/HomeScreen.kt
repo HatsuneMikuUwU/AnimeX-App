@@ -109,7 +109,6 @@ private fun HomeContent(
         } else {
             emptyList()
         }
-    // Semua klip yang termuat sudah ditonton: ambil halaman berikutnya supaya row tidak hilang.
     LaunchedEffect(cuplixEnabled, cuplixFeed.clips.size, cuplixClips.isEmpty(), cuplixFeed.loadingMore) {
         if (cuplixEnabled && cuplixClips.isEmpty() && cuplixFeed.clips.isNotEmpty()) CuplixHomeFeed.loadMore()
     }

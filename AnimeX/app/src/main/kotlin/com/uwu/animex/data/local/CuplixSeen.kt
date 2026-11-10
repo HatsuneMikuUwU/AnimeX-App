@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Menyimpan klip Cuplix yang sudah pernah ditonton (tanpa batas) supaya tidak tampil lagi. */
 object CuplixSeen {
     private const val LEGACY_PREFS = "cuplix_seen"
     private const val LEGACY_KEY_IDS = "ids"
@@ -48,7 +47,6 @@ object CuplixSeen {
         AppScope.io.launch { runCatching { dao.clearCuplixSeen() } }
     }
 
-    // Versi sebelumnya menyimpan riwayat di SharedPreferences; pindahkan sekali ke database.
     private suspend fun importLegacyPrefs() {
         val prefs = appContext.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
         val raw = prefs.getString(LEGACY_KEY_IDS, null) ?: return

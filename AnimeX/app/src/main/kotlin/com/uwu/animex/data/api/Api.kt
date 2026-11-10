@@ -560,11 +560,11 @@ object Api {
         return UrlSecurity.secureOrNull(candidate)
     }
 
-    private const val HOME_CUPLIX_COUNT = 3
+    private const val HOME_CUPLIX_COUNT = 5
 
     suspend fun home(
         force: Boolean = false,
-        refreshCuplix: Boolean = force,
+        refreshCuplix: Boolean = true,
     ): HomeData {
         val cached = homeMem
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
@@ -586,7 +586,13 @@ object Api {
             } ?: return cached ?: HomeData()
         val cuplix =
             if (CuplixPrefs.enabled.value) {
-                runSuspendCatching { homeCuplix(refreshCuplix) }.getOrDefault(emptyList())
+                runSuspendCatching { homeCuplix(refreshCuplix) }.getOrElse {
+                    if (refreshCuplix) {
+                        runSuspendCatching { homeCuplix(false) }.getOrDefault(emptyList())
+                    } else {
+                        emptyList()
+                    }
+                }
             } else {
                 emptyList()
             }
@@ -662,19 +668,11 @@ object Api {
         return data?.fyp.orEmpty().filter { it.isPlayable() }
     }
 
-    /** Satu halaman feed Cuplix beserta cursor untuk halaman berikutnya (kosong jika server tidak memberi). */
     data class CuplixPage(
         val clips: List<Cuplix>,
         val cursor: Map<String, String>,
     )
 
-    /**
-     * Halaman feed Cuplix dari endpoint scroll ANIMEIN (`fyp2/list_scroll`), dengan parameter yang
-     * sama seperti FypActivity di app ANIMEIN: `sort` (scroll_likes / scroll_new / scroll_old),
-     * `key_id_fyp`, `id_user_fyp`, `movie_ids`, dan semua field cursor (string kosong kalau belum ada).
-     * Respons berbentuk `data.fyp` + `data.cursor`; cursor itu dikirim balik di request berikutnya.
-     * Melempar exception kalau request/parse gagal; list kosong berarti sort itu sudah habis.
-     */
     suspend fun cuplixScroll(
         sort: String,
         cursor: Map<String, String> = emptyMap(),
@@ -737,10 +735,6 @@ object Api {
         }
     }
 
-    /**
-     * Server video untuk satu klip Cuplix (`fyp/server?id_fyp=`), sumber yang sama dengan app ANIMEIN.
-     * Selalu ambil dari jaringan karena link bisa kedaluwarsa.
-     */
     suspend fun cuplixServers(clipId: String): List<Server> =
         get<StreamData>(
             cuplixServerPath,
@@ -754,7 +748,6 @@ object Api {
                 UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
             }
 
-    // Klip tanpa thumbnail atau tanpa id_episode tidak bisa diputar di player shorts.
     private fun Cuplix.isPlayable(): Boolean = !url_thumbnail.isNullOrBlank() && !id_episode.isNullOrBlank()
 
     private fun homeListParams(page: Int): Map<String, String> =
