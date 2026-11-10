@@ -236,15 +236,24 @@ internal object AnimeDatabaseMigrations {
         ),
     )
 
-    val all: Array<Migration> = (1..7)
+    private const val CUPLIX_WATCHED_SQL =
+        "CREATE TABLE IF NOT EXISTS `cuplix_watched` (`clipKey` TEXT NOT NULL, `clipJson` TEXT, " +
+            "`watchedAt` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`clipKey`))"
+
+    private const val CUPLIX_WATCHED_INDEX =
+        "CREATE INDEX IF NOT EXISTS `index_cuplix_watched_watchedAt` ON `cuplix_watched` (`watchedAt`)"
+
+    val all: Array<Migration> = (1..8)
         .map { from ->
-            object : Migration(from, 8) {
+            object : Migration(from, 9) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     if (from < 6) {
                         tables.forEach { table -> rebuildTable(db, table) }
                         tables.flatMap { it.indexes }.forEach { db.execSQL(it) }
                     }
                     db.execSQL("DROP TABLE IF EXISTS `cuplix_seen`")
+                    db.execSQL(CUPLIX_WATCHED_SQL)
+                    db.execSQL(CUPLIX_WATCHED_INDEX)
                 }
             }
         }.toTypedArray()

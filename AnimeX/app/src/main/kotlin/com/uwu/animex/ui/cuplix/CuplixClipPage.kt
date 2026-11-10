@@ -678,7 +678,7 @@ private fun ClipRail(
                 },
             onClick = onComment,
         )
-        RailAction(icon = Icons.Outlined.Share, label = "Bagikan anime", onClick = onShare)
+        RailAction(icon = Icons.Outlined.Share, label = "Bagikan", onClick = onShare)
         RailAction(
             icon = if (saved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
             label = if (saved) "Tersimpan" else "Simpan",

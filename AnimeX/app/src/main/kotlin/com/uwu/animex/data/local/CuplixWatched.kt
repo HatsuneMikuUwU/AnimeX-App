@@ -3,12 +3,18 @@ package com.uwu.animex.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
+import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.api.cuplixKey
+import com.uwu.animex.data.local.db.AnimeDatabase
+import com.uwu.animex.data.local.db.CuplixDao
+import com.uwu.animex.data.local.db.CuplixWatchedEntity
 import com.uwu.animex.data.model.Cuplix
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object CuplixWatched {
     private const val PREFS = "cuplix_watched"
@@ -19,7 +25,11 @@ object CuplixWatched {
     private const val MAX_CLIPS = 200
 
     private val gson = Gson()
+    private val writeMutex = Mutex()
+    private val scope get() = AppScope.io
+
     private var prefs: SharedPreferences? = null
+    private lateinit var dao: CuplixDao
 
     private val _hideWatched = MutableStateFlow(false)
     val hideWatched: StateFlow<Boolean> = _hideWatched.asStateFlow()
@@ -32,19 +42,18 @@ object CuplixWatched {
 
     fun init(context: Context) {
         if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
         _hideWatched.value = p.getBoolean(KEY_HIDE, false)
-        _keys.value =
-            p
-                .getString(KEY_KEYS, null)
-                ?.split('\n')
-                ?.filterTo(LinkedHashSet()) { it.isNotBlank() }
-                .orEmpty()
-        _clips.value =
-            runCatching { gson.fromJson(p.getString(KEY_CLIPS, null), Array<Cuplix>::class.java)?.toList() }
-                .getOrNull()
-                .orEmpty()
+        dao = AnimeDatabase.get(app).cuplixDao()
+        scope.launch { importLegacy(p) }
+        scope.launch { dao.observeKeys(MAX_KEYS).collect { _keys.value = it.toSet() } }
+        scope.launch {
+            dao.observeHistory(MAX_CLIPS).collect { rows ->
+                _clips.value = rows.mapNotNull { decode(it.clipJson) }
+            }
+        }
     }
 
     fun setHideWatched(value: Boolean) {
@@ -56,33 +65,52 @@ object CuplixWatched {
 
     fun mark(clip: Cuplix) {
         val key = cuplixKey(clip)
-        if (key.isBlank()) return
-        if (key !in _keys.value) {
-            _keys.update { current ->
-                val next = LinkedHashSet(current)
-                next.add(key)
-                while (next.size > MAX_KEYS) next.remove(next.first())
-                next
+        if (key.isBlank() || !::dao.isInitialized) return
+        val json = gson.toJson(clip)
+        scope.launch {
+            writeMutex.withLock {
+                dao.upsert(CuplixWatchedEntity(key, json, System.currentTimeMillis()))
+                dao.trimKeys(MAX_KEYS)
+                dao.trimClips(MAX_CLIPS)
             }
         }
-        _clips.update { list ->
-            (listOf(clip) + list.filter { cuplixKey(it) != key }).take(MAX_CLIPS)
-        }
-        persist()
     }
 
     fun clear() {
-        _keys.value = emptySet()
-        _clips.value = emptyList()
-        prefs?.edit()?.remove(KEY_KEYS)?.remove(KEY_CLIPS)?.apply()
+        if (!::dao.isInitialized) return
+        scope.launch { writeMutex.withLock { dao.clear() } }
     }
 
-    private fun persist() {
-        prefs
-            ?.edit()
-            ?.putString(KEY_KEYS, _keys.value.joinToString("\n"))
-            ?.putString(KEY_CLIPS, gson.toJson(_clips.value))
-            ?.apply()
+    private fun decode(json: String?): Cuplix? =
+        json?.let { runCatching { gson.fromJson(it, Cuplix::class.java) }.getOrNull() }
+
+    private suspend fun importLegacy(p: SharedPreferences) {
+        val legacyKeys =
+            p
+                .getString(KEY_KEYS, null)
+                ?.split('\n')
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+        val legacyClips =
+            runCatching { gson.fromJson(p.getString(KEY_CLIPS, null), Array<Cuplix>::class.java)?.toList() }
+                .getOrNull()
+                .orEmpty()
+        if (legacyKeys.isEmpty() && legacyClips.isEmpty()) return
+        writeMutex.withLock {
+            val now = System.currentTimeMillis()
+            val rows = LinkedHashMap<String, CuplixWatchedEntity>()
+            legacyKeys.forEachIndexed { index, key ->
+                rows[key] = CuplixWatchedEntity(key, null, index.toLong())
+            }
+            legacyClips.forEachIndexed { index, clip ->
+                val key = cuplixKey(clip)
+                if (key.isNotBlank()) rows[key] = CuplixWatchedEntity(key, gson.toJson(clip), now - index)
+            }
+            dao.upsertAll(rows.values.toList())
+            dao.trimKeys(MAX_KEYS)
+            dao.trimClips(MAX_CLIPS)
+            p.edit().remove(KEY_KEYS).remove(KEY_CLIPS).apply()
+        }
     }
 }
 

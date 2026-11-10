@@ -15,14 +15,17 @@ import androidx.room.RoomDatabase
         TrackerEntryEntity::class,
         TrackerMetaEntity::class,
         TrackerPendingOpEntity::class,
+        CuplixWatchedEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
 
     abstract fun trackerDao(): TrackerDao
+
+    abstract fun cuplixDao(): CuplixDao
 
     companion object {
         @Volatile
