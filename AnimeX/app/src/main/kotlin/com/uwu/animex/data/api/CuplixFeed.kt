@@ -27,6 +27,7 @@ val CuplixHomeFeed = CuplixPager(fixedSort = "scroll_likes", filterPlayable = fa
 
 private const val MAX_PAGE_ATTEMPTS = 6
 private const val EMPTY_PAGES_TO_END = 3
+private const val MAX_SCROLL_FAILURES = 2
 
 class CuplixPager(
     private val fixedSort: String? = null,
@@ -56,17 +57,30 @@ class CuplixPager(
     @Volatile
     private var generation = 0
 
+    @Volatile
+    private var replaceOnNext = false
+
+    @Volatile
+    private var scrollFailures = 0
+
     private fun resetPaging() {
         scrollPage = 1
         legacyPage = 1
         scrollUnavailable = false
+        scrollFailures = 0
         scrollCursor = emptyMap()
         excludedFypIds = ""
+    }
+
+    private fun markScrollFailure() {
+        scrollFailures++
+        if (scrollFailures >= MAX_SCROLL_FAILURES) scrollUnavailable = true
     }
 
     fun start(first: Cuplix) {
         generation++
         resetPaging()
+        replaceOnNext = false
         excludedFypIds = first.id.orEmpty()
         _state.value = CuplixFeedState(clips = listOf(first), hasMore = true)
         loadMore()
@@ -75,19 +89,22 @@ class CuplixPager(
     fun clear() {
         generation++
         resetPaging()
+        replaceOnNext = false
         _state.value = CuplixFeedState()
     }
 
     fun refresh() {
         generation++
         resetPaging()
-        _state.value = CuplixFeedState()
+        replaceOnNext = true
+        _state.update { it.copy(hasMore = true, loadingMore = false, loadMoreFailed = false) }
         loadMore()
     }
 
     suspend fun ensureLoaded() {
-        if (_state.value.clips.isNotEmpty() || _state.value.loadingMore || !_state.value.hasMore) return
-        if (_state.value.loadMoreFailed) _state.update { it.copy(loadMoreFailed = false) }
+        val current = _state.value
+        if (current.clips.isNotEmpty() || current.loadingMore) return
+        _state.update { it.copy(hasMore = true, loadMoreFailed = false) }
         fetchNextPage()
     }
 
@@ -128,17 +145,23 @@ class CuplixPager(
                 } catch (e: Exception) {
                     if (gen != generation) return emptyList()
                     if (page > 1) throw e
-                    scrollUnavailable = true
+                    markScrollFailure()
                     return fetchLegacyBatch(gen)
                 }
             if (gen != generation) return emptyList()
-            scrollPage = page + 1
             if (result.cursor.isNotEmpty()) scrollCursor = result.cursor
             excludedFypIds = mergeFypIds(excludedFypIds, result.idFyp)
             val clips = if (filterPlayable) result.clips.filter(::isPlayable) else result.clips
-            if (clips.isNotEmpty()) return clips
-            if (page > 1) return emptyList()
-            scrollUnavailable = true
+            if (clips.isNotEmpty()) {
+                scrollPage = page + 1
+                scrollFailures = 0
+                return clips
+            }
+            if (page > 1) {
+                scrollPage = page + 1
+                return emptyList()
+            }
+            markScrollFailure()
         }
         return fetchLegacyBatch(gen)
     }
@@ -174,7 +197,8 @@ class CuplixPager(
             if (!current.hasMore) return
             _state.update { it.copy(loadingMore = true, loadMoreFailed = false) }
 
-            val seen = current.clips.mapTo(mutableSetOf(), ::cuplixKey)
+            val replace = replaceOnNext
+            val seen = if (replace) emptySet<String>() else current.clips.mapTo(mutableSetOf(), ::cuplixKey)
             var fresh = emptyList<Cuplix>()
             var sawNovel = false
             var reachedEnd = false
@@ -204,10 +228,19 @@ class CuplixPager(
                 if (gen != generation) {
                     it
                 } else {
+                    val clips =
+                        when {
+                            fresh.isEmpty() -> it.clips
+                            replace -> fresh
+                            else -> it.clips + fresh
+                        }
+                    if (fresh.isNotEmpty() || exhausted) replaceOnNext = false
+                    val nothingToShow = clips.isEmpty()
                     it.copy(
-                        clips = if (fresh.isEmpty()) it.clips else it.clips + fresh,
-                        hasMore = !exhausted,
+                        clips = clips,
+                        hasMore = !exhausted || nothingToShow,
                         loadingMore = false,
+                        loadMoreFailed = nothingToShow,
                     )
                 }
             }

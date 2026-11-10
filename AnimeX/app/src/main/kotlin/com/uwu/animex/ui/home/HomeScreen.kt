@@ -103,8 +103,9 @@ private fun HomeContent(
     val cuplixFeed by CuplixHomeFeed.state.collectAsStateWithLifecycle()
     val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
     val cuplixClips = if (cuplixEnabled) cuplixFeed.clips else emptyList()
-    LaunchedEffect(cuplixEnabled) {
-        if (cuplixEnabled) CuplixHomeFeed.ensureLoaded()
+    val cuplixEmpty = cuplixFeed.clips.isEmpty()
+    LaunchedEffect(cuplixEnabled, cuplixEmpty) {
+        if (cuplixEnabled && cuplixEmpty) CuplixHomeFeed.ensureLoaded()
     }
     val scheduleViewModel: ScheduleViewModel = viewModel()
     val scheduleState by scheduleViewModel.state.collectAsStateWithLifecycle()
@@ -129,7 +130,7 @@ private fun HomeContent(
                 RandomPreviewPager(previewList, onOpen, onPlay)
             }
         }
-        if (cuplixClips.isNotEmpty()) {
+        if (cuplixEnabled && (cuplixClips.isNotEmpty() || cuplixFeed.loadingMore || cuplixFeed.loadMoreFailed)) {
             item(key = "header:Cuplix") {
                 Box(animateItemExpressive()) {
                     SectionHeader("Cuplix", null, icon = Icons.Outlined.PlayCircleOutline)
