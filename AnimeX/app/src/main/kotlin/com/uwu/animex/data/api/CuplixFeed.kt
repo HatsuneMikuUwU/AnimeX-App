@@ -98,8 +98,10 @@ class CuplixPager(
         base: List<Cuplix>,
         next: CuplixNext?,
         token: Long,
+        appendToExisting: Boolean = false,
     ) {
         if (token != 0L && _state.value.baseToken == token) return
+        val existingClips = if (appendToExisting) _state.value.clips else emptyList()
         generation++
         resetPaging()
         if (next != null) {
@@ -116,7 +118,13 @@ class CuplixPager(
             base
                 .let { if (filterPlayable) it.filter(::isCuplixPlayable) else it }
                 .let { if (deduplicate) it.distinctBy(::cuplixKey) else it }
-        _state.value = CuplixFeedState(clips = seededClips, hasMore = true, baseToken = token)
+        val clips =
+            if (appendToExisting && deduplicate) {
+                (existingClips + seededClips).distinctBy(::cuplixKey)
+            } else {
+                existingClips + seededClips
+            }
+        _state.value = CuplixFeedState(clips = clips, hasMore = true, baseToken = token)
     }
 
     suspend fun reload() {

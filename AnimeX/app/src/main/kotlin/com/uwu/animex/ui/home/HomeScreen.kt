@@ -106,7 +106,7 @@ private fun HomeContent(
     val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
     val cuplixSeeded = cuplixFeed.baseToken == h.cuplixToken
     val cuplixView =
-        if (cuplixSeeded) {
+        if (cuplixSeeded || cuplixFeed.clips.isNotEmpty()) {
             cuplixFeed
         } else {
             CuplixFeedState(clips = h.cuplix.filter(::isCuplixPlayable), hasMore = false)
@@ -123,7 +123,7 @@ private fun HomeContent(
     }
     LaunchedEffect(h.cuplixToken, cuplixFeed.baseToken) {
         if (CuplixHomeFeed.state.value.baseToken != h.cuplixToken) {
-            CuplixHomeFeed.seed(h.cuplix, h.cuplixNext, h.cuplixToken)
+            CuplixHomeFeed.seed(h.cuplix, h.cuplixNext, h.cuplixToken, appendToExisting = true)
         }
     }
     val needsInitialCuplix = cuplixEnabled && cuplixView.clips.isEmpty()
