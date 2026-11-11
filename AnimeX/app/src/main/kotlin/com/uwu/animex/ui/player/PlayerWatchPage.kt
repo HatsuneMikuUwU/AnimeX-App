@@ -265,7 +265,7 @@ internal fun PlayerWatchPage(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = bottomPad),
         ) {
-            item(key = "info") {
+            item(key = "header") {
                 val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
                 val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
                 val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() }
@@ -281,46 +281,48 @@ internal fun PlayerWatchPage(
                         epMeta?.runtime?.let { "${it}m" },
                         AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
                     ).joinToString("  •  ").takeIf { it.isNotEmpty() }
-                Column(
-                    Modifier.fillMaxWidth().padding(top = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    WatchHeader(headerTitle, headerMeta, Modifier.padding(horizontal = 20.dp))
-                    if (onPrev != null || onNext != null) {
-                        WatchNavButtons(
-                            onPrev = onPrev,
-                            onNext = onNext,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
-                    }
-                    if (chips.isNotEmpty()) {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(chips) { chip -> WatchChipButton(chip) }
-                        }
-                    }
-                    WatchAnimeCard(
-                        title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                        movie = movie,
-                        status = synced.status,
-                        enabled = movie != null && movieId != null,
-                        onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                    CommentsPreviewCard(
-                        state = commentsState,
-                        onClick = onOpenComments,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                WatchHeader(headerTitle, headerMeta)
+            }
+            item(key = "anime") {
+                WatchAnimeRow(
+                    title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                    movie = movie,
+                    status = synced.status,
+                    enabled = movie != null && movieId != null,
+                    onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
+                )
+            }
+            if (onPrev != null || onNext != null) {
+                item(key = "nav-buttons") {
+                    WatchNavButtons(
+                        onPrev = onPrev,
+                        onNext = onNext,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
+            }
+            if (chips.isNotEmpty()) {
+                item(key = "chips") {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(chips) { chip -> WatchChipButton(chip) }
+                    }
+                }
+            }
+            item(key = "comments-preview") {
+                CommentsPreviewCard(
+                    state = commentsState,
+                    onClick = onOpenComments,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
             item(key = "sections") {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     WatchSectionToggleGroup(
@@ -418,10 +420,12 @@ private val WATCH_SECTIONS = listOf("Episode", "Mirip")
 private fun WatchHeader(
     title: String,
     meta: String?,
-    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier.fillMaxWidth(),
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 14.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
@@ -444,44 +448,36 @@ private fun WatchHeader(
 }
 
 @Composable
-private fun WatchAnimeCard(
+private fun WatchAnimeRow(
     title: String,
     movie: Movie?,
     status: WatchStatus?,
     enabled: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    val hideStats = rememberHideStats()
-    val stat =
-        movie
-            ?.favorites
-            ?.takeIf { it.isNotBlank() && !hideStats }
-            ?.let { "${fmtNum(it)} favorit" }
+    val stat = movie?.favorites?.takeIf { it.isNotBlank() }?.let { "${fmtNum(it)} favorit" }
     Row(
-        modifier
+        Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(cs.surfaceContainer)
-            .padding(12.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
             Modifier
                 .size(56.dp)
                 .clip(MaterialShapes.Cookie9Sided.toShape())
-                .background(cs.surfaceContainerHighest),
+                .background(cs.surfaceContainerHigh),
         ) {
             Poster(movie?.image_poster ?: movie?.image_cover, Modifier.fillMaxSize(), radius = 0.dp)
         }
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (stat != null) {
@@ -494,19 +490,24 @@ private fun WatchAnimeCard(
                 )
             }
         }
+        Spacer(Modifier.width(12.dp))
         FilledTonalButton(
             onClick = hapticClick(block = onClick),
             enabled = enabled,
             shapes = ButtonDefaults.shapes(),
-            contentPadding = PaddingValues(horizontal = 14.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
         ) {
             Icon(
                 status?.icon ?: Icons.Outlined.BookmarkBorder,
                 contentDescription = status?.label ?: "Atur status",
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(24.dp),
             )
             Spacer(Modifier.width(4.dp))
-            Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+                Icons.Outlined.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -1045,11 +1046,10 @@ private fun WatchChipButton(chip: WatchChip) {
     val content = if (chip.highlighted) cs.onPrimaryContainer else cs.onSurface
     Row(
         Modifier
-            .height(36.dp)
             .clip(RoundedCornerShape(50))
             .background(container)
             .clickable(onClick = hapticClick(block = chip.onClick))
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(chip.icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
@@ -1070,7 +1070,7 @@ private fun CommentsPreviewCard(
             is UiState.Ready -> state.value
             else -> emptyList()
         }
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(16.dp)
     val motion = MaterialTheme.motionScheme
     Column(
         modifier
@@ -1079,26 +1079,11 @@ private fun CommentsPreviewCard(
             .clip(shape)
             .background(cs.surfaceContainer)
             .clickable(onClick = hapticClick(block = onClick))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(32.dp)
-                    .clip(MaterialShapes.Cookie9Sided.toShape())
-                    .background(cs.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Outlined.Forum,
-                    contentDescription = null,
-                    tint = cs.onPrimaryContainer,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Text("Komentar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Komentar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
             Icon(
                 Icons.Outlined.UnfoldMore,
