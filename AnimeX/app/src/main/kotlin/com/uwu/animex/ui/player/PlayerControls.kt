@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
 import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -157,6 +158,8 @@ fun PlayerChrome(
     onSleepExpired: () -> Unit,
     hasNext: Boolean,
     onNext: () -> Unit,
+    hasPrev: Boolean = false,
+    onPrev: () -> Unit = {},
     hasSources: Boolean,
     onSources: () -> Unit,
     hasEpisodes: Boolean,
@@ -736,24 +739,45 @@ fun PlayerChrome(
                 val mainIcon = if (compact) 34.dp else 44.dp
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 20.dp else 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 24.dp else 24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledIconButton(
-                        onClick = hapticClick {
-                            seekBy(-SEEK_STEP_MS)
-                            poke++
-                        },
-                        modifier = Modifier.size(sideBtn),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = overlayButtonColors(),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Replay10,
-                            contentDescription = "Mundur 10 detik",
-                            tint = Color.White,
-                            modifier = Modifier.size(sideIcon),
-                        )
+                    if (hasPrev) {
+                        FilledIconButton(
+                            onClick = hapticClick {
+                                onPrev()
+                                poke++
+                            },
+                            modifier = Modifier.size(sideBtn),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
+                        ) {
+                            Icon(
+                                Icons.Outlined.SkipPrevious,
+                                contentDescription = "Episode sebelumnya",
+                                tint = Color.White,
+                                modifier = Modifier.size(sideIcon),
+                            )
+                        }
+                    }
+
+                    if (!compact) {
+                        FilledIconButton(
+                            onClick = hapticClick {
+                                seekBy(-SEEK_STEP_MS)
+                                poke++
+                            },
+                            modifier = Modifier.size(sideBtn),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Replay10,
+                                contentDescription = "Mundur 10 detik",
+                                tint = Color.White,
+                                modifier = Modifier.size(sideIcon),
+                            )
+                        }
                     }
 
                     FilledIconButton(
@@ -785,21 +809,42 @@ fun PlayerChrome(
                         }
                     }
 
-                    FilledIconButton(
-                        onClick = hapticClick {
-                            seekBy(SEEK_STEP_MS)
-                            poke++
-                        },
-                        modifier = Modifier.size(sideBtn),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = overlayButtonColors(),
-                    ) {
-                        Icon(
-                            Icons.Outlined.Forward10,
-                            contentDescription = "Maju 10 detik",
-                            tint = Color.White,
-                            modifier = Modifier.size(sideIcon),
-                        )
+                    if (!compact) {
+                        FilledIconButton(
+                            onClick = hapticClick {
+                                seekBy(SEEK_STEP_MS)
+                                poke++
+                            },
+                            modifier = Modifier.size(sideBtn),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Forward10,
+                                contentDescription = "Maju 10 detik",
+                                tint = Color.White,
+                                modifier = Modifier.size(sideIcon),
+                            )
+                        }
+                    }
+
+                    if (hasNext) {
+                        FilledIconButton(
+                            onClick = hapticClick {
+                                onNext()
+                                poke++
+                            },
+                            modifier = Modifier.size(sideBtn),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
+                        ) {
+                            Icon(
+                                Icons.Outlined.SkipNext,
+                                contentDescription = "Episode selanjutnya",
+                                tint = Color.White,
+                                modifier = Modifier.size(sideIcon),
+                            )
+                        }
                     }
                 }
 
@@ -918,8 +963,6 @@ fun PlayerChrome(
                             }
                             if (opVisible) {
                                 PillButton(Icons.Outlined.FastForward, "Lewati OP") { skipOp() }
-                            } else if (hasNext) {
-                                PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                             }
                         }
                     }

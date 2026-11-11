@@ -65,7 +65,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.automirrored.outlined.Reply
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Star
@@ -320,15 +320,6 @@ internal fun PlayerWatchPage(
                     chips = chips,
                 )
             }
-            if (onPrev != null || onNext != null) {
-                item(key = "nav-buttons") {
-                    WatchNavButtons(
-                        onPrev = onPrev,
-                        onNext = onNext,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            }
             item(key = "comments-preview") {
                 CommentsPreviewCard(
                     state = commentsState,
@@ -580,10 +571,11 @@ private fun WatchActionRow(
             Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
         }
         Spacer(Modifier.width(12.dp))
-        FilledTonalButton(
+        Button(
             onClick = hapticClick(block = onStatusClick),
             enabled = statusEnabled,
             shapes = ButtonDefaults.shapes(),
+            colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
             contentPadding = PaddingValues(horizontal = 12.dp),
         ) {
             Icon(
@@ -609,7 +601,13 @@ private fun WatchActionRow(
             }
         }
         IconButton(onClick = hapticClick(block = onShare)) {
-            Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = cs.onSurface)
+            // YouTube-style share: Reply arrow mirrored so it points right
+            Icon(
+                Icons.AutoMirrored.Outlined.Reply,
+                contentDescription = "Bagikan",
+                tint = cs.onSurface,
+                modifier = Modifier.graphicsLayer { scaleX = -1f },
+            )
         }
         if (overflow.isNotEmpty()) {
             Box {
@@ -1072,100 +1070,6 @@ private fun InlineHotRecCard(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
         )
-    }
-}
-
-@Composable
-private fun WatchNavButtons(
-    onPrev: (() -> Unit)?,
-    onNext: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
-    val prevSource = remember { MutableInteractionSource() }
-    val nextSource = remember { MutableInteractionSource() }
-    val prevPressed by prevSource.collectIsPressedAsState()
-    val nextPressed by nextSource.collectIsPressedAsState()
-    val prevWidth by animateDpAsState(
-        targetValue = if (prevPressed) 76.dp else 64.dp,
-        animationSpec = motion.fastSpatialSpec(),
-        label = "prevWidth",
-    )
-    val outer = 24.dp
-    val prevInner by animateDpAsState(
-        targetValue = if (prevPressed) outer else 8.dp,
-        animationSpec = motion.fastSpatialSpec(),
-        label = "prevInner",
-    )
-    val nextInner by animateDpAsState(
-        targetValue = if (nextPressed) outer else 8.dp,
-        animationSpec = motion.fastSpatialSpec(),
-        label = "nextInner",
-    )
-    val both = onPrev != null && onNext != null
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        if (onPrev != null) {
-            FilledTonalButton(
-                onClick = hapticClick(block = onPrev),
-                modifier = (if (both) Modifier.width(prevWidth) else Modifier.weight(1f)).height(48.dp),
-                shape =
-                    if (both) {
-                        RoundedCornerShape(
-                            topStart = outer,
-                            bottomStart = outer,
-                            topEnd = prevInner.coerceAtLeast(0.dp),
-                            bottomEnd = prevInner.coerceAtLeast(0.dp),
-                        )
-                    } else {
-                        RoundedCornerShape(outer)
-                    },
-                colors =
-                    if (both) {
-                        ButtonDefaults.filledTonalButtonColors(
-                            containerColor = cs.secondaryContainer,
-                            contentColor = cs.onSecondaryContainer,
-                        )
-                    } else {
-                        ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary)
-                    },
-                contentPadding = if (both) PaddingValues(0.dp) else PaddingValues(horizontal = 16.dp),
-                interactionSource = prevSource,
-            ) {
-                Icon(
-                    Icons.Outlined.SkipPrevious,
-                    contentDescription = if (both) "Episode sebelumnya" else null,
-                    modifier = Modifier.size(20.dp),
-                )
-                if (!both) {
-                    Spacer(Modifier.width(8.dp))
-                    Text("Sebelumnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                }
-            }
-        }
-        if (onNext != null) {
-            Button(
-                onClick = hapticClick(block = onNext),
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape =
-                    if (both) {
-                        RoundedCornerShape(
-                            topStart = nextInner.coerceAtLeast(0.dp),
-                            bottomStart = nextInner.coerceAtLeast(0.dp),
-                            topEnd = outer,
-                            bottomEnd = outer,
-                        )
-                    } else {
-                        RoundedCornerShape(outer)
-                    },
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                interactionSource = nextSource,
-            ) {
-                Text("Selanjutnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.Outlined.SkipNext, contentDescription = null, modifier = Modifier.size(20.dp))
-            }
-        }
     }
 }
 

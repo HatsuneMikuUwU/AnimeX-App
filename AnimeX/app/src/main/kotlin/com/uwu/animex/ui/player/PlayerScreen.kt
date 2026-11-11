@@ -617,6 +617,8 @@ fun PlayerScreen(
                 onSleepExpired = { autoNext = null },
                 hasNext = nextEp != null,
                 onNext = goNext,
+                hasPrev = prevEp != null,
+                onPrev = goPrev,
                 hasSources = servers.size > 1,
                 onSources = { showDialog = true },
                 hasEpisodes = movieId != null,
