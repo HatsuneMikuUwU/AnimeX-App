@@ -1,6 +1,16 @@
 package com.uwu.animex.ui.cuplix
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +63,10 @@ import kotlinx.coroutines.launch
 
 private const val VIEW_AFTER_MS = 3_000L
 private const val LOAD_MORE_REMAINING = 1
+private const val SCROLL_HINT_MS = 5_000L
+
+// Shown once per app launch until the user swipes to another clip.
+private var scrollHintDismissed = false
 
 @Composable
 fun CuplixShortsScreen(
@@ -86,6 +100,20 @@ fun CuplixShortsScreen(
     }
 
     val pagerState = rememberPagerState(pageCount = { clips.size })
+    var showScrollHint by remember { mutableStateOf(!scrollHintDismissed) }
+    LaunchedEffect(positioned, showScrollHint) {
+        if (!positioned || !showScrollHint) return@LaunchedEffect
+        delay(SCROLL_HINT_MS)
+        showScrollHint = false
+    }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.isScrollInProgress }.collect { scrolling ->
+            if (scrolling) {
+                scrollHintDismissed = true
+                showScrollHint = false
+            }
+        }
+    }
     LaunchedEffect(clips.isNotEmpty()) {
         if (clips.isEmpty() || positioned) return@LaunchedEffect
         val startIndex = clips.indexOfFirst { clipKey(it) == startClipId }.takeIf { it >= 0 } ?: 0
@@ -194,6 +222,20 @@ fun CuplixShortsScreen(
             }
         }
 
+        AnimatedVisibility(
+            visible = showScrollHint && clips.size > 1 && positioned,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 12.dp)
+                    .zIndex(3f),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            ScrollHint()
+        }
+
         val atLastClip = clips.isNotEmpty() && pagerState.currentPage >= clips.lastIndex
         if (atLastClip && feed.loadingMore) {
             AppLoadingIndicator(
@@ -236,3 +278,31 @@ fun CuplixShortsScreen(
 private fun List<Cuplix>.playable(): List<Cuplix> = filter { !it.id_episode.isNullOrBlank() }
 
 private fun clipKey(clip: Cuplix): String = cuplixKey(clip)
+
+@Composable
+private fun ScrollHint() {
+    val transition = rememberInfiniteTransition(label = "scrollHint")
+    val t by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "hintShift",
+    )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            Icons.Outlined.KeyboardArrowUp,
+            contentDescription = null,
+            tint = Color.White,
+            modifier =
+                Modifier.graphicsLayer {
+                    translationY = -10.dp.toPx() * t
+                    alpha = 1f - 0.5f * t
+                },
+        )
+        Text(
+            "Geser ke atas",
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
+}

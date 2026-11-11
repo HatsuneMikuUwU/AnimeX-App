@@ -65,7 +65,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.automirrored.outlined.Reply
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Star
@@ -603,13 +603,7 @@ private fun WatchActionRow(
             }
         }
         IconButton(onClick = hapticClick(block = onShare)) {
-            // YouTube-style share: Reply arrow mirrored so it points right
-            Icon(
-                Icons.AutoMirrored.Outlined.Reply,
-                contentDescription = "Bagikan",
-                tint = cs.onSurface,
-                modifier = Modifier.graphicsLayer { scaleX = -1f },
-            )
+            Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = cs.onSurface)
         }
         if (overflow.isNotEmpty()) {
             Box {
