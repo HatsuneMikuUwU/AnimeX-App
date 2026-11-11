@@ -47,7 +47,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -64,6 +63,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
@@ -71,20 +71,20 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -99,10 +99,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -111,8 +116,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -204,6 +213,7 @@ internal fun PlayerWatchPage(
     val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val synced = rememberSyncedWatched(movieId)
+    val hideStats = rememberHideStats()
     val openStatus = LocalOpenStatusSheet.current
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
@@ -275,21 +285,30 @@ internal fun PlayerWatchPage(
                         epTitle != null -> epTitle
                         else -> "Episode $epNumber"
                     }
-                val headerMeta =
+                val headerDetails =
                     listOfNotNull(
                         epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
                         epMeta?.runtime?.let { "${it}m" },
                         AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
-                    ).joinToString("  •  ").takeIf { it.isNotEmpty() }
-                WatchHeader(headerTitle, headerMeta)
+                        movie
+                            ?.favorites
+                            ?.takeIf { it.isNotBlank() && !hideStats }
+                            ?.let { "${fmtNum(it)} favorit" },
+                    )
+                WatchHeader(
+                    title = headerTitle,
+                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                    details = headerDetails,
+                )
             }
-            item(key = "anime") {
-                WatchAnimeRow(
-                    title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                    movie = movie,
+            item(key = "actions") {
+                WatchActionRow(
+                    poster = movie?.image_poster ?: movie?.image_cover,
                     status = synced.status,
-                    enabled = movie != null && movieId != null,
-                    onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
+                    statusEnabled = movie != null && movieId != null,
+                    onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
+                    onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
+                    chips = chips,
                 )
             }
             if (onPrev != null || onNext != null) {
@@ -299,16 +318,6 @@ internal fun PlayerWatchPage(
                         onNext = onNext,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
-                }
-            }
-            if (chips.isNotEmpty()) {
-                item(key = "chips") {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(chips) { chip -> WatchChipButton(chip) }
-                    }
                 }
             }
             item(key = "comments-preview") {
@@ -416,13 +425,57 @@ internal fun PlayerWatchPage(
 
 private val WATCH_SECTIONS = listOf("Episode", "Mirip")
 
+private fun Modifier.endFade(
+    enabled: Boolean,
+    width: Dp = 40.dp,
+): Modifier =
+    if (!enabled) {
+        this
+    } else {
+        this
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                val w = width.toPx().coerceAtMost(size.width)
+                drawRect(
+                    brush =
+                        Brush.horizontalGradient(
+                            colors = listOf(Color.Black, Color.Transparent),
+                            startX = size.width - w,
+                            endX = size.width,
+                        ),
+                    topLeft = Offset(size.width - w, 0f),
+                    size = Size(w, size.height),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
+    }
+
 @Composable
 private fun WatchHeader(
     title: String,
-    meta: String?,
+    animeTitle: String,
+    details: List<String>,
 ) {
-    var expanded by rememberSaveable(title) { mutableStateOf(false) }
+    val cs = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
+    var expanded by rememberSaveable(title) { mutableStateOf(false) }
+    var titleOverflow by remember(title) { mutableStateOf(false) }
+    var metaOverflow by remember(animeTitle, details) { mutableStateOf(false) }
+    val metaLine =
+        remember(animeTitle, details, cs.onSurface) {
+            buildAnnotatedString {
+                if (animeTitle.isNotBlank()) {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = cs.onSurface)) {
+                        append(animeTitle)
+                    }
+                }
+                details.forEach {
+                    if (length > 0) append("   ")
+                    append(it)
+                }
+            }
+        }
     Column(
         Modifier
             .fillMaxWidth()
@@ -430,37 +483,69 @@ private fun WatchHeader(
             .padding(horizontal = 16.dp)
             .padding(top = 14.dp, bottom = 4.dp)
             .animateContentSize(motion.defaultSpatialSpec()),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
             title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             maxLines = if (expanded) Int.MAX_VALUE else 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Clip,
+            onTextLayout = { if (!expanded) titleOverflow = it.hasVisualOverflow },
+            modifier = Modifier.endFade(!expanded && titleOverflow),
         )
-        if (!meta.isNullOrBlank()) {
+        if (expanded) {
+            if (metaLine.isNotEmpty()) {
+                Text(
+                    metaLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurfaceVariant,
+                )
+            }
             Text(
-                meta,
+                "lebih sedikit",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.Medium,
             )
+        } else if (metaLine.isNotEmpty() || titleOverflow) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    metaLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                    onTextLayout = { metaOverflow = it.hasVisualOverflow },
+                    modifier = Modifier.weight(1f, fill = false).endFade(metaOverflow),
+                )
+                if (titleOverflow || metaOverflow) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "selengkapnya",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun WatchAnimeRow(
-    title: String,
-    movie: Movie?,
+private fun WatchActionRow(
+    poster: String?,
     status: WatchStatus?,
-    enabled: Boolean,
-    onClick: () -> Unit,
+    statusEnabled: Boolean,
+    onStatusClick: () -> Unit,
+    onOpenAnime: (() -> Unit)?,
+    chips: List<WatchChip>,
 ) {
     val cs = MaterialTheme.colorScheme
-    val stat = movie?.favorites?.takeIf { it.isNotBlank() }?.let { "${fmtNum(it)} favorit" }
+    val maxSlots = 3
+    val direct = if (chips.size <= maxSlots) chips else chips.take(maxSlots - 1)
+    val overflow = chips.drop(direct.size)
+    var menuOpen by remember { mutableStateOf(false) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -469,35 +554,23 @@ private fun WatchAnimeRow(
     ) {
         Box(
             Modifier
-                .size(56.dp)
-                .clip(MaterialShapes.Cookie9Sided.toShape())
-                .background(cs.surfaceContainerHigh),
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(cs.surfaceContainerHigh)
+                .then(
+                    if (onOpenAnime != null) {
+                        Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
-            Poster(movie?.image_poster ?: movie?.image_cover, Modifier.fillMaxSize(), radius = 0.dp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (stat != null) {
-                Text(
-                    stat,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
         }
         Spacer(Modifier.width(12.dp))
         FilledTonalButton(
-            onClick = hapticClick(block = onClick),
-            enabled = enabled,
+            onClick = hapticClick(block = onStatusClick),
+            enabled = statusEnabled,
             shapes = ButtonDefaults.shapes(),
             contentPadding = PaddingValues(horizontal = 16.dp),
         ) {
@@ -512,6 +585,44 @@ private fun WatchAnimeRow(
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
             )
+        }
+        Spacer(Modifier.weight(1f))
+        direct.forEach { chip ->
+            IconButton(onClick = hapticClick(block = chip.onClick)) {
+                Icon(
+                    chip.icon,
+                    contentDescription = chip.label,
+                    tint = if (chip.highlighted) cs.primary else cs.onSurface,
+                )
+            }
+        }
+        if (overflow.isNotEmpty()) {
+            Box {
+                IconButton(onClick = hapticClick(block = { menuOpen = true })) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = "Lainnya")
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    overflow.forEach { chip ->
+                        DropdownMenuItem(
+                            text = { Text(chip.label) },
+                            leadingIcon = {
+                                Icon(
+                                    chip.icon,
+                                    contentDescription = null,
+                                    tint = if (chip.highlighted) cs.primary else cs.onSurfaceVariant,
+                                )
+                            },
+                            onClick =
+                                hapticClick(
+                                    block = {
+                                        menuOpen = false
+                                        chip.onClick()
+                                    },
+                                ),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1040,25 +1151,6 @@ private fun WatchNavButtons(
                 Icon(Icons.Outlined.SkipNext, contentDescription = null, modifier = Modifier.size(20.dp))
             }
         }
-    }
-}
-
-@Composable
-private fun WatchChipButton(chip: WatchChip) {
-    val cs = MaterialTheme.colorScheme
-    val container = if (chip.highlighted) cs.primaryContainer else cs.surfaceContainerHigh
-    val content = if (chip.highlighted) cs.onPrimaryContainer else cs.onSurface
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(container)
-            .clickable(onClick = hapticClick(block = chip.onClick))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(chip.icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(chip.label, style = MaterialTheme.typography.labelLarge, color = content, maxLines = 1)
     }
 }
 
