@@ -499,6 +499,7 @@ private fun WatchHeader(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             maxLines = if (expanded) Int.MAX_VALUE else 1,
+            softWrap = expanded,
             overflow = TextOverflow.Clip,
             onTextLayout = { if (!expanded) titleOverflow = it.hasVisualOverflow },
             modifier = Modifier.endFade(!expanded && titleOverflow),
@@ -523,6 +524,7 @@ private fun WatchHeader(
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                     maxLines = 1,
+                    softWrap = false,
                     overflow = TextOverflow.Clip,
                     onTextLayout = { metaOverflow = it.hasVisualOverflow },
                     modifier = Modifier.weight(1f, fill = false).endFade(metaOverflow),
@@ -582,7 +584,7 @@ private fun WatchActionRow(
             onClick = hapticClick(block = onStatusClick),
             enabled = statusEnabled,
             shapes = ButtonDefaults.shapes(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp),
         ) {
             Icon(
                 status?.icon ?: Icons.Outlined.BookmarkBorder,
