@@ -476,8 +476,18 @@ fun PlayerChrome(
         if (locked) visible = false
     }
 
-    val hasOpeningStamp = stamps.any { it.type == SkipType.Opening || it.type == SkipType.MixedOpening }
-    val opVisible = stampsLoaded && !hasOpeningStamp && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
+    val openingStamp = stamps.firstOrNull { it.type == SkipType.Opening || it.type == SkipType.MixedOpening }
+    val opVisible = stampsLoaded && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
+    val skipOp: () -> Unit = {
+        val end = openingStamp?.endMs
+        if (end != null && pos < end - 1_000) {
+            player.seekTo(end)
+            pos = end
+        } else {
+            seekBy(skipIntroMs.toLong())
+        }
+        poke++
+    }
 
     val gestures: Modifier =
         if (locked) {
@@ -685,10 +695,7 @@ fun PlayerChrome(
                     if (compact) {
                         Spacer(Modifier.weight(1f))
                         if (opVisible) {
-                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                seekBy(skipIntroMs.toLong())
-                                poke++
-                            }
+                            PillButton(Icons.Outlined.FastForward, "Lewati OP") { skipOp() }
                         }
                         Spacer(Modifier.width(8.dp))
                     } else {
@@ -910,11 +917,9 @@ fun PlayerChrome(
                                 }
                             }
                             if (opVisible) {
-                                PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                    seekBy(skipIntroMs.toLong())
-                                    poke++
-                                }
-                            } else if (hasNext) {
+                                PillButton(Icons.Outlined.FastForward, "Lewati OP") { skipOp() }
+                            }
+                            if (hasNext) {
                                 PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                             }
                         }
