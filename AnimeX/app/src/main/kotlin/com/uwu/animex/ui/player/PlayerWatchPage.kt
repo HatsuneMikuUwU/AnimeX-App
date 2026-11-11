@@ -421,18 +421,22 @@ private fun WatchHeader(
     title: String,
     meta: String?,
 ) {
+    var expanded by rememberSaveable(title) { mutableStateOf(false) }
+    val motion = MaterialTheme.motionScheme
     Column(
         Modifier
             .fillMaxWidth()
+            .clickable(onClick = hapticClick(block = { expanded = !expanded }))
             .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 4.dp),
+            .padding(top = 14.dp, bottom = 4.dp)
+            .animateContentSize(motion.defaultSpatialSpec()),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            maxLines = 2,
+            maxLines = if (expanded) Int.MAX_VALUE else 1,
             overflow = TextOverflow.Ellipsis,
         )
         if (!meta.isNullOrBlank()) {
