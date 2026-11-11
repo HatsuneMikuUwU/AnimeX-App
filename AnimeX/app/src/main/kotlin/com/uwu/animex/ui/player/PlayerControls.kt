@@ -739,26 +739,25 @@ fun PlayerChrome(
                 val mainIcon = if (compact) 34.dp else 44.dp
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 24.dp else 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (hasPrev) {
-                        FilledIconButton(
-                            onClick = hapticClick {
-                                onPrev()
-                                poke++
-                            },
-                            modifier = Modifier.size(sideBtn),
-                            shapes = IconButtonDefaults.shapes(),
-                            colors = overlayButtonColors(),
-                        ) {
-                            Icon(
-                                Icons.Outlined.SkipPrevious,
-                                contentDescription = "Episode sebelumnya",
-                                tint = Color.White,
-                                modifier = Modifier.size(sideIcon),
-                            )
-                        }
+                    FilledIconButton(
+                        onClick = hapticClick {
+                            onPrev()
+                            poke++
+                        },
+                        enabled = hasPrev,
+                        modifier = Modifier.size(sideBtn),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
+                    ) {
+                        Icon(
+                            Icons.Outlined.SkipPrevious,
+                            contentDescription = "Episode sebelumnya",
+                            tint = Color.White.copy(alpha = if (hasPrev) 1f else 0.35f),
+                            modifier = Modifier.size(sideIcon),
+                        )
                     }
 
                     if (!compact) {
@@ -828,23 +827,22 @@ fun PlayerChrome(
                         }
                     }
 
-                    if (hasNext) {
-                        FilledIconButton(
-                            onClick = hapticClick {
-                                onNext()
-                                poke++
-                            },
-                            modifier = Modifier.size(sideBtn),
-                            shapes = IconButtonDefaults.shapes(),
-                            colors = overlayButtonColors(),
-                        ) {
-                            Icon(
-                                Icons.Outlined.SkipNext,
-                                contentDescription = "Episode selanjutnya",
-                                tint = Color.White,
-                                modifier = Modifier.size(sideIcon),
-                            )
-                        }
+                    FilledIconButton(
+                        onClick = hapticClick {
+                            onNext()
+                            poke++
+                        },
+                        enabled = hasNext,
+                        modifier = Modifier.size(sideBtn),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
+                    ) {
+                        Icon(
+                            Icons.Outlined.SkipNext,
+                            contentDescription = "Episode selanjutnya",
+                            tint = Color.White.copy(alpha = if (hasNext) 1f else 0.35f),
+                            modifier = Modifier.size(sideIcon),
+                        )
                     }
                 }
 

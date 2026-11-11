@@ -178,6 +178,8 @@ internal fun overlayButtonColors() =
     IconButtonDefaults.filledIconButtonColors(
         containerColor = Color(0x66000000),
         contentColor = Color.White,
+        disabledContainerColor = Color(0x66000000),
+        disabledContentColor = Color.White.copy(alpha = 0.35f),
     )
 
 @Composable
