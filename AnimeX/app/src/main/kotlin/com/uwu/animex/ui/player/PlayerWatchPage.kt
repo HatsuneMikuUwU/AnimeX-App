@@ -65,6 +65,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Star
@@ -168,6 +169,7 @@ import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.detail.EpisodeRow
+import com.uwu.animex.ui.detail.shareAnime
 import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
 import com.uwu.animex.ui.discussion.ThreadState
@@ -214,6 +216,7 @@ internal fun PlayerWatchPage(
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val synced = rememberSyncedWatched(movieId)
     val hideStats = rememberHideStats()
+    val ctx = LocalContext.current
     val openStatus = LocalOpenStatusSheet.current
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
@@ -308,6 +311,12 @@ internal fun PlayerWatchPage(
                     statusEnabled = movie != null && movieId != null,
                     onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                     onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
+                    onShare = {
+                        val target =
+                            movie?.copy(id = movieId)
+                                ?: Movie(id = movieId, title = animeTitle)
+                        shareAnime(ctx, target)
+                    },
                     chips = chips,
                 )
             }
@@ -539,6 +548,7 @@ private fun WatchActionRow(
     statusEnabled: Boolean,
     onStatusClick: () -> Unit,
     onOpenAnime: (() -> Unit)?,
+    onShare: () -> Unit,
     chips: List<WatchChip>,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -595,6 +605,9 @@ private fun WatchActionRow(
                     tint = if (chip.highlighted) cs.primary else cs.onSurface,
                 )
             }
+        }
+        IconButton(onClick = hapticClick(block = onShare)) {
+            Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = cs.onSurface)
         }
         if (overflow.isNotEmpty()) {
             Box {
