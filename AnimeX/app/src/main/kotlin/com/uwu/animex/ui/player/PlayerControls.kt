@@ -918,8 +918,7 @@ fun PlayerChrome(
                             }
                             if (opVisible) {
                                 PillButton(Icons.Outlined.FastForward, "Lewati OP") { skipOp() }
-                            }
-                            if (hasNext) {
+                            } else if (hasNext) {
                                 PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                             }
                         }
