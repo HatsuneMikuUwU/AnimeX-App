@@ -36,6 +36,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
+import com.uwu.animex.ui.navigation.EpisodeLink
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.theme.AppTheme
@@ -115,6 +116,14 @@ class MainActivity : ComponentActivity() {
         if (uri.scheme != "animex" || uri.host != "anime") return
         val id = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return
         intent.data = null
+        val epId = uri.getQueryParameter("ep")?.takeIf { it.isNotBlank() }
+        if (epId != null) {
+            val idx = uri.getQueryParameter("idx")?.takeIf { it.isNotBlank() }
+            val name = uri.getQueryParameter("t").orEmpty()
+            val title = if (idx != null && name.isNotEmpty()) "$name - Ep $idx" else name
+            NotificationRouter.pendingEpisode.value = EpisodeLink(id, epId, idx, title)
+            return
+        }
         NotificationRouter.pendingDetail.value = id
     }
 

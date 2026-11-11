@@ -97,6 +97,18 @@ fun App() {
         nav.navigate("detail/$id")
     }
 
+    val pendingEpisode by NotificationRouter.pendingEpisode.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingEpisode) {
+        val link = pendingEpisode ?: return@LaunchedEffect
+        NotificationRouter.pendingEpisode.value = null
+        showSettings = false
+        nav.navigate(
+            "player/${Uri.encode(link.epId)}?title=${Uri.encode(link.title)}" +
+                "&movieId=${Uri.encode(link.movieId)}" +
+                "&epIndex=${Uri.encode(link.epIndex.orEmpty())}",
+        )
+    }
+
     val pendingUpdate by NotificationRouter.pendingOpenUpdate.collectAsStateWithLifecycle()
     LaunchedEffect(pendingUpdate) {
         if (!pendingUpdate) return@LaunchedEffect

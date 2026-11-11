@@ -14,13 +14,21 @@ p{opacity:.75}
 <a class="b s" href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest">Belum punya? Unduh APK</a>
 </main>
 <script>
-var id=new URLSearchParams(location.search).get("id");
+var q=new URLSearchParams(location.search);
+var id=q.get("id");
+var ep=q.get("ep"),idx=q.get("idx"),t=q.get("t");
+var extra="";
+if(ep&&/^[\w.-]+$/.test(ep)){
+  extra="?ep="+encodeURIComponent(ep);
+  if(idx)extra+="&idx="+encodeURIComponent(idx);
+  if(t)extra+="&t="+encodeURIComponent(t);
+}
 if(id&&/^[\w.-]+$/.test(id)){
   var fallback="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest";
   var isAndroid=/android/i.test(navigator.userAgent);
   var url=isAndroid
-    ?"intent://anime/"+id+"#Intent;scheme=animex;package=com.uwu.animex;S.browser_fallback_url="+encodeURIComponent(fallback)+";end"
-    :"animex://anime/"+id;
+    ?"intent://anime/"+id+extra+"#Intent;scheme=animex;package=com.uwu.animex;S.browser_fallback_url="+encodeURIComponent(fallback)+";end"
+    :"animex://anime/"+id+extra;
   document.getElementById("open").href=url;
   if(isAndroid) location.replace(url);
 }

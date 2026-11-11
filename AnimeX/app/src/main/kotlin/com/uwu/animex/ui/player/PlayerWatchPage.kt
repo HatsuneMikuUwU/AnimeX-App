@@ -170,6 +170,7 @@ import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.detail.EpisodeRow
 import com.uwu.animex.ui.detail.shareAnime
+import com.uwu.animex.ui.detail.shareEpisode
 import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
 import com.uwu.animex.ui.discussion.ThreadState
@@ -312,10 +313,11 @@ internal fun PlayerWatchPage(
                     onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                     onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
                     onShare = {
-                        val target =
-                            movie?.copy(id = movieId)
-                                ?: Movie(id = movieId, title = animeTitle)
-                        shareAnime(ctx, target)
+                        if (movieId != null) {
+                            shareEpisode(ctx, movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle, movieId, currentEpId, currentIndex)
+                        } else {
+                            shareAnime(ctx, Movie(id = movieId, title = animeTitle))
+                        }
                     },
                     chips = chips,
                 )

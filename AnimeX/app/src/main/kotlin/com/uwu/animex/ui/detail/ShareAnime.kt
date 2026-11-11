@@ -41,3 +41,33 @@ internal fun shareAnime(
     if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(chooser) }
 }
+
+internal fun shareEpisode(
+    context: Context,
+    animeTitle: String,
+    movieId: String,
+    epId: String,
+    epIndex: String?,
+) {
+    val title = animeTitle.trim()
+    if (title.isEmpty() || movieId.isBlank() || epId.isBlank()) return
+    val idx = epIndex?.trim()?.takeIf { it.isNotEmpty() }
+    val label = if (idx != null) "$title - Ep $idx" else title
+    val link =
+        buildString {
+            append(SHARE_LINK).append(Uri.encode(movieId))
+            append("&ep=").append(Uri.encode(epId))
+            if (idx != null) append("&idx=").append(Uri.encode(idx))
+            append("&t=").append(Uri.encode(title))
+        }
+    val text = "Nonton \"$label\" di AnimeX\n\nBuka episode ini: $link\n\n$APP_LINK"
+    val send =
+        Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, label)
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+    val chooser = Intent.createChooser(send, "Bagikan episode")
+    if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(chooser) }
+}
