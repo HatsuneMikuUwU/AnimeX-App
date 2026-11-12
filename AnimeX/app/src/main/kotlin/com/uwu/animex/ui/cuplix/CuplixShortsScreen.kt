@@ -76,7 +76,6 @@ private const val SCROLL_HINT_MS = 5_000L
 private const val PREFETCH_FROM = 2
 private const val PREFETCH_TO = 3
 
-// Shown once per app launch until the user swipes to another clip.
 private var scrollHintDismissed = false
 
 @Composable
@@ -166,7 +165,6 @@ fun CuplixShortsScreen(
         }
     }
 
-    // Warm up stream links a couple of swipes ahead so the next clip starts right away.
     LaunchedEffect(pagerState, positioned, clips.size) {
         if (!positioned) return@LaunchedEffect
         snapshotFlow { pagerState.currentPage }.collect { page ->
@@ -219,7 +217,6 @@ fun CuplixShortsScreen(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
                     beyondViewportPageCount = 1,
-                    // One swipe = one clip, even on a hard fling.
                     flingBehavior =
                         PagerDefaults.flingBehavior(
                             state = pagerState,

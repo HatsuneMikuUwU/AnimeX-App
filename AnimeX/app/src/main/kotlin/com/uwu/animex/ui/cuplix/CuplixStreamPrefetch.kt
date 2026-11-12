@@ -12,10 +12,6 @@ import kotlinx.coroutines.ensureActive
 
 private const val MAX_PENDING = 6
 
-/**
- * Resolves stream links for clips a few swipes ahead so the next clip starts without waiting on the
- * server lookup. Entries are handed off once (no time-based cache); a retry always resolves fresh.
- */
 internal object ClipStreamPrefetch {
     private val lock = Any()
     private val pending = LinkedHashMap<String, Deferred<Server?>>()

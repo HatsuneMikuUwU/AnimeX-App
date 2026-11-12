@@ -303,7 +303,6 @@ internal fun CuplixClipPage(
     LaunchedEffect(player, muted) {
         val current = player ?: return@LaunchedEffect
         current.volume = if (muted) 0f else 1f
-        // A muted clip shouldn't steal audio focus from music playing in another app.
         current.setAudioAttributes(ClipAudioAttributes, !muted)
     }
     LaunchedEffect(player, shouldPlay) { player?.playWhenReady = shouldPlay }
