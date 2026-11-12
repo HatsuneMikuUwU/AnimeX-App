@@ -113,6 +113,11 @@ object History {
         scope.launch { dao.deleteHistory(id) }
     }
 
+    fun clear() {
+        if (!::dao.isInitialized) return
+        scope.launch { writeMutex.withLock { dao.clearHistory() } }
+    }
+
     fun applyContinueWatching(
         movieId: String?,
         isDone: Boolean,

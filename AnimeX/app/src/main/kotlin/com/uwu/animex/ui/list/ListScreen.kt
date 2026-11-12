@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.list
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material.icons.outlined.FilterList
@@ -54,6 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +82,7 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberContinueWatching
+import com.uwu.animex.ui.cuplix.CuplixClearDialog
 import com.uwu.animex.ui.detail.DetailActionButton
 import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
@@ -112,6 +116,21 @@ fun ListScreen(
 ) {
     val backdrop = rememberBlurBackdrop()
     var asList by rememberSaveable { mutableStateOf(false) }
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    val allHistory by History.items.collectAsStateWithLifecycle()
+    if (confirmClear) {
+        CuplixClearDialog(
+            title = "Hapus semua riwayat?",
+            message = "Semua anime di Lanjut Nonton bakal dihapus dari daftar.",
+            onConfirm = {
+                confirmClear = false
+                History.clear()
+                Toast.makeText(ctx, "Lanjut Nonton dihapus", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { confirmClear = false },
+        )
+    }
     Scaffold(
         containerColor = screenContainerColor(),
         topBar = {
@@ -126,23 +145,24 @@ fun ListScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                trailingIcon = if (key ==
-                    "history"
-                ) {
-                    null
-                } else if (asList) {
-                    Icons.Outlined.GridView
-                } else {
-                    Icons.Outlined.ViewAgenda
-                },
-                trailingDescription = if (asList) "Tampilan grid" else "Tampilan list",
-                onTrailingClick = { asList = !asList },
+                trailingIcon =
+                    when {
+                        key == "history" -> if (allHistory.isNotEmpty()) Icons.Outlined.DeleteSweep else null
+                        asList -> Icons.Outlined.GridView
+                        else -> Icons.Outlined.ViewAgenda
+                    },
+                trailingDescription =
+                    when {
+                        key == "history" -> "Hapus semua"
+                        asList -> "Tampilan grid"
+                        else -> "Tampilan list"
+                    },
+                onTrailingClick = { if (key == "history") confirmClear = true else asList = !asList },
             )
         },
     ) { pad ->
         BlurContentBox(pad, backdrop) {
             if (key == "history") {
-                val allHistory by History.items.collectAsStateWithLifecycle()
                 val history = rememberContinueWatching(allHistory)
                 var historySettled by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {

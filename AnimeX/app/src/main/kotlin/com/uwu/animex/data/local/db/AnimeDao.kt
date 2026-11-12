@@ -46,6 +46,9 @@ interface AnimeDao {
     @Query("DELETE FROM history WHERE movieId = :id")
     suspend fun deleteHistory(id: String)
 
+    @Query("DELETE FROM history")
+    suspend fun clearHistory()
+
     @Query(
         """
         DELETE FROM history WHERE movieId NOT IN (
