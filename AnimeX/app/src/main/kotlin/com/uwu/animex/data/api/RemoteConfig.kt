@@ -36,7 +36,7 @@ object RemoteConfigParser {
         val entries = data.asJsonObject
 
         return RemoteConfig(
-            domainApi = activeValue(entries.get("domain_api")),
+            domainApi = activeValue(entries.get("domain_api")).orEmpty(),
             domainApiAlpha = activeValue(entries.get("domain_api_alpha")),
         )
     }

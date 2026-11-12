@@ -17,6 +17,7 @@ import com.uwu.animex.core.cache.canonicalCacheKey
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
