@@ -415,6 +415,14 @@ fun App() {
                         startClipId = Uri.decode(e.arguments?.getString("clipId").orEmpty()),
                         onBack = { nav.popBackStack() },
                         onOpenAnime = { animeId -> nav.navigate("detail/$animeId") },
+                        onPlayEpisode = { clip ->
+                            nav.navigate(
+                                "player/${Uri.encode(clip.id_episode.orEmpty())}" +
+                                    "?title=${Uri.encode(clip.anime.orEmpty())}" +
+                                    "&movieId=${Uri.encode(clip.id_movie.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(clip.episode.orEmpty())}",
+                            )
+                        },
                         onNeedLogin = { nav.navigate("login") },
                     )
                 }

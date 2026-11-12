@@ -237,6 +237,7 @@ internal fun CuplixClipPage(
     liked: Boolean,
     onLikedChange: (Boolean) -> Unit,
     onOpenAnime: () -> Unit,
+    onPlayEpisode: () -> Unit,
     onNeedLogin: () -> Unit,
     onMessage: (String) -> Unit,
 ) {
@@ -487,6 +488,7 @@ internal fun CuplixClipPage(
                 expanded = captionExpanded,
                 onToggleExpanded = { captionExpanded = !captionExpanded },
                 onOpenAnime = onOpenAnime,
+                onPlayEpisode = onPlayEpisode,
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)
@@ -615,6 +617,7 @@ private fun ClipInfo(
     expanded: Boolean,
     onToggleExpanded: () -> Unit,
     onOpenAnime: () -> Unit,
+    onPlayEpisode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val name = clip.username?.takeIf { it.isNotBlank() } ?: clip.anime?.takeIf { it.isNotBlank() }
@@ -640,7 +643,7 @@ private fun ClipInfo(
                         Modifier
                             .clip(RoundedCornerShape(50))
                             .background(Color.White)
-                            .hapticClick(onClick = onOpenAnime)
+                            .hapticClick(onClick = onPlayEpisode)
                             .height(32.dp)
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
