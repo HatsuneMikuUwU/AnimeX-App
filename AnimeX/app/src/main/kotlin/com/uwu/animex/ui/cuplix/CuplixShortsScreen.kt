@@ -64,6 +64,7 @@ import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.ShadowIcon
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.player.findActivity
@@ -310,13 +311,15 @@ fun CuplixShortsScreen(
                 .zIndex(3f),
         ) {
             IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                ShadowIcon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali")
+            }
+            clips.getOrNull(pagerState.currentPage)?.let { current ->
+                ClipViewsChip(current, Modifier.align(Alignment.Center))
             }
             IconButton(onClick = toggleMute, modifier = Modifier.align(Alignment.CenterEnd)) {
-                Icon(
+                ShadowIcon(
                     if (muted) Icons.AutoMirrored.Outlined.VolumeOff else Icons.AutoMirrored.Outlined.VolumeUp,
                     contentDescription = if (muted) "Nyalakan suara" else "Bisukan",
-                    tint = Color.White,
                 )
             }
         }

@@ -112,6 +112,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.ShadowIcon
 import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.cuplixCountText
 import com.uwu.animex.ui.common.hapticClick
@@ -147,6 +148,29 @@ private val ClipAudioAttributes: AudioAttributes =
         .build()
 
 private val OverlayShadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
+
+internal val OverlayChipColor = Color.White.copy(alpha = 0.22f)
+
+@Composable
+internal fun ClipViewsChip(
+    clip: Cuplix,
+    modifier: Modifier = Modifier,
+) {
+    if (rememberHideStats()) return
+    val views = cuplixCountText(clip.count_views) ?: return
+    Text(
+        "$views dilihat",
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(OverlayChipColor)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        color = Color.White,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        style = TextStyle(shadow = OverlayShadow),
+    )
+}
 
 internal fun List<Server>.clipServer(): Server? {
     val direct = filter { it.isDirect && !it.link.isNullOrBlank() }
@@ -595,15 +619,8 @@ private fun ClipInfo(
 ) {
     val name = clip.username?.takeIf { it.isNotBlank() } ?: clip.anime?.takeIf { it.isNotBlank() }
     val caption = clip.caption?.takeIf { it.isNotBlank() }
-    val hideStats = rememberHideStats()
-    val views = if (hideStats) null else cuplixCountText(clip.count_views)
-    val pill =
-        listOfNotNull(
-            clip.anime?.takeIf { it.isNotBlank() },
-            clip.episode?.takeIf { it.isNotBlank() },
-            views?.let { "$it dilihat" },
-        ).joinToString(" · ")
-    val canOpen = !clip.id_movie.isNullOrBlank()
+    val pill = clip.anime?.takeIf { it.isNotBlank() }
+    val episode = clip.episode?.takeIf { it.isNotBlank() }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (name != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -618,7 +635,7 @@ private fun ClipInfo(
                     style = TextStyle(shadow = OverlayShadow),
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                if (canOpen) {
+                if (episode != null) {
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(50))
@@ -628,7 +645,14 @@ private fun ClipInfo(
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("Tonton", color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            episode,
+                            color = Color.Black,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }
@@ -649,15 +673,17 @@ private fun ClipInfo(
                 style = TextStyle(shadow = OverlayShadow),
             )
         }
-        if (pill.isNotBlank()) {
+        if (pill != null) {
             Row(
                 Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(OverlayChipColor)
                     .hapticClick(onClick = onOpenAnime)
-                    .padding(vertical = 4.dp),
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(Icons.Outlined.PlayCircleOutline, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                ShadowIcon(Icons.Outlined.PlayCircleOutline, null, size = 16.dp)
                 Text(
                     pill,
                     color = Color.White,
@@ -719,7 +745,7 @@ private fun ClipRail(
         )
         RailSlot(label = downloadLabel(download), onClick = null) {
             CompositionLocalProvider(LocalContentColor provides Color.White) {
-                DownloadStatusButton(download, onStart = onDownload)
+                DownloadStatusButton(download, onStart = onDownload, iconShadow = true)
             }
         }
         val movieId = clip.id_movie
@@ -739,6 +765,7 @@ private fun ClipRail(
         }
         Box(
             Modifier
+                .padding(top = 10.dp)
                 .size(width = 42.dp, height = 58.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .border(2.dp, Color.White, RoundedCornerShape(10.dp))
@@ -780,12 +807,12 @@ private fun RailAction(
         }
     }
     RailSlot(label = label, onClick = onClick) {
-        Icon(
+        ShadowIcon(
             icon,
             contentDescription = label,
-            tint = Color.White,
+            size = 30.dp,
             modifier =
-                Modifier.size(30.dp).graphicsLayer {
+                Modifier.graphicsLayer {
                     scaleX = scale.value
                     scaleY = scale.value
                 },
@@ -883,17 +910,16 @@ private fun HeartBurstView(
         onFinished()
     }
     val halfSize = 44.dp
-    Icon(
+    ShadowIcon(
         imageVector = Icons.Filled.ThumbUp,
         contentDescription = null,
-        tint = Color.White,
+        size = halfSize * 2,
         modifier =
             Modifier
                 .offset {
                     val half = halfSize.roundToPx()
                     IntOffset(burst.x.roundToInt() - half, burst.y.roundToInt() - half)
-                }.size(halfSize * 2)
-                .graphicsLayer {
+                }.graphicsLayer {
                     val t = anim.value
                     val pop = min(1f, t * 3f)
                     val scale = 0.5f + 0.7f * pop

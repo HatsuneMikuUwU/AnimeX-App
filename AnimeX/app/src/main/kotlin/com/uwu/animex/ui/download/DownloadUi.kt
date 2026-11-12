@@ -33,6 +33,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.download.Downloads
@@ -64,6 +67,7 @@ import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.ShadowIcon
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
@@ -73,9 +77,22 @@ fun DownloadStatusButton(
     item: Downloads.Item?,
     onStart: () -> Unit,
     modifier: Modifier = Modifier,
+    iconShadow: Boolean = false,
 ) {
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
+    @Composable
+    fun StatusIcon(
+        icon: ImageVector,
+        description: String,
+        tint: Color = LocalContentColor.current,
+    ) {
+        if (iconShadow) {
+            ShadowIcon(icon, description, tint = tint)
+        } else {
+            Icon(icon, contentDescription = description, tint = tint)
+        }
+    }
     Box(modifier) {
         IconButton(
             onClick = hapticClick {
@@ -90,7 +107,7 @@ fun DownloadStatusButton(
             shapes = IconButtonDefaults.shapes(),
         ) {
             if (item == null) {
-                Icon(Icons.Outlined.Download, contentDescription = "Unduh")
+                StatusIcon(Icons.Outlined.Download, "Unduh")
             } else {
                 when (item.status) {
                     Downloads.Status.QUEUED ->
@@ -104,17 +121,17 @@ fun DownloadStatusButton(
                         } else {
                             AppLoadingIndicator(Modifier.size(24.dp))
                         }
-                    Downloads.Status.PAUSED -> Icon(Icons.Outlined.Pause, contentDescription = "Lagi di-pause")
+                    Downloads.Status.PAUSED -> StatusIcon(Icons.Outlined.Pause, "Lagi di-pause")
                     Downloads.Status.COMPLETED ->
-                        Icon(
+                        StatusIcon(
                             Icons.Outlined.CheckCircle,
-                            contentDescription = "Udah kelar diunduh",
+                            "Udah kelar diunduh",
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     Downloads.Status.FAILED ->
-                        Icon(
+                        StatusIcon(
                             Icons.Outlined.Error,
-                            contentDescription = "Gagal",
+                            "Gagal",
                             tint = MaterialTheme.colorScheme.error,
                         )
                 }
