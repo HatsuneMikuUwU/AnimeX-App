@@ -36,8 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.CuplixAllFeed
 import com.uwu.animex.data.api.cuplixKey
-import com.uwu.animex.data.local.CuplixWatched
-import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.BlurContentBox
@@ -62,9 +60,7 @@ fun CuplixAllScreen(
     onOpenHistory: () -> Unit,
 ) {
     val feed by CuplixAllFeed.state.collectAsStateWithLifecycle()
-    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
-    val watched by CuplixWatched.keys.collectAsStateWithLifecycle()
-    val clips = remember(feed.clips, hideWatched, watched) { feed.clips.withoutWatched(hideWatched, watched) }
+    val clips = feed.clips
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }

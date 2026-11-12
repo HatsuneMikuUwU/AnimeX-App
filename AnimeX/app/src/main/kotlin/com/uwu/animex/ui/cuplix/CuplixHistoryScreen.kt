@@ -46,7 +46,6 @@ fun CuplixHistoryScreen(
 ) {
     val ctx = LocalContext.current
     val history by CuplixWatched.clips.collectAsStateWithLifecycle()
-    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
     var confirmClear by rememberSaveable { mutableStateOf(false) }
     val backdrop = rememberBlurBackdrop()
 
@@ -103,13 +102,8 @@ fun CuplixHistoryScreen(
         CuplixClearDialog(
             title = "Hapus semua riwayat?",
             message =
-                if (hideWatched) {
-                    "Semua Cuplix yang sudah ditonton bakal dihapus dari riwayat dan muncul lagi di " +
-                        "beranda, daftar Cuplix, dan feed. Cuplix tersimpan nggak ikut terhapus."
-                } else {
-                    "Semua Cuplix yang sudah ditonton bakal dihapus dari riwayat. " +
-                        "Cuplix tersimpan nggak ikut terhapus."
-                },
+                "Semua Cuplix yang sudah ditonton bakal dihapus dari riwayat. " +
+                    "Cuplix tersimpan nggak ikut terhapus.",
             onConfirm = {
                 confirmClear = false
                 CuplixWatched.clear()

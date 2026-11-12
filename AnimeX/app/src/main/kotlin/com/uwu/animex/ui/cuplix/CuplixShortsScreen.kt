@@ -58,7 +58,6 @@ import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixWatched
-import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
@@ -87,12 +86,7 @@ fun CuplixShortsScreen(
     onNeedLogin: () -> Unit,
 ) {
     val feed by CuplixFeed.state.collectAsStateWithLifecycle()
-    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
-    val watchedAtStart = remember { CuplixWatched.keys.value }
-    val clips =
-        remember(feed.clips, hideWatched) {
-            feed.clips.playable().withoutWatched(hideWatched, watchedAtStart, keep = startClipId)
-        }
+    val clips = remember(feed.clips) { feed.clips.playable() }
     var loading by remember {
         mutableStateOf(
             CuplixFeed.state.value.clips

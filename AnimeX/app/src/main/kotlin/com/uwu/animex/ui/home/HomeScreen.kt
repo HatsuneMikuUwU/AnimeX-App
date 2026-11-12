@@ -25,11 +25,9 @@ import com.uwu.animex.data.api.CuplixFeedState
 import com.uwu.animex.data.api.CuplixHomeFeed
 import com.uwu.animex.data.api.isCuplixPlayable
 import com.uwu.animex.data.local.CuplixPrefs
-import com.uwu.animex.data.local.CuplixWatched
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.HomeSection
 import com.uwu.animex.data.local.HomeSectionPrefs
-import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
@@ -105,16 +103,7 @@ private fun HomeContent(
         } else {
             CuplixFeedState(clips = h.cuplix.filter(::isCuplixPlayable), hasMore = false)
         }
-    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
-    val watched by CuplixWatched.keys.collectAsStateWithLifecycle()
-    val unwatchedCuplix =
-        remember(cuplixView.clips, hideWatched, watched) { cuplixView.clips.withoutWatched(hideWatched, watched) }
-    val cuplixClips = if (cuplixEnabled) unwatchedCuplix else emptyList()
-    LaunchedEffect(cuplixClips.isEmpty(), cuplixView.clips.size, cuplixView.hasMore) {
-        if (cuplixEnabled && cuplixClips.isEmpty() && cuplixView.clips.isNotEmpty() && cuplixView.hasMore) {
-            CuplixHomeFeed.loadMore()
-        }
-    }
+    val cuplixClips = if (cuplixEnabled) cuplixView.clips else emptyList()
     LaunchedEffect(h.cuplixToken, cuplixFeed.baseToken) {
         if (CuplixHomeFeed.state.value.baseToken != h.cuplixToken) {
             CuplixHomeFeed.seed(h.cuplix, h.cuplixNext, h.cuplixToken, appendToExisting = true)

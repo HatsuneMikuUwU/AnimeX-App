@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +52,7 @@ import com.uwu.animex.ui.util.WindowBlurEffect
 internal fun HomeGroup() {
     val cs = MaterialTheme.colorScheme
     val layout by HomeSectionPrefs.layout.collectAsStateWithLifecycle()
+    val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
     var showSheet by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(icon = Icons.Outlined.Dashboard, title = "Beranda", initiallyExpanded = false) {
@@ -62,12 +64,21 @@ internal fun HomeGroup() {
                     layout.isDefault -> "Pindahkan urutan daftar di beranda"
                     else -> "Urutan daftar sudah diubah"
                 },
-            shape = itemShape(0, 1),
+            shape = itemShape(0, 2),
             container = itemContainer(),
             content = cs.onSurface,
             onClick = { showSheet = true },
             badge = cs.primary,
             badgeTint = cs.onPrimary,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.PlayCircleOutline,
+            title = "Aktifkan Cuplix",
+            subtitle = "Tampilkan Cuplix di beranda dan putar klip pendeknya. Matikan untuk menyembunyikan fitur ini",
+            shape = itemShape(1, 2),
+            checked = cuplixEnabled,
+            enabled = true,
+            onChange = CuplixPrefs::setEnabled,
         )
     }
 

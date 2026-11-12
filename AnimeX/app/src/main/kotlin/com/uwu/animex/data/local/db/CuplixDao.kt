@@ -7,9 +7,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CuplixDao {
-    @Query("SELECT clipKey FROM cuplix_watched ORDER BY watchedAt DESC")
-    fun observeKeys(): Flow<List<String>>
-
     @Query("SELECT * FROM cuplix_watched WHERE clipJson IS NOT NULL ORDER BY watchedAt DESC LIMIT :limit")
     fun observeHistory(limit: Int): Flow<List<CuplixWatchedEntity>>
 

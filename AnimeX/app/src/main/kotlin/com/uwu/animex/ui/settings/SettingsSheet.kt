@@ -52,14 +52,12 @@ import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.PhoneAndroid
-import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Update
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -97,8 +95,6 @@ import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.local.CuplixPrefs
-import com.uwu.animex.data.local.CuplixWatched
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
@@ -179,7 +175,6 @@ fun SettingsSheet(
                         NightModeGroup()
                         NotificationsGroup()
                         PlayerGroup()
-                        CuplixGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
@@ -278,33 +273,6 @@ private fun NotificationsGroup() {
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
-        )
-    }
-}
-
-@Composable
-private fun CuplixGroup() {
-    val enabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
-    val hideWatched by CuplixWatched.hideWatched.collectAsStateWithLifecycle()
-
-    SettingGroup(icon = Icons.Outlined.PlayCircleOutline, title = "Cuplix", initiallyExpanded = false) {
-        SwitchItem(
-            icon = Icons.Outlined.PlayCircleOutline,
-            title = "Aktifkan Cuplix",
-            subtitle = "Tampilkan Cuplix di beranda dan putar klip pendeknya. Matikan untuk menyembunyikan fitur ini",
-            shape = itemShape(0, 2),
-            checked = enabled,
-            enabled = true,
-            onChange = CuplixPrefs::setEnabled,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.VisibilityOff,
-            title = "Sembunyikan yang sudah ditonton",
-            subtitle = "Cuplix yang sudah kamu tonton nggak muncul lagi di beranda, daftar Cuplix, dan feed",
-            shape = itemShape(1, 2),
-            checked = hideWatched,
-            enabled = enabled,
-            onChange = CuplixWatched::setHideWatched,
         )
     }
 }

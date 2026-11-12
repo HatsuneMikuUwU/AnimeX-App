@@ -10,7 +10,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-private const val MAX_PENDING = 6
+private const val MAX_PENDING = 3
 
 internal object ClipStreamPrefetch {
     private val lock = Any()

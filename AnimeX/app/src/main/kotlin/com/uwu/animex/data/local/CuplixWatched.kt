@@ -18,7 +18,6 @@ import kotlinx.coroutines.sync.withLock
 
 object CuplixWatched {
     private const val PREFS = "cuplix_watched"
-    private const val KEY_HIDE = "hide_watched"
     private const val KEY_KEYS = "keys"
     private const val KEY_CLIPS = "clips"
     private const val MAX_CLIPS = 500
@@ -30,12 +29,6 @@ object CuplixWatched {
     private var prefs: SharedPreferences? = null
     private lateinit var dao: CuplixDao
 
-    private val _hideWatched = MutableStateFlow(false)
-    val hideWatched: StateFlow<Boolean> = _hideWatched.asStateFlow()
-
-    private val _keys = MutableStateFlow<Set<String>>(emptySet())
-    val keys: StateFlow<Set<String>> = _keys.asStateFlow()
-
     private val _clips = MutableStateFlow<List<Cuplix>>(emptyList())
     val clips: StateFlow<List<Cuplix>> = _clips.asStateFlow()
 
@@ -44,23 +37,14 @@ object CuplixWatched {
         val app = context.applicationContext
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        _hideWatched.value = p.getBoolean(KEY_HIDE, false)
         dao = AnimeDatabase.get(app).cuplixDao()
         scope.launch { importLegacy(p) }
-        scope.launch { dao.observeKeys().collect { _keys.value = it.toSet() } }
         scope.launch {
             dao.observeHistory(MAX_CLIPS).collect { rows ->
                 _clips.value = rows.mapNotNull { decode(it.clipJson) }
             }
         }
     }
-
-    fun setHideWatched(value: Boolean) {
-        _hideWatched.value = value
-        prefs?.edit()?.putBoolean(KEY_HIDE, value)?.apply()
-    }
-
-    fun isWatched(clip: Cuplix): Boolean = cuplixKey(clip) in _keys.value
 
     fun mark(clip: Cuplix) {
         val key = cuplixKey(clip)
@@ -112,17 +96,5 @@ object CuplixWatched {
                 .remove(KEY_CLIPS)
                 .apply()
         }
-    }
-}
-
-fun List<Cuplix>.withoutWatched(
-    hide: Boolean,
-    watched: Set<String>,
-    keep: String? = null,
-): List<Cuplix> {
-    if (!hide || watched.isEmpty()) return this
-    return filter {
-        val key = cuplixKey(it)
-        key == keep || key !in watched
     }
 }
