@@ -173,6 +173,7 @@ fun SettingsSheet(
                         )
                         SyncSourceGroup()
                         CustomizationGroup()
+                        HomeGroup()
                         BackgroundGroup()
                         UiScaleGroup()
                         NightModeGroup()

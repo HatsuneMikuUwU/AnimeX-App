@@ -11,15 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.HourglassTop
-import androidx.compose.material.icons.outlined.Leaderboard
-import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.outlined.NewReleases
-import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +27,8 @@ import com.uwu.animex.data.api.isCuplixPlayable
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixWatched
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.HomeSection
+import com.uwu.animex.data.local.HomeSectionPrefs
 import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.HomeData
@@ -100,6 +93,7 @@ private fun HomeContent(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
     onPlayCuplix: (Cuplix) -> Unit,
 ) {
+    val layout by HomeSectionPrefs.layout.collectAsStateWithLifecycle()
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
     val cuplixFeed by CuplixHomeFeed.state.collectAsStateWithLifecycle()
@@ -153,63 +147,75 @@ private fun HomeContent(
                 RandomPreviewPager(previewList, onOpen, onPlay)
             }
         }
-        if (cuplixEnabled && (cuplixClips.isNotEmpty() || cuplixView.loadingMore || cuplixView.loadMoreFailed)) {
-            item(key = "header:Cuplix") {
-                Box(animateItemExpressive()) {
-                    SectionHeader("Cuplix", { onMore("cuplix") }, icon = Icons.Outlined.PlayCircleOutline)
+        layout.order.forEach { entry ->
+            when (entry) {
+                HomeSection.Cuplix ->
+                    if (cuplixEnabled && (cuplixClips.isNotEmpty() || cuplixView.loadingMore || cuplixView.loadMoreFailed)) {
+                        item(key = "header:Cuplix") {
+                            Box(animateItemExpressive()) {
+                                SectionHeader("Cuplix", { onMore("cuplix") }, icon = entry.icon)
+                            }
+                        }
+                        item(key = "content:Cuplix") {
+                            Box(animateItemExpressive()) {
+                                CuplixRow(
+                                    clips = cuplixClips,
+                                    onPlay = onPlayCuplix,
+                                    hasMore = cuplixView.hasMore,
+                                    loadingMore = cuplixView.loadingMore,
+                                    loadMoreFailed = cuplixView.loadMoreFailed,
+                                    onLoadMore = CuplixHomeFeed::loadMore,
+                                    onRetryLoadMore = CuplixHomeFeed::retryLoadMore,
+                                )
+                            }
+                        }
+                    }
+
+                HomeSection.ContinueWatching -> {
+                    val historyIsLocal = localHistory.isNotEmpty()
+                    val history = if (historyIsLocal) continueWatching else h.history
+                    section(
+                        entry.title,
+                        entry.icon,
+                        history,
+                        if (historyIsLocal) {
+                            { onMore("history") }
+                        } else {
+                            null
+                        },
+                        keepSlot = true,
+                    ) {
+                        if (historyIsLocal) {
+                            ContinueWatchingRow(history, onOpen, onPlay) { movie -> movie.id?.let(History::remove) }
+                        } else {
+                            PortraitRow(history, onOpen)
+                        }
+                    }
                 }
-            }
-            item(key = "content:Cuplix") {
-                Box(animateItemExpressive()) {
-                    CuplixRow(
-                        clips = cuplixClips,
-                        onPlay = onPlayCuplix,
-                        hasMore = cuplixView.hasMore,
-                        loadingMore = cuplixView.loadingMore,
-                        loadMoreFailed = cuplixView.loadMoreFailed,
-                        onLoadMore = CuplixHomeFeed::loadMore,
-                        onRetryLoadMore = CuplixHomeFeed::retryLoadMore,
-                    )
-                }
-            }
-        }
-        val historyIsLocal = localHistory.isNotEmpty()
-        val history = if (historyIsLocal) continueWatching else h.history
-        section(
-            "Lanjut Nonton",
-            Icons.Outlined.History,
-            history,
-            if (historyIsLocal) {
-                { onMore("history") }
-            } else {
-                null
-            },
-            keepSlot = true,
-        ) {
-            if (historyIsLocal) {
-                ContinueWatchingRow(history, onOpen, onPlay) { movie -> movie.id?.let(History::remove) }
-            } else {
-                PortraitRow(history, onOpen)
+
+                HomeSection.NewEpisodes ->
+                    section(entry.title, entry.icon, h.update, { onMore("update") }) {
+                        PortraitRow(h.update, onOpen, genreAsChip = true)
+                    }
+
+                HomeSection.Hot ->
+                    section(entry.title, entry.icon, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
+
+                HomeSection.NewTitles ->
+                    section(entry.title, entry.icon, h.new, { onMore("new") }) { NewTitleRow(h.new, onOpen) }
+
+                HomeSection.Today ->
+                    section(entry.title, entry.icon, today, { onMore("today") }, keepSlot = true) {
+                        PortraitRow(today, onOpen, showTime = true)
+                    }
+
+                HomeSection.Waiting ->
+                    section(entry.title, entry.icon, h.waiting, { onMore("waiting") }) { WaitingRow(h.waiting, onOpen) }
+
+                HomeSection.Popular ->
+                    section(entry.title, entry.icon, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
             }
         }
-        section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) {
-            PortraitRow(h.update, onOpen, genreAsChip = true)
-        }
-        section("Sedang Hangat", Icons.Outlined.LocalFireDepartment, h.hot, { onMore("hot") }) {
-            HotBlock(h.hot, onOpen)
-        }
-        section("Judul Baru", Icons.Outlined.AutoAwesome, h.new, { onMore("new") }) { NewTitleRow(h.new, onOpen) }
-        section(
-            "Jadwal Hari Ini",
-            Icons.Outlined.Today,
-            today,
-            { onMore("today") },
-            keepSlot = true,
-        ) { PortraitRow(today, onOpen, showTime = true) }
-        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) {
-            WaitingRow(h.waiting, onOpen)
-        }
-        section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
     }
 }
 

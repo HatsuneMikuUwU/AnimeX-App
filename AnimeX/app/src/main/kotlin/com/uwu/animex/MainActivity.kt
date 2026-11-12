@@ -25,6 +25,7 @@ import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixSaved
 import com.uwu.animex.data.local.CuplixWatched
+import com.uwu.animex.data.local.HomeSectionPrefs
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Onboarding
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
         SyncSourcePref.init(this)
         Onboarding.init(this)
         CuplixPrefs.init(this)
+        HomeSectionPrefs.init(this)
         CuplixSaved.init(this)
         CuplixWatched.init(this)
         PlayerPrefs.init(this)

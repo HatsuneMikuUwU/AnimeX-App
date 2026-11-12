@@ -96,6 +96,7 @@ object DataBackup {
                             .put("randomInterval", a.randomInterval.name)
                             .put("seasonalThemes", a.seasonalThemes),
                     ).put("player", PlayerPrefs.exportJson())
+                    .put("homeSections", HomeSectionPrefs.exportJson())
                     .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
                     .put("progress", JSONArray(progress.map { it.toJson() }))
@@ -140,6 +141,7 @@ object DataBackup {
             val alerts = root.objects("episodeAlerts").mapNotNull { it.toAlert() }
             val appearance = root.optJSONObject("appearance")?.toAppearance()
             val player = root.optJSONObject("player")
+            val homeSections = root.optJSONObject("homeSections")
 
             val database = AnimeDatabase.get(app)
             val dao = database.animeDao()
@@ -155,6 +157,7 @@ object DataBackup {
             }
             if (appearance != null) Appearance.restore(appearance)
             if (player != null) PlayerPrefs.restoreJson(player)
+            if (homeSections != null) HomeSectionPrefs.restoreJson(homeSections)
 
             Summary(bookmarks.size, history.size, progress.size, searches.size, alerts.size)
         }
