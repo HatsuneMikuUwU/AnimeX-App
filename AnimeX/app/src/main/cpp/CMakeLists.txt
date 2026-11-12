@@ -11,31 +11,31 @@ foreach(masked_secret_name
         ANIMEX_MASKED_SECRET_ANILIST
         ANIMEX_MASKED_SECRET_API_GATE
         ANIMEX_MASKED_SECRET_API_BASE)
-    if(NOT DEFINED ${masked_secret_name})
-        set(${masked_secret_name} "")
-    endif()
+  if(NOT DEFINED ${masked_secret_name})
+    set(${masked_secret_name} "")
+  endif()
 endforeach()
 
 add_library(animexcore SHARED
-    animex_core.cpp
-    jni_bridge.cpp
+  animex_core.cpp
+  jni_bridge.cpp
 )
 
 target_compile_definitions(animexcore PRIVATE
-    "ANIMEX_MASKED_SECRET_MY_ANIME_LIST=\"${ANIMEX_MASKED_SECRET_MY_ANIME_LIST}\""
-    "ANIMEX_MASKED_SECRET_ANILIST=\"${ANIMEX_MASKED_SECRET_ANILIST}\""
-    "ANIMEX_MASKED_SECRET_API_GATE=\"${ANIMEX_MASKED_SECRET_API_GATE}\""
-    "ANIMEX_MASKED_SECRET_API_BASE=\"${ANIMEX_MASKED_SECRET_API_BASE}\""
+  "ANIMEX_MASKED_SECRET_MY_ANIME_LIST=\"${ANIMEX_MASKED_SECRET_MY_ANIME_LIST}\""
+  "ANIMEX_MASKED_SECRET_ANILIST=\"${ANIMEX_MASKED_SECRET_ANILIST}\""
+  "ANIMEX_MASKED_SECRET_API_GATE=\"${ANIMEX_MASKED_SECRET_API_GATE}\""
+  "ANIMEX_MASKED_SECRET_API_BASE=\"${ANIMEX_MASKED_SECRET_API_BASE}\""
 )
 
 target_compile_options(animexcore PRIVATE
-    -Os -Wall -Wextra
-    -ffunction-sections -fdata-sections
+  -Os -Wall -Wextra
+  -ffunction-sections -fdata-sections
 )
 
 target_link_options(animexcore PRIVATE
-    -Wl,--gc-sections
-    -Wl,--build-id=none
-    -Wl,-z,max-page-size=16384
-    -s
+  -Wl,--gc-sections
+  -Wl,--build-id=none
+  -Wl,-z,max-page-size=16384
+  -s
 )
