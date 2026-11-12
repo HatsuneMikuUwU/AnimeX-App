@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.BarEffect
@@ -85,9 +86,10 @@ fun Modifier.barGlass(
     shape: Shape,
     container: Color,
     drawFlatBackground: Boolean = true,
+    strokeCornerRadius: Dp = Dp.Infinity,
 ): Modifier =
     when (style) {
-        GlassStyle.Liquid -> if (backdrop != null) liquidGlass(backdrop, shape, container) else this
-        GlassStyle.Blur -> blurEffect(backdrop, shape = shape, blendColor = container).glassStroke()
-        GlassStyle.Flat -> (if (drawFlatBackground) background(container, shape) else this).glassStroke()
+        GlassStyle.Liquid -> if (backdrop != null) liquidGlass(backdrop, shape, container, strokeCornerRadius) else this
+        GlassStyle.Blur -> blurEffect(backdrop, shape = shape, blendColor = container).glassStroke(cornerRadius = strokeCornerRadius)
+        GlassStyle.Flat -> (if (drawFlatBackground) background(container, shape) else this).glassStroke(cornerRadius = strokeCornerRadius)
     }

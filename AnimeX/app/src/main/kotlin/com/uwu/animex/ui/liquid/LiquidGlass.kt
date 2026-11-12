@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.ui.theme.glassStroke
 import top.yukonga.miuix.kmp.blur.Backdrop
@@ -97,6 +98,7 @@ fun Modifier.liquidGlass(
     backdrop: Backdrop,
     shape: Shape,
     containerColor: Color,
+    strokeCornerRadius: Dp = Dp.Infinity,
 ): Modifier {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val tint = remember(containerColor) { containerColor.copy(alpha = 0.4f) }
@@ -121,5 +123,5 @@ fun Modifier.liquidGlass(
                 )
             },
             onDrawSurface = { drawRect(tint) },
-        ).glassStroke()
+        ).glassStroke(cornerRadius = strokeCornerRadius)
 }

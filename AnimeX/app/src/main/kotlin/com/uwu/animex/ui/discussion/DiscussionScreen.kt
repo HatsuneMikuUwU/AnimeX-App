@@ -549,7 +549,7 @@ private fun DiscussionInputBar(
                     Modifier
                         .weight(1f)
                         .heightIn(min = InputBarHeight)
-                        .barGlass(glassStyle, backdrop, shape, cs.surfaceContainer)
+                        .barGlass(glassStyle, backdrop, shape, cs.surfaceContainer, strokeCornerRadius = InputBarHeight / 2)
                         .clip(shape)
                         .then(if (loggedIn) Modifier else Modifier.hapticClick(onClick = onNeedLogin))
                         .padding(horizontal = 20.dp, vertical = 16.dp),
