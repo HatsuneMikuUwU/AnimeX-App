@@ -260,7 +260,9 @@ internal fun CuplixClipPage(
     var attempt by remember { mutableIntStateOf(0) }
     var streamUrl by remember(episodeId, attempt) { mutableStateOf<String?>(null) }
     var failed by remember(episodeId, attempt) { mutableStateOf(false) }
-    val loadStream = active || preload
+    var played by remember { mutableStateOf(false) }
+    LaunchedEffect(active) { if (active) played = true }
+    val loadStream = active || preload || played
     LaunchedEffect(episodeId, attempt, loadStream) {
         if (!loadStream || streamUrl != null) return@LaunchedEffect
         val server =

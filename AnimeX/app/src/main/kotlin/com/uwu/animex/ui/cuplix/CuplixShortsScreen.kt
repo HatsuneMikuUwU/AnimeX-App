@@ -212,7 +212,7 @@ fun CuplixShortsScreen(
                 VerticalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1,
+                    beyondViewportPageCount = 3,
                     flingBehavior =
                         PagerDefaults.flingBehavior(
                             state = pagerState,

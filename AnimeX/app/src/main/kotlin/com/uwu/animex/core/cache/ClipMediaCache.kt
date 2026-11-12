@@ -9,7 +9,7 @@ import java.io.File
 
 @androidx.annotation.OptIn(UnstableApi::class)
 object ClipMediaCache {
-    private const val MAX_BYTES = 250L * 1024 * 1024
+    private const val MAX_BYTES = 500L * 1024 * 1024
 
     @Volatile
     private var cache: SimpleCache? = null
