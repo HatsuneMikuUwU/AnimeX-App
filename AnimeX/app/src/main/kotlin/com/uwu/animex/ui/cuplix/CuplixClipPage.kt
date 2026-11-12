@@ -1,7 +1,7 @@
 package com.uwu.animex.ui.cuplix
 
 import android.content.Context
-import android.widget.Toast
+import android.os.Build
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
@@ -62,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -103,6 +104,7 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixSaved
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.model.Cuplix
@@ -136,6 +138,13 @@ private const val BROWSER_UA =
         "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
 
 private val posterCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+private val ClipAudioAttributes: AudioAttributes =
+    AudioAttributes
+        .Builder()
+        .setUsage(C.USAGE_MEDIA)
+        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+        .build()
 
 private val OverlayShadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
 
@@ -186,14 +195,8 @@ private fun buildClipPlayer(
         .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
         .setLoadControl(loadControl)
         .setHandleAudioBecomingNoisy(true)
-        .setAudioAttributes(
-            AudioAttributes
-                .Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                .build(),
-            true,
-        ).build()
+        .setAudioAttributes(ClipAudioAttributes, !CuplixPrefs.muted.value)
+        .build()
         .apply {
             repeatMode = Player.REPEAT_MODE_ONE
             setMediaItem(item)
@@ -211,6 +214,7 @@ internal fun CuplixClipPage(
     onLikedChange: (Boolean) -> Unit,
     onOpenAnime: () -> Unit,
     onNeedLogin: () -> Unit,
+    onMessage: (String) -> Unit,
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -223,7 +227,10 @@ internal fun CuplixClipPage(
     var streamUrl by remember(episodeId, attempt) { mutableStateOf<String?>(null) }
     var failed by remember(episodeId, attempt) { mutableStateOf(false) }
     LaunchedEffect(episodeId, attempt) {
-        val link = resolveClipServer(clip, force = attempt > 0)?.link
+        val server =
+            (if (attempt == 0) ClipStreamPrefetch.take(clip) else null)
+                ?: resolveClipServer(clip, force = attempt > 0)
+        val link = server?.link
         if (link.isNullOrBlank()) failed = true else streamUrl = link
     }
 
@@ -292,6 +299,13 @@ internal fun CuplixClipPage(
         onDispose { current.removeListener(listener) }
     }
 
+    val muted by CuplixPrefs.muted.collectAsStateWithLifecycle()
+    LaunchedEffect(player, muted) {
+        val current = player ?: return@LaunchedEffect
+        current.volume = if (muted) 0f else 1f
+        // A muted clip shouldn't steal audio focus from music playing in another app.
+        current.setAudioAttributes(ClipAudioAttributes, !muted)
+    }
     LaunchedEffect(player, shouldPlay) { player?.playWhenReady = shouldPlay }
     LaunchedEffect(player, active) {
         if (!active) {
@@ -348,9 +362,16 @@ internal fun CuplixClipPage(
     val downloadId = remember(clipStateKey) { cuplixDownloadId(clip) }
     val download by remember(downloadId) { Downloads.itemFlow(downloadId) }
         .collectAsStateWithLifecycle(initialValue = Downloads.item(downloadId))
-    val startDownload = rememberClipDownload()
+    val startDownload = rememberClipDownload(onMessage)
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
+        val ambientLandscape = aspect?.let { it >= 1f } ?: true
+        if (ambientLandscape && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !clip.url_thumbnail.isNullOrBlank()) {
+            Box(Modifier.fillMaxSize()) {
+                Poster(clip.url_thumbnail, Modifier.fillMaxSize().blur(48.dp), radius = 0.dp)
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+            }
+        }
         if (!firstFrame) {
             val landscape = aspect?.let { it >= 1f } ?: true
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -435,8 +456,8 @@ internal fun CuplixClipPage(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(280.dp)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)))),
+                    .height(420.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)))),
             )
             ClipInfo(
                 clip = clip,
@@ -448,7 +469,7 @@ internal fun CuplixClipPage(
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(start = 16.dp, end = 84.dp, bottom = 44.dp),
+                        .padding(start = 16.dp, end = 76.dp, bottom = 44.dp),
             )
             ClipRail(
                 clip = clip,
@@ -460,7 +481,7 @@ internal fun CuplixClipPage(
                 onToggleSave = {
                     val nowSaved = CuplixSaved.toggle(clip)
                     val message = if (nowSaved) "Cuplix disimpan" else "Dihapus dari tersimpan"
-                    Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                    onMessage(message)
                 },
                 download = download,
                 onDownload = { startDownload(clip) },
@@ -469,7 +490,7 @@ internal fun CuplixClipPage(
                     Modifier
                         .align(Alignment.BottomEnd)
                         .navigationBarsPadding()
-                        .padding(end = 10.dp, bottom = 44.dp),
+                        .padding(end = 8.dp, bottom = 44.dp),
             )
         }
 
@@ -583,10 +604,11 @@ private fun ClipInfo(
             clip.episode?.takeIf { it.isNotBlank() },
             views?.let { "$it dilihat" },
         ).joinToString(" · ")
+    val canOpen = !clip.id_movie.isNullOrBlank()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (name != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                UserAvatar(name, size = 34.dp)
+                UserAvatar(name, size = 32.dp)
                 Text(
                     "@$name",
                     color = Color.White,
@@ -595,7 +617,21 @@ private fun ClipInfo(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = TextStyle(shadow = OverlayShadow),
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                if (canOpen) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.White)
+                            .hapticClick(onClick = onOpenAnime)
+                            .height(32.dp)
+                            .padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Tonton", color = Color.Black, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
             }
         }
         if (caption != null) {
@@ -617,11 +653,8 @@ private fun ClipInfo(
         if (pill.isNotBlank()) {
             Row(
                 Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.2f))
                     .hapticClick(onClick = onOpenAnime)
-                    .height(42.dp)
-                    .padding(horizontal = 14.dp),
+                    .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -629,10 +662,10 @@ private fun ClipInfo(
                 Text(
                     pill,
                     color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(shadow = OverlayShadow),
                 )
             }
         }
@@ -656,9 +689,10 @@ private fun ClipRail(
     Column(
         modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         RailAction(
+            bounceKey = liked,
             icon = if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
             label =
                 if (rememberHideStats()) {
@@ -731,9 +765,32 @@ private fun RailAction(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
+    bounceKey: Boolean = false,
 ) {
+    val scale = remember { Animatable(1f) }
+    val spec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+    var first by remember { mutableStateOf(true) }
+    LaunchedEffect(bounceKey) {
+        if (first) {
+            first = false
+            return@LaunchedEffect
+        }
+        if (bounceKey) {
+            scale.snapTo(0.6f)
+            scale.animateTo(1f, spec)
+        }
+    }
     RailSlot(label = label, onClick = onClick) {
-        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = Color.White,
+            modifier =
+                Modifier.size(30.dp).graphicsLayer {
+                    scaleX = scale.value
+                    scaleY = scale.value
+                },
+        )
     }
 }
 
@@ -744,15 +801,14 @@ private fun RailSlot(
     content: @Composable () -> Unit,
 ) {
     Column(
-        Modifier.width(64.dp),
+        Modifier.width(60.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         Box(
             Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.32f))
                 .then(if (onClick != null) Modifier.hapticClick(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center,
         ) {

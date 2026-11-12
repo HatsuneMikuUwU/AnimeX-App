@@ -17,14 +17,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.VolumeOff
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixWatched
 import com.uwu.animex.data.local.withoutWatched
 import com.uwu.animex.data.model.Cuplix
@@ -57,6 +64,8 @@ import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.player.findActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -64,6 +73,8 @@ import kotlinx.coroutines.launch
 private const val VIEW_AFTER_MS = 3_000L
 private const val LOAD_MORE_REMAINING = 1
 private const val SCROLL_HINT_MS = 5_000L
+private const val PREFETCH_FROM = 2
+private const val PREFETCH_TO = 3
 
 // Shown once per app launch until the user swipes to another clip.
 private var scrollHintDismissed = false
@@ -92,6 +103,12 @@ fun CuplixShortsScreen(
     val liked = remember { mutableStateMapOf<String, Boolean>() }
     val viewed = remember { mutableSetOf<String>() }
     val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    val showMessage = remember { { message: String -> snackbar.show(scope, message) } }
+    val muted by CuplixPrefs.muted.collectAsStateWithLifecycle()
+    val toggleMute = hapticClick { CuplixPrefs.setMuted(!muted) }
+
+    DisposableEffect(Unit) { onDispose { ClipStreamPrefetch.clear() } }
 
     LaunchedEffect(Unit) {
         runCatching { PlaybackSessions.current?.player?.pause() }
@@ -149,6 +166,16 @@ fun CuplixShortsScreen(
         }
     }
 
+    // Warm up stream links a couple of swipes ahead so the next clip starts right away.
+    LaunchedEffect(pagerState, positioned, clips.size) {
+        if (!positioned) return@LaunchedEffect
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            for (offset in PREFETCH_FROM..PREFETCH_TO) {
+                clips.getOrNull(page + offset)?.let(ClipStreamPrefetch::prefetch)
+            }
+        }
+    }
+
     val activity = LocalContext.current.findActivity()
     DisposableEffect(activity) {
         val controller = activity?.let { WindowCompat.getInsetsController(it.window, it.window.decorView) }
@@ -192,6 +219,12 @@ fun CuplixShortsScreen(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
                     beyondViewportPageCount = 1,
+                    // One swipe = one clip, even on a hard fling.
+                    flingBehavior =
+                        PagerDefaults.flingBehavior(
+                            state = pagerState,
+                            pagerSnapDistance = PagerSnapDistance.atMost(1),
+                        ),
                     key = { page -> clipKey(clips[page]) },
                 ) { page ->
                     val clip = clips[page]
@@ -217,10 +250,21 @@ fun CuplixShortsScreen(
                         },
                         onOpenAnime = { clip.id_movie?.takeIf { it.isNotBlank() }?.let(onOpenAnime) },
                         onNeedLogin = onNeedLogin,
+                        onMessage = showMessage,
                     )
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbar,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 48.dp)
+                    .zIndex(4f),
+        )
 
         AnimatedVisibility(
             visible = showScrollHint && clips.size > 1 && positioned,
@@ -265,11 +309,18 @@ fun CuplixShortsScreen(
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)))
                 .statusBarsPadding()
-                .padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
+                .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 16.dp)
                 .zIndex(3f),
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+            }
+            IconButton(onClick = toggleMute, modifier = Modifier.align(Alignment.CenterEnd)) {
+                Icon(
+                    if (muted) Icons.AutoMirrored.Outlined.VolumeOff else Icons.AutoMirrored.Outlined.VolumeUp,
+                    contentDescription = if (muted) "Nyalakan suara" else "Bisukan",
+                    tint = Color.White,
+                )
             }
         }
     }

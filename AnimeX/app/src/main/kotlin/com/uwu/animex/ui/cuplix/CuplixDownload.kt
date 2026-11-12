@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -52,7 +51,7 @@ internal suspend fun resolveClipServer(
 }
 
 @Composable
-internal fun rememberClipDownload(): (Cuplix) -> Unit {
+internal fun rememberClipDownload(onMessage: (String) -> Unit): (Cuplix) -> Unit {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<Cuplix?>(null) }
@@ -73,7 +72,7 @@ internal fun rememberClipDownload(): (Cuplix) -> Unit {
             val server = resolveClipServer(clip)
             val link = server?.link
             if (link.isNullOrBlank()) {
-                Toast.makeText(ctx, "Gak ada server yang bisa dipakai buat unduh", Toast.LENGTH_SHORT).show()
+                onMessage("Gak ada server yang bisa dipakai buat unduh")
                 return@launch
             }
             val start = clip.clipStartTimeMs()
@@ -93,7 +92,7 @@ internal fun rememberClipDownload(): (Cuplix) -> Unit {
                     clipEndMs = end,
                 ),
             )
-            Toast.makeText(ctx, "Lagi ngunduh Cuplix", Toast.LENGTH_SHORT).show()
+            onMessage("Lagi ngunduh Cuplix")
             if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
         }
     }
