@@ -82,7 +82,7 @@ object CuplixClipExport {
                                     DefaultDecoderFactory.Builder(ctx).build(),
                                     Clock.DEFAULT,
                                     DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource),
-                                    DataSourceBitmapLoader(ctx),
+                                    DataSourceBitmapLoader.Builder(ctx).build(),
                                 ),
                             ).addListener(
                                 object : Transformer.Listener {
