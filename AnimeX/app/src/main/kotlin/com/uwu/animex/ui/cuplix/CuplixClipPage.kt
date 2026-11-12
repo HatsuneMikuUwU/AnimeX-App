@@ -810,7 +810,7 @@ private fun RailAction(
         ShadowIcon(
             icon,
             contentDescription = label,
-            size = 30.dp,
+            size = 26.dp,
             modifier =
                 Modifier.graphicsLayer {
                     scaleX = scale.value

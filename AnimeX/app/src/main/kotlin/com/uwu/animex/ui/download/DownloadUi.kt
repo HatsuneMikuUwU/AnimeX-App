@@ -88,7 +88,7 @@ fun DownloadStatusButton(
         tint: Color = LocalContentColor.current,
     ) {
         if (iconShadow) {
-            ShadowIcon(icon, description, tint = tint)
+            ShadowIcon(icon, description, size = 26.dp, tint = tint)
         } else {
             Icon(icon, contentDescription = description, tint = tint)
         }
