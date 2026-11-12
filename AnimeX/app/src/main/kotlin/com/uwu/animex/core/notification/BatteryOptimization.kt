@@ -6,11 +6,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import com.uwu.animex.core.storage.PrefKeys
 
 object BatteryOptimization {
-    private const val PREFS = "battery_optimization_prefs"
-    private const val K_DISMISSED = "prompt_dismissed"
-
     fun isRestricted(context: Context): Boolean {
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         return !pm.isIgnoringBatteryOptimizations(context.packageName)
@@ -20,9 +18,9 @@ object BatteryOptimization {
 
     fun markDismissed(context: Context) {
         context
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.BatteryOptimization.FILE, Context.MODE_PRIVATE)
             .edit()
-            .putBoolean(K_DISMISSED, true)
+            .putBoolean(PrefKeys.BatteryOptimization.DISMISSED, true)
             .apply()
     }
 
@@ -51,5 +49,7 @@ object BatteryOptimization {
     }
 
     private fun isDismissed(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(K_DISMISSED, false)
+        context
+            .getSharedPreferences(PrefKeys.BatteryOptimization.FILE, Context.MODE_PRIVATE)
+            .getBoolean(PrefKeys.BatteryOptimization.DISMISSED, false)
 }

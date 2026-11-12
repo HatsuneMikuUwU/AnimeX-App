@@ -2,6 +2,7 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import com.uwu.animex.core.AppScope
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.BookmarkEntity
@@ -95,11 +96,11 @@ object Bookmarks {
     }
 
     private suspend fun dropLocalFavorites(context: Context) {
-        val prefs = context.getSharedPreferences("bookmarks_meta", Context.MODE_PRIVATE)
-        if (prefs.getBoolean("local_favorites_dropped", false)) return
+        val prefs = context.getSharedPreferences(PrefKeys.Bookmarks.FILE, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(PrefKeys.Bookmarks.LOCAL_FAVORITES_DROPPED, false)) return
         dao.clearFavoriteFlags()
         dao.cleanEmptyBookmarks()
-        prefs.edit().putBoolean("local_favorites_dropped", true).apply()
+        prefs.edit().putBoolean(PrefKeys.Bookmarks.LOCAL_FAVORITES_DROPPED, true).apply()
     }
 
     private fun trim(movie: Movie) = movie.copy(synopsis = null, synonyms = null)

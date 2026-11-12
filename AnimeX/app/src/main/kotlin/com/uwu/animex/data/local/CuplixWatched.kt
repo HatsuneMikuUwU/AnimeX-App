@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.uwu.animex.core.AppScope
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.CuplixDao
@@ -17,9 +18,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 object CuplixWatched {
-    private const val PREFS = "cuplix_watched"
-    private const val KEY_KEYS = "keys"
-    private const val KEY_CLIPS = "clips"
     private const val MAX_CLIPS = 500
 
     private val gson = Gson()
@@ -35,7 +33,7 @@ object CuplixWatched {
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
-        val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val p = app.getSharedPreferences(PrefKeys.CuplixWatched.FILE, Context.MODE_PRIVATE)
         prefs = p
         dao = AnimeDatabase.get(app).cuplixDao()
         scope.launch { importLegacy(p) }
@@ -69,14 +67,14 @@ object CuplixWatched {
     private suspend fun importLegacy(p: SharedPreferences) {
         val legacyKeys =
             p
-                .getString(KEY_KEYS, null)
+                .getString(PrefKeys.CuplixWatched.KEYS, null)
                 ?.split('\n')
                 ?.filter { it.isNotBlank() }
                 .orEmpty()
         val legacyClips =
-            runCatching { gson.fromJson(p.getString(KEY_CLIPS, null), Array<Cuplix>::class.java)?.toList() }
-                .getOrNull()
-                .orEmpty()
+            runCatching {
+                gson.fromJson(p.getString(PrefKeys.CuplixWatched.CLIPS, null), Array<Cuplix>::class.java)?.toList()
+            }.getOrNull().orEmpty()
         if (legacyKeys.isEmpty() && legacyClips.isEmpty()) return
         writeMutex.withLock {
             val now = System.currentTimeMillis()
@@ -92,8 +90,8 @@ object CuplixWatched {
             dao.trimClips(MAX_CLIPS)
             p
                 .edit()
-                .remove(KEY_KEYS)
-                .remove(KEY_CLIPS)
+                .remove(PrefKeys.CuplixWatched.KEYS)
+                .remove(PrefKeys.CuplixWatched.CLIPS)
                 .apply()
         }
     }

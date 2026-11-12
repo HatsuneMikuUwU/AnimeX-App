@@ -1,6 +1,7 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,9 +30,6 @@ data class HomeSectionLayout(
 }
 
 object HomeSectionPrefs {
-    private const val PREFS = "home_sections"
-    private const val KEY_ORDER = "order"
-
     private lateinit var appContext: Context
 
     private val _layout = MutableStateFlow(HomeSectionLayout())
@@ -40,8 +38,8 @@ object HomeSectionPrefs {
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
-        val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        _layout.value = build(parse(prefs.getString(KEY_ORDER, null)))
+        val prefs = appContext.getSharedPreferences(PrefKeys.HomeSection.FILE, Context.MODE_PRIVATE)
+        _layout.value = build(parse(prefs.getString(PrefKeys.HomeSection.ORDER, null)))
     }
 
     fun move(
@@ -94,9 +92,9 @@ object HomeSectionPrefs {
         if (!::appContext.isInitialized) return
         val value = _layout.value
         appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.HomeSection.FILE, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_ORDER, value.order.joinToString(",") { it.key })
+            .putString(PrefKeys.HomeSection.ORDER, value.order.joinToString(",") { it.key })
             .apply()
     }
 }

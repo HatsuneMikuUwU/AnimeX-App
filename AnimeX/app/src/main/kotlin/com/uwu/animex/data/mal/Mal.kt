@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.local.Bookmarks
@@ -61,7 +62,6 @@ object Mal {
     val REDIRECT_URI: String get() = MALApi.REDIRECT_URI
     val PROFILE_URL: String get() = MALApi.PROFILE_URL
 
-    private const val PREFS = "mal"
     private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
 
     private val gson = Gson()
@@ -100,13 +100,14 @@ object Mal {
         if (prefs != null) return
         val app = context.applicationContext
         AccountManager.init(app)
-        val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val p = app.getSharedPreferences(PrefKeys.Mal.FILE, Context.MODE_PRIVATE)
         prefs = p
         repo.onSessionExpired = { scope.launch { logout() } }
         _loggedIn.value = repo.authUser() != null
-        _autoSync.value = p.getBoolean("auto_sync", true)
+        _autoSync.value = p.getBoolean(PrefKeys.Mal.AUTO_SYNC, true)
         _links.value = readMap().orEmpty()
-        _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
+        _user.value =
+            runCatching { gson.fromJson(p.getString(PrefKeys.Mal.USER, null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
         if (_loggedIn.value) {
             scope.launch {
@@ -118,7 +119,7 @@ object Mal {
 
     fun updateAutoSync(value: Boolean) {
         _autoSync.value = value
-        prefs?.edit()?.putBoolean("auto_sync", value)?.apply()
+        prefs?.edit()?.putBoolean(PrefKeys.Mal.AUTO_SYNC, value)?.apply()
     }
 
     fun startLogin(context: Context) {
@@ -163,9 +164,9 @@ object Mal {
         repo.logout()
         prefs
             ?.edit()
-            ?.remove("user")
-            ?.remove("map")
-            ?.remove("totals")
+            ?.remove(PrefKeys.Mal.USER)
+            ?.remove(PrefKeys.Mal.MAP)
+            ?.remove(PrefKeys.Mal.TOTALS)
             ?.apply()
         _loggedIn.value = false
         _user.value = null
@@ -195,7 +196,7 @@ object Mal {
         val u = repo.withAuth { api.profile(it) }
         if (_loggedIn.value) {
             _user.value = u
-            prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
+            prefs?.edit()?.putString(PrefKeys.Mal.USER, gson.toJson(u))?.apply()
         }
         return u
     }
@@ -222,7 +223,7 @@ object Mal {
 
     private fun readMap(): HashMap<String, Int>? =
         runCatching {
-            gson.fromJson<HashMap<String, Int>>(prefs?.getString("map", null), mapType)
+            gson.fromJson<HashMap<String, Int>>(prefs?.getString(PrefKeys.Mal.MAP, null), mapType)
         }.getOrNull()
 
     private fun cachedId(movieId: String): Int? = _links.value[movieId]
@@ -235,7 +236,7 @@ object Mal {
         val m = HashMap(_links.value)
         m[movieId] = malId
         _links.value = m
-        prefs?.edit()?.putString("map", gson.toJson(m))?.apply()
+        prefs?.edit()?.putString(PrefKeys.Mal.MAP, gson.toJson(m))?.apply()
     }
 
     fun link(
@@ -245,7 +246,7 @@ object Mal {
 
     private fun readTotals(): HashMap<String, Int>? =
         runCatching {
-            gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType)
+            gson.fromJson<HashMap<String, Int>>(prefs?.getString(PrefKeys.Mal.TOTALS, null), mapType)
         }.getOrNull()
 
     fun cachedTotal(malId: Int): Int? = readTotals()?.get(malId.toString())
@@ -257,7 +258,7 @@ object Mal {
         val m = readTotals() ?: HashMap()
         if (m[malId.toString()] == total) return
         m[malId.toString()] = total
-        prefs?.edit()?.putString("totals", gson.toJson(m))?.apply()
+        prefs?.edit()?.putString(PrefKeys.Mal.TOTALS, gson.toJson(m))?.apply()
     }
 
     private suspend fun loadCached(id: String): SyncResult? {

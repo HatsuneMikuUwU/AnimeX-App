@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.security.SecureStore
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,9 +25,6 @@ data class UserProfile(
 }
 
 object UserSession {
-    private const val PREFS = "user_session"
-    private const val KEY_USER = "user"
-
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
 
@@ -45,9 +43,9 @@ object UserSession {
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val p = context.applicationContext.getSharedPreferences(PrefKeys.UserSession.FILE, Context.MODE_PRIVATE)
         prefs = p
-        val raw = p.getString(KEY_USER, null)
+        val raw = p.getString(PrefKeys.UserSession.USER, null)
         val saved =
             runCatching {
                 gson.fromJson(SecureStore.decrypt(raw), UserProfile::class.java)
@@ -56,7 +54,7 @@ object UserSession {
             _user.value = saved
             if (raw != null && !SecureStore.isEncrypted(raw)) {
                 SecureStore.encrypt(raw)?.let {
-                    p.edit().putString(KEY_USER, it).apply()
+                    p.edit().putString(PrefKeys.UserSession.USER, it).apply()
                 }
             }
         }
@@ -66,7 +64,7 @@ object UserSession {
     fun save(profile: UserProfile) {
         _user.value = profile
         SecureStore.encrypt(gson.toJson(profile))?.let {
-            prefs?.edit()?.putString(KEY_USER, it)?.apply()
+            prefs?.edit()?.putString(PrefKeys.UserSession.USER, it)?.apply()
         }
     }
 
@@ -79,6 +77,6 @@ object UserSession {
     @Synchronized
     fun clear() {
         _user.value = null
-        prefs?.edit()?.remove(KEY_USER)?.apply()
+        prefs?.edit()?.remove(PrefKeys.UserSession.USER)?.apply()
     }
 }

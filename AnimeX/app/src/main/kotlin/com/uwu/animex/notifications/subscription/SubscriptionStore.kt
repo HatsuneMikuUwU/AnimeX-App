@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +19,6 @@ data class SubscriptionStore(
 )
 
 object NotificationHistory {
-    private const val PREFS = "notification_history"
-    private const val K_ITEMS = "items"
     private const val MAX_ITEMS = 100
 
     private val gson = Gson()
@@ -31,12 +30,13 @@ object NotificationHistory {
     @Synchronized
     fun init(context: Context) {
         if (sp != null) return
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs =
+            context.applicationContext.getSharedPreferences(PrefKeys.NotificationHistory.FILE, Context.MODE_PRIVATE)
         sp = prefs
         _items.value =
             runCatching {
                 gson.fromJson<List<SubscriptionStore>>(
-                    prefs.getString(K_ITEMS, null),
+                    prefs.getString(PrefKeys.NotificationHistory.ITEMS, null),
                     object : TypeToken<List<SubscriptionStore>>() {}.type,
                 )
             }.getOrNull().orEmpty().filter { it.mediaId.isNotBlank() }
@@ -65,7 +65,7 @@ object NotificationHistory {
     private fun persist() {
         sp
             ?.edit()
-            ?.putString(K_ITEMS, gson.toJson(_items.value))
+            ?.putString(PrefKeys.NotificationHistory.ITEMS, gson.toJson(_items.value))
             ?.apply()
     }
 }

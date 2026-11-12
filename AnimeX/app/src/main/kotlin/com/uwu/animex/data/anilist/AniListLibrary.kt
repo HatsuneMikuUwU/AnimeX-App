@@ -1,6 +1,7 @@
 package com.uwu.animex.data.anilist
 
 import android.content.Context
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.tracker.LocalMutation
 import com.uwu.animex.data.tracker.TrackerLibraryCache
 import com.uwu.animex.data.tracker.TrackerSource
@@ -28,7 +29,7 @@ object AniListLibrary {
         initialized = true
 
         context.applicationContext
-            .getSharedPreferences("anilist_library", Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.AniListLibrary.FILE, Context.MODE_PRIVATE)
             .edit()
             .clear()
             .apply()

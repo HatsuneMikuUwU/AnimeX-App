@@ -1,6 +1,5 @@
 package com.uwu.animex.ui.cuplix
 
-import com.uwu.animex.data.model.toEpisodeIndex
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -24,6 +23,7 @@ import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.model.toEpisodeIndex
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.detail.bestDirect
 import kotlinx.coroutines.launch

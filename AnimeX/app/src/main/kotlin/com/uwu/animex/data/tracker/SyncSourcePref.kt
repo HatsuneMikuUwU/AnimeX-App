@@ -1,6 +1,7 @@
 package com.uwu.animex.data.tracker
 
 import android.content.Context
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,12 +15,6 @@ enum class SyncSource(
 }
 
 object SyncSourcePref {
-    private const val PREFS = "sync_source"
-    private const val LEGACY_PREFS = "bookmark_source"
-    private const val KEY = "source"
-
-    private const val KEY_MIRROR = "mirror"
-
     private var appContext: Context? = null
     private val _mirror = MutableStateFlow(true)
 
@@ -32,18 +27,25 @@ object SyncSourcePref {
         val app = context.applicationContext
         appContext = app
         val saved =
-            app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
-                ?: app.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+            app
+                .getSharedPreferences(PrefKeys.SyncSource.FILE, Context.MODE_PRIVATE)
+                .getString(PrefKeys.SyncSource.SOURCE, null)
+                ?: app
+                    .getSharedPreferences(PrefKeys.SyncSource.LEGACY_FILE, Context.MODE_PRIVATE)
+                    .getString(PrefKeys.SyncSource.SOURCE, null)
         _source.value = runCatching { SyncSource.valueOf(saved.orEmpty()) }.getOrDefault(SyncSource.MAL)
-        _mirror.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MIRROR, true)
+        _mirror.value =
+            app
+                .getSharedPreferences(PrefKeys.SyncSource.FILE, Context.MODE_PRIVATE)
+                .getBoolean(PrefKeys.SyncSource.MIRROR, true)
     }
 
     fun setMirror(value: Boolean) {
         _mirror.value = value
         appContext
-            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.getSharedPreferences(PrefKeys.SyncSource.FILE, Context.MODE_PRIVATE)
             ?.edit()
-            ?.putBoolean(KEY_MIRROR, value)
+            ?.putBoolean(PrefKeys.SyncSource.MIRROR, value)
             ?.apply()
     }
 
@@ -61,9 +63,9 @@ object SyncSourcePref {
     fun set(value: SyncSource) {
         _source.value = value
         appContext
-            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.getSharedPreferences(PrefKeys.SyncSource.FILE, Context.MODE_PRIVATE)
             ?.edit()
-            ?.putString(KEY, value.name)
+            ?.putString(PrefKeys.SyncSource.SOURCE, value.name)
             ?.apply()
     }
 }

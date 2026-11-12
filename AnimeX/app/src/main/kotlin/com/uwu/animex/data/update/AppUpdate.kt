@@ -19,6 +19,7 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.NotificationPrefs
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,9 +35,6 @@ object AppUpdate {
     private const val TAG = "AppUpdate"
     private const val REPO = "HatsuneMikuUwU/AnimeX-App"
     private const val RELEASES_URL = "https://api.github.com/repos/$REPO/releases?per_page=10"
-    private const val PREFS = "app_update"
-    private const val KEY_SKIPPED = "skipped_version"
-    private const val KEY_NOTIFIED = "notified_version"
 
     const val CHANNEL_ID = "app_update"
     const val NOTIFICATION_ID = 7101
@@ -109,9 +107,9 @@ object AppUpdate {
 
     fun skipThisVersion(tag: String) {
         appCtx
-            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.getSharedPreferences(PrefKeys.AppUpdate.FILE, Context.MODE_PRIVATE)
             ?.edit()
-            ?.putString(KEY_SKIPPED, tag)
+            ?.putString(PrefKeys.AppUpdate.SKIPPED, tag)
             ?.apply()
         _state.value = State.Idle
         cancelNotification()
@@ -119,19 +117,19 @@ object AppUpdate {
 
     private fun skippedVersion(): String? =
         appCtx
-            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            ?.getString(KEY_SKIPPED, null)
+            ?.getSharedPreferences(PrefKeys.AppUpdate.FILE, Context.MODE_PRIVATE)
+            ?.getString(PrefKeys.AppUpdate.SKIPPED, null)
 
     private fun notifiedVersion(): String? =
         appCtx
-            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            ?.getString(KEY_NOTIFIED, null)
+            ?.getSharedPreferences(PrefKeys.AppUpdate.FILE, Context.MODE_PRIVATE)
+            ?.getString(PrefKeys.AppUpdate.NOTIFIED, null)
 
     private fun markNotified(tag: String) {
         appCtx
-            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.getSharedPreferences(PrefKeys.AppUpdate.FILE, Context.MODE_PRIVATE)
             ?.edit()
-            ?.putString(KEY_NOTIFIED, tag)
+            ?.putString(PrefKeys.AppUpdate.NOTIFIED, tag)
             ?.apply()
     }
 

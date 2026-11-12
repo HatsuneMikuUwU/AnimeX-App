@@ -10,6 +10,7 @@ import com.google.gson.Gson
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.service.AnimeDownloadService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -40,9 +41,6 @@ import javax.crypto.spec.SecretKeySpec
 object Downloads {
     const val CHANNEL_ID = "downloads"
     const val NOTIFICATION_ID = 1001
-    private const val PREFS = "downloads"
-    private const val KEY_ITEMS = "items"
-    private const val KEY_FOLDER = "folder"
     private const val MAX_PARALLEL = 2
     private const val UA = "okhttp/4.12.0"
 
@@ -115,13 +113,13 @@ object Downloads {
         if (app != null) return
         val c = context.applicationContext
         app = c
-        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val p = c.getSharedPreferences(PrefKeys.Downloads.FILE, Context.MODE_PRIVATE)
         prefs = p
-        _folderUri.value = p.getString(KEY_FOLDER, null)
+        _folderUri.value = p.getString(PrefKeys.Downloads.FOLDER, null)
         val loaded =
-            runCatching { gson.fromJson(p.getString(KEY_ITEMS, null), Array<Item>::class.java)?.toList() }
-                .getOrNull()
-                .orEmpty()
+            runCatching {
+                gson.fromJson(p.getString(PrefKeys.Downloads.ITEMS, null), Array<Item>::class.java)?.toList()
+            }.getOrNull().orEmpty()
         _items.value =
             loaded.associate {
                 it.id to if (it.status == Status.DOWNLOADING) it.copy(status = Status.QUEUED) else it
@@ -151,7 +149,7 @@ object Downloads {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
         }
-        prefs?.edit()?.putString(KEY_FOLDER, uri.toString())?.apply()
+        prefs?.edit()?.putString(PrefKeys.Downloads.FOLDER, uri.toString())?.apply()
         _folderUri.value = uri.toString()
     }
 
@@ -273,7 +271,7 @@ object Downloads {
 
     private fun persist() {
         lastSave = System.currentTimeMillis()
-        prefs?.edit()?.putString(KEY_ITEMS, gson.toJson(_items.value.values.toList()))?.apply()
+        prefs?.edit()?.putString(PrefKeys.Downloads.ITEMS, gson.toJson(_items.value.values.toList()))?.apply()
     }
 
     private fun progress(

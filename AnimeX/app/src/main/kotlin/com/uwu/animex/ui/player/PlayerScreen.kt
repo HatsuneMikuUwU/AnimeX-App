@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui.player
 
-import com.uwu.animex.data.model.toEpisodeIndex
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -87,6 +86,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.model.toEpisodeIndex
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppLoadingIndicator

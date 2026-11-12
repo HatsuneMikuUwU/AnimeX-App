@@ -2,6 +2,7 @@ package com.uwu.animex.data.mal
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.tracker.LocalMutation
 import com.uwu.animex.data.tracker.TrackerLibraryCache
@@ -19,9 +20,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 object MalLibrary {
-    private const val PREFS = "mal_library"
-    private const val KEY_SORT = "sorting"
-
     private val cache =
         TrackerLibraryCache(
             source = TrackerSource.MAL,
@@ -44,16 +42,16 @@ object MalLibrary {
 
     fun init(context: Context) {
         if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val p = context.applicationContext.getSharedPreferences(PrefKeys.MalLibrary.FILE, Context.MODE_PRIVATE)
         prefs = p
 
         p
             .edit()
-            .remove("library")
-            .remove("entries")
+            .remove(PrefKeys.MalLibrary.LEGACY_LIBRARY)
+            .remove(PrefKeys.MalLibrary.LEGACY_ENTRIES)
             .apply()
         _sorting.value = ListSorting.entries.getOrNull(
-            p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal),
+            p.getInt(PrefKeys.MalLibrary.SORT, ListSorting.UpdatedNew.ordinal),
         ) ?: ListSorting.UpdatedNew
         cache.init(context)
     }
@@ -69,7 +67,7 @@ object MalLibrary {
     @JvmName("applySorting")
     fun setSorting(method: ListSorting) {
         _sorting.value = method
-        prefs?.edit()?.putInt(KEY_SORT, method.ordinal)?.apply()
+        prefs?.edit()?.putInt(PrefKeys.MalLibrary.SORT, method.ordinal)?.apply()
     }
 
     fun clear() = cache.clear()

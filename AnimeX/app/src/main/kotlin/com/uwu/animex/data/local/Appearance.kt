@@ -2,6 +2,7 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.theme.COLOR_ANIM_DEFAULT_MS
@@ -199,39 +200,6 @@ val AppearanceSettings.seedColor: Color
     get() = if (customSeed != 0) Color(customSeed) else accent.seed
 
 object Appearance {
-    private const val PREFS = "appearance"
-    private const val KEY_MODE = "mode"
-    private const val KEY_DYNAMIC = "dynamic"
-    private const val KEY_ACCENT = "accent"
-    private const val KEY_AMOLED = "amoled"
-    private const val KEY_BLUR = "blur"
-    private const val KEY_BAR_EFFECT = "bar_effect"
-    private const val KEY_PALETTE_STYLE = "palette_style"
-    private const val KEY_COLOR_SPEC = "color_spec"
-    private const val KEY_CONTRAST = "contrast"
-    private const val KEY_CUSTOM_SEED = "custom_seed"
-    private const val KEY_CMF_TERTIARY = "cmf_tertiary_seed"
-    private const val KEY_ROLE_PRIMARY = "role_primary"
-    private const val KEY_ROLE_SECONDARY = "role_secondary"
-    private const val KEY_ROLE_TERTIARY = "role_tertiary"
-    private const val KEY_ROLE_NEUTRAL = "role_neutral"
-    private const val KEY_ROLE_NEUTRAL_VARIANT = "role_neutral_variant"
-    private const val KEY_ROLE_ERROR = "role_error"
-    private const val KEY_ANIMATE_COLOR = "animate_color_change"
-    private const val KEY_COLOR_ANIM_MS = "color_animation_ms"
-    private const val KEY_UI_SCALE = "ui_scale"
-    private const val KEY_FONT_SCALE = "font_scale"
-    private const val KEY_AUTO_SCALE_UI = "auto_scale_ui"
-    private const val KEY_HOME_CARD_SCALE = "home_card_scale"
-    private const val KEY_COMPACT_NUMBERS = "compact_numbers"
-    private const val KEY_HIDE_STATS = "hide_stats"
-    private const val KEY_HAPTICS = "haptics_enabled"
-    private const val KEY_BACKGROUND_TYPE = "background_type"
-    private const val KEY_BACKGROUND_PARALLAX = "background_parallax"
-    private const val KEY_RANDOM_INTERVAL = "random_interval"
-    private const val KEY_SEASONAL_THEMES = "seasonal_themes"
-    private const val KEY_LAST_RANDOM = "last_random_background"
-
     private lateinit var appContext: Context
 
     private val _settings = MutableStateFlow(AppearanceSettings())
@@ -240,55 +208,61 @@ object Appearance {
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
-        val p = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val p = appContext.getSharedPreferences(PrefKeys.Appearance.FILE, Context.MODE_PRIVATE)
         val d = AppearanceSettings()
         _settings.value =
             AppearanceSettings(
-                mode = runCatching { ThemeMode.valueOf(p.getString(KEY_MODE, null).orEmpty()) }.getOrDefault(d.mode),
-                dynamicColor = p.getBoolean(KEY_DYNAMIC, d.dynamicColor),
+                mode =
+                    runCatching { ThemeMode.valueOf(p.getString(PrefKeys.Appearance.MODE, null).orEmpty()) }
+                        .getOrDefault(d.mode),
+                dynamicColor = p.getBoolean(PrefKeys.Appearance.DYNAMIC, d.dynamicColor),
                 accent =
-                    runCatching { AccentPalette.valueOf(p.getString(KEY_ACCENT, null).orEmpty()) }
+                    runCatching { AccentPalette.valueOf(p.getString(PrefKeys.Appearance.ACCENT, null).orEmpty()) }
                         .getOrDefault(d.accent),
-                amoled = p.getBoolean(KEY_AMOLED, d.amoled),
-                blur = p.getBoolean(KEY_BLUR, d.blur),
+                amoled = p.getBoolean(PrefKeys.Appearance.AMOLED, d.amoled),
+                blur = p.getBoolean(PrefKeys.Appearance.BLUR, d.blur),
                 barEffect =
-                    runCatching { BarEffect.valueOf(p.getString(KEY_BAR_EFFECT, null).orEmpty()) }
+                    runCatching { BarEffect.valueOf(p.getString(PrefKeys.Appearance.BAR_EFFECT, null).orEmpty()) }
                         .getOrDefault(d.barEffect),
                 paletteStyle =
-                    runCatching { PaletteStyle.valueOf(p.getString(KEY_PALETTE_STYLE, null).orEmpty()) }
+                    runCatching { PaletteStyle.valueOf(p.getString(PrefKeys.Appearance.PALETTE_STYLE, null).orEmpty()) }
                         .getOrDefault(d.paletteStyle),
                 colorSpec =
-                    runCatching { ColorSpec.valueOf(p.getString(KEY_COLOR_SPEC, null).orEmpty()) }
+                    runCatching { ColorSpec.valueOf(p.getString(PrefKeys.Appearance.COLOR_SPEC, null).orEmpty()) }
                         .getOrDefault(d.colorSpec),
-                contrast = p.getFloat(KEY_CONTRAST, d.contrast).coerceToContrast(),
-                customSeed = p.getInt(KEY_CUSTOM_SEED, d.customSeed),
-                cmfTertiarySeed = p.getInt(KEY_CMF_TERTIARY, d.cmfTertiarySeed),
+                contrast = p.getFloat(PrefKeys.Appearance.CONTRAST, d.contrast).coerceToContrast(),
+                customSeed = p.getInt(PrefKeys.Appearance.CUSTOM_SEED, d.customSeed),
+                cmfTertiarySeed = p.getInt(PrefKeys.Appearance.CMF_TERTIARY, d.cmfTertiarySeed),
                 roleOverrides =
                     RoleOverrides(
-                        primary = p.getInt(KEY_ROLE_PRIMARY, 0),
-                        secondary = p.getInt(KEY_ROLE_SECONDARY, 0),
-                        tertiary = p.getInt(KEY_ROLE_TERTIARY, 0),
-                        neutral = p.getInt(KEY_ROLE_NEUTRAL, 0),
-                        neutralVariant = p.getInt(KEY_ROLE_NEUTRAL_VARIANT, 0),
-                        error = p.getInt(KEY_ROLE_ERROR, 0),
+                        primary = p.getInt(PrefKeys.Appearance.ROLE_PRIMARY, 0),
+                        secondary = p.getInt(PrefKeys.Appearance.ROLE_SECONDARY, 0),
+                        tertiary = p.getInt(PrefKeys.Appearance.ROLE_TERTIARY, 0),
+                        neutral = p.getInt(PrefKeys.Appearance.ROLE_NEUTRAL, 0),
+                        neutralVariant = p.getInt(PrefKeys.Appearance.ROLE_NEUTRAL_VARIANT, 0),
+                        error = p.getInt(PrefKeys.Appearance.ROLE_ERROR, 0),
                     ),
-                animateColorChange = p.getBoolean(KEY_ANIMATE_COLOR, d.animateColorChange),
-                colorAnimationMs = p.getInt(KEY_COLOR_ANIM_MS, d.colorAnimationMs).coerceToColorAnimMs(),
-                uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
-                fontScale = p.getFloat(KEY_FONT_SCALE, d.fontScale).coerceToFontScale(),
-                autoScaleUi = p.getBoolean(KEY_AUTO_SCALE_UI, d.autoScaleUi),
-                homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
-                compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
-                hideStats = p.getBoolean(KEY_HIDE_STATS, d.hideStats),
-                hapticsEnabled = p.getBoolean(KEY_HAPTICS, d.hapticsEnabled),
+                animateColorChange = p.getBoolean(PrefKeys.Appearance.ANIMATE_COLOR, d.animateColorChange),
+                colorAnimationMs =
+                    p.getInt(PrefKeys.Appearance.COLOR_ANIM_MS, d.colorAnimationMs).coerceToColorAnimMs(),
+                uiScale = p.getFloat(PrefKeys.Appearance.UI_SCALE, d.uiScale).coerceToUiScale(),
+                fontScale = p.getFloat(PrefKeys.Appearance.FONT_SCALE, d.fontScale).coerceToFontScale(),
+                autoScaleUi = p.getBoolean(PrefKeys.Appearance.AUTO_SCALE_UI, d.autoScaleUi),
+                homeCardScale =
+                    p.getFloat(PrefKeys.Appearance.HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
+                compactNumbers = p.getBoolean(PrefKeys.Appearance.COMPACT_NUMBERS, d.compactNumbers),
+                hideStats = p.getBoolean(PrefKeys.Appearance.HIDE_STATS, d.hideStats),
+                hapticsEnabled = p.getBoolean(PrefKeys.Appearance.HAPTICS, d.hapticsEnabled),
                 backgroundType =
-                    runCatching { BackgroundType.valueOf(p.getString(KEY_BACKGROUND_TYPE, null).orEmpty()) }
-                        .getOrDefault(d.backgroundType),
-                backgroundParallax = p.getBoolean(KEY_BACKGROUND_PARALLAX, d.backgroundParallax),
+                    runCatching {
+                        BackgroundType.valueOf(p.getString(PrefKeys.Appearance.BACKGROUND_TYPE, null).orEmpty())
+                    }.getOrDefault(d.backgroundType),
+                backgroundParallax = p.getBoolean(PrefKeys.Appearance.BACKGROUND_PARALLAX, d.backgroundParallax),
                 randomInterval =
-                    runCatching { RandomInterval.valueOf(p.getString(KEY_RANDOM_INTERVAL, null).orEmpty()) }
-                        .getOrDefault(d.randomInterval),
-                seasonalThemes = p.getBoolean(KEY_SEASONAL_THEMES, d.seasonalThemes),
+                    runCatching {
+                        RandomInterval.valueOf(p.getString(PrefKeys.Appearance.RANDOM_INTERVAL, null).orEmpty())
+                    }.getOrDefault(d.randomInterval),
+                seasonalThemes = p.getBoolean(PrefKeys.Appearance.SEASONAL_THEMES, d.seasonalThemes),
             )
     }
 
@@ -349,7 +323,9 @@ object Appearance {
 
     fun lastRandomBackground(): String? =
         if (::appContext.isInitialized) {
-            appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LAST_RANDOM, null)
+            appContext
+                .getSharedPreferences(PrefKeys.Appearance.FILE, Context.MODE_PRIVATE)
+                .getString(PrefKeys.Appearance.LAST_RANDOM, null)
         } else {
             null
         }
@@ -357,9 +333,9 @@ object Appearance {
     fun setLastRandomBackground(name: String) {
         if (!::appContext.isInitialized) return
         appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.Appearance.FILE, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_LAST_RANDOM, name)
+            .putString(PrefKeys.Appearance.LAST_RANDOM, name)
             .apply()
     }
 
@@ -373,38 +349,38 @@ object Appearance {
         _settings.value = next
         if (!::appContext.isInitialized) return
         appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.Appearance.FILE, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_MODE, next.mode.name)
-            .putBoolean(KEY_DYNAMIC, next.dynamicColor)
-            .putString(KEY_ACCENT, next.accent.name)
-            .putBoolean(KEY_AMOLED, next.amoled)
-            .putBoolean(KEY_BLUR, next.blur)
-            .putString(KEY_BAR_EFFECT, next.barEffect.name)
-            .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)
-            .putString(KEY_COLOR_SPEC, next.colorSpec.name)
-            .putFloat(KEY_CONTRAST, next.contrast)
-            .putInt(KEY_CUSTOM_SEED, next.customSeed)
-            .putInt(KEY_CMF_TERTIARY, next.cmfTertiarySeed)
-            .putInt(KEY_ROLE_PRIMARY, next.roleOverrides.primary)
-            .putInt(KEY_ROLE_SECONDARY, next.roleOverrides.secondary)
-            .putInt(KEY_ROLE_TERTIARY, next.roleOverrides.tertiary)
-            .putInt(KEY_ROLE_NEUTRAL, next.roleOverrides.neutral)
-            .putInt(KEY_ROLE_NEUTRAL_VARIANT, next.roleOverrides.neutralVariant)
-            .putInt(KEY_ROLE_ERROR, next.roleOverrides.error)
-            .putBoolean(KEY_ANIMATE_COLOR, next.animateColorChange)
-            .putInt(KEY_COLOR_ANIM_MS, next.colorAnimationMs)
-            .putFloat(KEY_UI_SCALE, next.uiScale)
-            .putFloat(KEY_FONT_SCALE, next.fontScale)
-            .putBoolean(KEY_AUTO_SCALE_UI, next.autoScaleUi)
-            .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
-            .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
-            .putBoolean(KEY_HIDE_STATS, next.hideStats)
-            .putBoolean(KEY_HAPTICS, next.hapticsEnabled)
-            .putString(KEY_BACKGROUND_TYPE, next.backgroundType.name)
-            .putBoolean(KEY_BACKGROUND_PARALLAX, next.backgroundParallax)
-            .putString(KEY_RANDOM_INTERVAL, next.randomInterval.name)
-            .putBoolean(KEY_SEASONAL_THEMES, next.seasonalThemes)
+            .putString(PrefKeys.Appearance.MODE, next.mode.name)
+            .putBoolean(PrefKeys.Appearance.DYNAMIC, next.dynamicColor)
+            .putString(PrefKeys.Appearance.ACCENT, next.accent.name)
+            .putBoolean(PrefKeys.Appearance.AMOLED, next.amoled)
+            .putBoolean(PrefKeys.Appearance.BLUR, next.blur)
+            .putString(PrefKeys.Appearance.BAR_EFFECT, next.barEffect.name)
+            .putString(PrefKeys.Appearance.PALETTE_STYLE, next.paletteStyle.name)
+            .putString(PrefKeys.Appearance.COLOR_SPEC, next.colorSpec.name)
+            .putFloat(PrefKeys.Appearance.CONTRAST, next.contrast)
+            .putInt(PrefKeys.Appearance.CUSTOM_SEED, next.customSeed)
+            .putInt(PrefKeys.Appearance.CMF_TERTIARY, next.cmfTertiarySeed)
+            .putInt(PrefKeys.Appearance.ROLE_PRIMARY, next.roleOverrides.primary)
+            .putInt(PrefKeys.Appearance.ROLE_SECONDARY, next.roleOverrides.secondary)
+            .putInt(PrefKeys.Appearance.ROLE_TERTIARY, next.roleOverrides.tertiary)
+            .putInt(PrefKeys.Appearance.ROLE_NEUTRAL, next.roleOverrides.neutral)
+            .putInt(PrefKeys.Appearance.ROLE_NEUTRAL_VARIANT, next.roleOverrides.neutralVariant)
+            .putInt(PrefKeys.Appearance.ROLE_ERROR, next.roleOverrides.error)
+            .putBoolean(PrefKeys.Appearance.ANIMATE_COLOR, next.animateColorChange)
+            .putInt(PrefKeys.Appearance.COLOR_ANIM_MS, next.colorAnimationMs)
+            .putFloat(PrefKeys.Appearance.UI_SCALE, next.uiScale)
+            .putFloat(PrefKeys.Appearance.FONT_SCALE, next.fontScale)
+            .putBoolean(PrefKeys.Appearance.AUTO_SCALE_UI, next.autoScaleUi)
+            .putFloat(PrefKeys.Appearance.HOME_CARD_SCALE, next.homeCardScale)
+            .putBoolean(PrefKeys.Appearance.COMPACT_NUMBERS, next.compactNumbers)
+            .putBoolean(PrefKeys.Appearance.HIDE_STATS, next.hideStats)
+            .putBoolean(PrefKeys.Appearance.HAPTICS, next.hapticsEnabled)
+            .putString(PrefKeys.Appearance.BACKGROUND_TYPE, next.backgroundType.name)
+            .putBoolean(PrefKeys.Appearance.BACKGROUND_PARALLAX, next.backgroundParallax)
+            .putString(PrefKeys.Appearance.RANDOM_INTERVAL, next.randomInterval.name)
+            .putBoolean(PrefKeys.Appearance.SEASONAL_THEMES, next.seasonalThemes)
             .apply()
     }
 }

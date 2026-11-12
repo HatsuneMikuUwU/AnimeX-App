@@ -22,6 +22,7 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.CuplixListData
@@ -80,10 +81,7 @@ object Api {
             "cursor_episode_index",
         )
 
-    private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
-    private const val KEY_DOMAIN = "domain_api"
-    private const val KEY_DOMAIN_ALPHA = "domain_api_alpha"
     private const val GATE_RETRY_MS = 60 * 1000L
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
@@ -199,19 +197,19 @@ object Api {
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
-        prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs = app.getSharedPreferences(PrefKeys.Api.FILE, Context.MODE_PRIVATE)
         cache.init(File(app.cacheDir, "api_cache"))
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
         val saved =
-            prefs?.getString(KEY_DOMAIN, null)?.takeIf { it.isNotBlank() }?.let { value ->
+            prefs?.getString(PrefKeys.Api.DOMAIN, null)?.takeIf { it.isNotBlank() }?.let { value ->
                 runCatching { normalizeDomain(value) }.getOrNull()
             }
         hasSavedDomain = saved != null
         activeDomain = saved ?: ""
         mainDomain = activeDomain
         alphaDomain =
-            prefs?.getString(KEY_DOMAIN_ALPHA, null)?.takeIf { it.isNotBlank() }?.let { value ->
+            prefs?.getString(PrefKeys.Api.DOMAIN_ALPHA, null)?.takeIf { it.isNotBlank() }?.let { value ->
                 runCatching { normalizeDomain(value) }.getOrNull()
             } ?: ""
     }
@@ -495,8 +493,12 @@ object Api {
             prefs
                 ?.edit()
                 ?.also { editor ->
-                    editor.putString(KEY_DOMAIN, activeDomain)
-                    if (alphaDomain.isBlank()) editor.remove(KEY_DOMAIN_ALPHA) else editor.putString(KEY_DOMAIN_ALPHA, alphaDomain)
+                    editor.putString(PrefKeys.Api.DOMAIN, activeDomain)
+                    if (alphaDomain.isBlank()) {
+                        editor.remove(PrefKeys.Api.DOMAIN_ALPHA)
+                    } else {
+                        editor.putString(PrefKeys.Api.DOMAIN_ALPHA, alphaDomain)
+                    }
                 }?.apply()
             lastGateFailure = 0L
             hasSavedDomain = true

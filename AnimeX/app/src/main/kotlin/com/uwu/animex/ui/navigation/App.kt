@@ -1,6 +1,5 @@
 package com.uwu.animex.ui.navigation
 
-import com.uwu.animex.data.model.toEpisodeIndex
 import android.content.res.Configuration
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -35,6 +34,7 @@ import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.toEpisodeIndex
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.anilist.AniListProfileScreen
 import com.uwu.animex.ui.auth.LoginScreen

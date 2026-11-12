@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.local.Bookmarks
@@ -57,7 +58,6 @@ object AniList {
     val REDIRECT_URI: String get() = AniListApi.REDIRECT_URI
     val PROFILE_URL: String get() = AniListApi.PROFILE_URL
 
-    private const val PREFS = "anilist"
     private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -102,20 +102,27 @@ object AniList {
         if (prefs != null) return
         val app = context.applicationContext
         AccountManager.init(app)
-        val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val p = app.getSharedPreferences(PrefKeys.AniList.FILE, Context.MODE_PRIVATE)
         prefs = p
         repo.onSessionExpired = { scope.launch { logout() } }
         _loggedIn.value = repo.authUser() != null
-        _autoSync.value = p.getBoolean("auto_sync", true)
+        _autoSync.value = p.getBoolean(PrefKeys.AniList.AUTO_SYNC, true)
         _links.value =
-            runCatching { gson.fromJson<HashMap<String, Int>>(p.getString("map", null), mapType) }.getOrNull().orEmpty()
-        _user.value = runCatching { gson.fromJson(p.getString("user", null), AniListUser::class.java) }.getOrNull()
+            runCatching {
+                gson.fromJson<HashMap<String, Int>>(p.getString(PrefKeys.AniList.MAP, null), mapType)
+            }.getOrNull().orEmpty()
+        _user.value =
+            runCatching {
+                gson.fromJson(p.getString(PrefKeys.AniList.USER, null), AniListUser::class.java)
+            }.getOrNull()
         _favorites.value =
-            runCatching { gson.fromJson<List<AniFavorite>>(p.getString("favorites", null), favoritesType) }
-                .getOrNull()
-                .orEmpty()
+            runCatching {
+                gson.fromJson<List<AniFavorite>>(p.getString(PrefKeys.AniList.FAVORITES, null), favoritesType)
+            }.getOrNull().orEmpty()
         lastEditOptions =
-            runCatching { gson.fromJson(p.getString("edit_options", null), AniListEditOptions::class.java) }.getOrNull()
+            runCatching {
+                gson.fromJson(p.getString(PrefKeys.AniList.EDIT_OPTIONS, null), AniListEditOptions::class.java)
+            }.getOrNull()
         AniListLibrary.init(app)
         if (_loggedIn.value) {
             scope.launch {
@@ -128,7 +135,7 @@ object AniList {
 
     fun updateAutoSync(value: Boolean) {
         _autoSync.value = value
-        prefs?.edit()?.putBoolean("auto_sync", value)?.apply()
+        prefs?.edit()?.putBoolean(PrefKeys.AniList.AUTO_SYNC, value)?.apply()
     }
 
     fun startLogin(context: Context) {
@@ -180,11 +187,11 @@ object AniList {
         repo.logout()
         prefs
             ?.edit()
-            ?.remove("user")
-            ?.remove("map")
-            ?.remove("totals")
-            ?.remove("favorites")
-            ?.remove("edit_options")
+            ?.remove(PrefKeys.AniList.USER)
+            ?.remove(PrefKeys.AniList.MAP)
+            ?.remove(PrefKeys.AniList.TOTALS)
+            ?.remove(PrefKeys.AniList.FAVORITES)
+            ?.remove(PrefKeys.AniList.EDIT_OPTIONS)
             ?.apply()
         lastEditOptions = null
         _loggedIn.value = false
@@ -218,7 +225,7 @@ object AniList {
                     ?: fallback
             if (_loggedIn.value) {
                 _user.value = u
-                prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
+                prefs?.edit()?.putString(PrefKeys.AniList.USER, gson.toJson(u))?.apply()
             }
             return u
         } finally {
@@ -228,7 +235,7 @@ object AniList {
 
     private fun saveFavorites(list: List<AniFavorite>) {
         _favorites.value = list
-        prefs?.edit()?.putString("favorites", gson.toJson(list))?.apply()
+        prefs?.edit()?.putString(PrefKeys.AniList.FAVORITES, gson.toJson(list))?.apply()
     }
 
     suspend fun refreshFavorites() {
@@ -380,7 +387,7 @@ object AniList {
         val next = HashMap(_links.value)
         next[movieId] = aniListId
         _links.value = next
-        prefs?.edit()?.putString("map", gson.toJson(next))?.apply()
+        prefs?.edit()?.putString(PrefKeys.AniList.MAP, gson.toJson(next))?.apply()
     }
 
     fun aniListIdFor(movieId: String?): Int? = movieId?.let { _links.value[it] }
@@ -411,7 +418,9 @@ object AniList {
     }
 
     private fun readTotals(): HashMap<String, Int>? =
-        runCatching { gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType) }.getOrNull()
+        runCatching {
+            gson.fromJson<HashMap<String, Int>>(prefs?.getString(PrefKeys.AniList.TOTALS, null), mapType)
+        }.getOrNull()
 
     fun cachedTotal(aniListId: Int): Int? = readTotals()?.get(aniListId.toString())
 
@@ -423,7 +432,7 @@ object AniList {
         val m = readTotals() ?: HashMap()
         if (m[aniListId.toString()] == value) return
         m[aniListId.toString()] = value
-        prefs?.edit()?.putString("totals", gson.toJson(m))?.apply()
+        prefs?.edit()?.putString(PrefKeys.AniList.TOTALS, gson.toJson(m))?.apply()
     }
 
     private suspend fun loadCached(id: String): SyncResult? {
@@ -435,7 +444,7 @@ object AniList {
 
     private fun rememberOptions(options: AniListEditOptions) {
         lastEditOptions = options
-        prefs?.edit()?.putString("edit_options", gson.toJson(options))?.apply()
+        prefs?.edit()?.putString(PrefKeys.AniList.EDIT_OPTIONS, gson.toJson(options))?.apply()
     }
 
     suspend fun resolve(movie: Movie): SyncResult? {

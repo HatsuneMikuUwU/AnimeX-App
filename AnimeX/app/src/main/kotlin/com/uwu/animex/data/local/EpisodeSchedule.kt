@@ -3,6 +3,7 @@ package com.uwu.animex.data.local
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.storage.PrefKeys
 
 enum class EpisodeSource { WATCHING, PLAN_TO_WATCH, SUBSCRIBED }
 
@@ -17,22 +18,18 @@ data class ScheduledEpisode(
 )
 
 object EpisodeScheduleStore {
-    private const val PREFS = "episode_schedule"
-    private const val K_ITEMS = "items"
-    private const val K_LAST_RUN = "last_run"
-    private const val K_SIGNATURE = "signature"
-    private const val K_NOTIFIED = "notified"
     private const val MAX_NOTIFIED = 1000
 
     private val gson = Gson()
 
-    private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private fun prefs(context: Context) =
+        context.applicationContext.getSharedPreferences(PrefKeys.EpisodeSchedule.FILE, Context.MODE_PRIVATE)
 
     @Synchronized
     fun items(context: Context): Map<String, ScheduledEpisode> =
         runCatching {
             gson.fromJson<List<ScheduledEpisode>>(
-                prefs(context).getString(K_ITEMS, null),
+                prefs(context).getString(PrefKeys.EpisodeSchedule.ITEMS, null),
                 object : TypeToken<List<ScheduledEpisode>>() {}.type,
             )
         }.getOrNull().orEmpty().filter { it.movieId.isNotBlank() }.associateBy { it.movieId }
@@ -42,7 +39,7 @@ object EpisodeScheduleStore {
         context: Context,
         items: Collection<ScheduledEpisode>,
     ) {
-        prefs(context).edit().putString(K_ITEMS, gson.toJson(items.toList())).apply()
+        prefs(context).edit().putString(PrefKeys.EpisodeSchedule.ITEMS, gson.toJson(items.toList())).apply()
     }
 
     @Synchronized
@@ -67,9 +64,9 @@ object EpisodeScheduleStore {
         item: ScheduledEpisode,
     ) = save(context, items(context).plus(item.movieId to item).values)
 
-    fun lastRun(context: Context): Long = prefs(context).getLong(K_LAST_RUN, 0L)
+    fun lastRun(context: Context): Long = prefs(context).getLong(PrefKeys.EpisodeSchedule.LAST_RUN, 0L)
 
-    fun signature(context: Context): String? = prefs(context).getString(K_SIGNATURE, null)
+    fun signature(context: Context): String? = prefs(context).getString(PrefKeys.EpisodeSchedule.SIGNATURE, null)
 
     fun markRun(
         context: Context,
@@ -77,8 +74,8 @@ object EpisodeScheduleStore {
     ) {
         prefs(context)
             .edit()
-            .putLong(K_LAST_RUN, System.currentTimeMillis())
-            .putString(K_SIGNATURE, signature)
+            .putLong(PrefKeys.EpisodeSchedule.LAST_RUN, System.currentTimeMillis())
+            .putString(PrefKeys.EpisodeSchedule.SIGNATURE, signature)
             .apply()
     }
 
@@ -98,13 +95,13 @@ object EpisodeScheduleStore {
         map.remove(movieId)
         map[movieId] = maxOf(episode, notified(context)[movieId] ?: Int.MIN_VALUE)
         while (map.size > MAX_NOTIFIED) map.remove(map.keys.first())
-        prefs(context).edit().putString(K_NOTIFIED, gson.toJson(map)).apply()
+        prefs(context).edit().putString(PrefKeys.EpisodeSchedule.NOTIFIED, gson.toJson(map)).apply()
     }
 
     private fun notified(context: Context): Map<String, Int> =
         runCatching {
             gson.fromJson<Map<String, Int>>(
-                prefs(context).getString(K_NOTIFIED, null),
+                prefs(context).getString(PrefKeys.EpisodeSchedule.NOTIFIED, null),
                 object : TypeToken<Map<String, Int>>() {}.type,
             )
         }.getOrNull().orEmpty()

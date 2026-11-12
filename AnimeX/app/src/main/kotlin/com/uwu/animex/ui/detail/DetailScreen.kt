@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.TitleNoise
@@ -178,7 +179,7 @@ fun DetailScreen(
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     var unwatchedCount by remember(id) { mutableIntStateOf(0) }
     val ctx = LocalContext.current
-    val sortPrefs = remember { ctx.getSharedPreferences("episode_sort", Context.MODE_PRIVATE) }
+    val sortPrefs = remember { ctx.getSharedPreferences(PrefKeys.EpisodeSort.FILE, Context.MODE_PRIVATE) }
     var episodeSort by remember(id) {
         mutableStateOf(
             runCatching {

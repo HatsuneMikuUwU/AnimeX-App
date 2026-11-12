@@ -1,6 +1,7 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,39 +33,6 @@ enum class PlayerOrientation(
 }
 
 object PlayerPrefs {
-    private const val PREFS = "player"
-    private const val KEY_QUALITY = "quality"
-    private const val KEY_HIDDEN_BUTTONS = "hidden_buttons"
-    private const val KEY_GESTURES = "gestures_enabled"
-
-    private const val KEY_PROGRESS_PREF = "progress_preference"
-    private const val KEY_SWITCH_ON_FAILURE = "switch_on_failure"
-    private const val KEY_ORIENTATION = "default_orientation"
-    private const val KEY_SHOW_LOADING_CIRCLE = "show_loading_circle"
-    private const val KEY_REMEMBER_LEVELS = "remember_brightness_volume"
-    private const val LEGACY_KEY_REMEMBER_BRIGHTNESS = "remember_brightness"
-    private const val LEGACY_KEY_REMEMBER_VOLUME = "remember_volume"
-    private const val KEY_BRIGHTNESS_VALUE = "brightness_value"
-    private const val KEY_VOLUME_VALUE = "volume_value"
-    private const val KEY_ENABLE_PIP = "enable_pip"
-
-    private const val KEY_AUTOPLAY = "autoplay_enabled"
-    private const val KEY_CONTROLS_TIMEOUT = "controls_timeout_ms"
-    private const val KEY_DISPLAY_VOL_PER = "display_vol_as_per"
-    private const val KEY_INVERT_DURATION = "invert_duration"
-    private const val KEY_SPEED_PRESETS = "speed_presets"
-    private const val KEY_PLAYER_FULLSCREEN = "player_fullscreen"
-    private const val KEY_REDUCE_MOTION = "reduce_motion"
-    private const val KEY_ALWAYS_EXTERNAL = "always_use_external_player"
-    private const val KEY_EXTERNAL_PACKAGE = "external_player_package"
-    private const val KEY_SWAP_VOL_BRIGHTNESS = "swap_volume_brightness"
-    private const val KEY_SWAP_INDICATOR = "swap_volume_brightness_indicator"
-    private const val KEY_AUDIO_FOCUS = "audio_focus"
-    private const val KEY_PAUSE_ON_NOISY = "pause_on_headset_unplug"
-    private const val KEY_VOLUME_BOOST = "volume_boost"
-    private const val KEY_BACKGROUND_PLAY = "background_play"
-    private const val KEY_SKIP_INTRO_MS = "skip_intro_ms"
-
     private val DEFAULT_SPEED_PRESETS =
         setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0")
 
@@ -163,13 +131,13 @@ object PlayerPrefs {
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
-        val sp = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        quality = sp.getInt(KEY_QUALITY, 0)
-        _gesturesEnabled.value = sp.getBoolean(KEY_GESTURES, true)
+        val sp = appContext.getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
+        quality = sp.getInt(PrefKeys.Player.QUALITY, 0)
+        _gesturesEnabled.value = sp.getBoolean(PrefKeys.Player.GESTURES, true)
         _hiddenButtons.value =
-            if (sp.contains(KEY_HIDDEN_BUTTONS)) {
+            if (sp.contains(PrefKeys.Player.HIDDEN_BUTTONS)) {
                 sp
-                    .getStringSet(KEY_HIDDEN_BUTTONS, emptySet())
+                    .getStringSet(PrefKeys.Player.HIDDEN_BUTTONS, emptySet())
                     .orEmpty()
                     .mapNotNull { name -> PlayerButton.entries.firstOrNull { it.name == name } }
                     .toSet()
@@ -177,45 +145,46 @@ object PlayerPrefs {
                 DEFAULT_HIDDEN_BUTTONS
             }
 
-        _progressPreference.value = sp.getFloat(KEY_PROGRESS_PREF, 0.85f)
-        _switchOnFailure.value = sp.getBoolean(KEY_SWITCH_ON_FAILURE, true)
-        val orientName = sp.getString(KEY_ORIENTATION, PlayerOrientation.Landscape.name)
+        _progressPreference.value = sp.getFloat(PrefKeys.Player.PROGRESS_PREF, 0.85f)
+        _switchOnFailure.value = sp.getBoolean(PrefKeys.Player.SWITCH_ON_FAILURE, true)
+        val orientName = sp.getString(PrefKeys.Player.ORIENTATION, PlayerOrientation.Landscape.name)
         _defaultOrientation.value =
             PlayerOrientation.entries.firstOrNull { it.name == orientName }
                 ?: PlayerOrientation.Landscape
-        _showLoadingCircle.value = sp.getBoolean(KEY_SHOW_LOADING_CIRCLE, true)
+        _showLoadingCircle.value = sp.getBoolean(PrefKeys.Player.SHOW_LOADING_CIRCLE, true)
         _rememberLevels.value =
-            if (sp.contains(KEY_REMEMBER_LEVELS)) {
-                sp.getBoolean(KEY_REMEMBER_LEVELS, false)
+            if (sp.contains(PrefKeys.Player.REMEMBER_LEVELS)) {
+                sp.getBoolean(PrefKeys.Player.REMEMBER_LEVELS, false)
             } else {
-                sp.getBoolean(LEGACY_KEY_REMEMBER_BRIGHTNESS, false) ||
-                    sp.getBoolean(LEGACY_KEY_REMEMBER_VOLUME, false)
+                sp.getBoolean(PrefKeys.Player.LEGACY_REMEMBER_BRIGHTNESS, false) ||
+                    sp.getBoolean(PrefKeys.Player.LEGACY_REMEMBER_VOLUME, false)
             }
-        _brightnessValue.value = sp.getFloat(KEY_BRIGHTNESS_VALUE, -1f)
-        _volumeValue.value = sp.getInt(KEY_VOLUME_VALUE, -1)
-        _enablePip.value = sp.getBoolean(KEY_ENABLE_PIP, true)
+        _brightnessValue.value = sp.getFloat(PrefKeys.Player.BRIGHTNESS_VALUE, -1f)
+        _volumeValue.value = sp.getInt(PrefKeys.Player.VOLUME_VALUE, -1)
+        _enablePip.value = sp.getBoolean(PrefKeys.Player.ENABLE_PIP, true)
 
-        _autoplayEnabled.value = sp.getBoolean(KEY_AUTOPLAY, true)
-        _controlsTimeoutMs.value = sp.getInt(KEY_CONTROLS_TIMEOUT, 4_000)
-        _displayVolPer.value = sp.getBoolean(KEY_DISPLAY_VOL_PER, true)
-        _invertDuration.value = sp.getBoolean(KEY_INVERT_DURATION, false)
-        _speedPresets.value = sp.getStringSet(KEY_SPEED_PRESETS, DEFAULT_SPEED_PRESETS) ?: DEFAULT_SPEED_PRESETS
-        _playerFullscreen.value = sp.getBoolean(KEY_PLAYER_FULLSCREEN, true)
-        _reduceMotion.value = sp.getBoolean(KEY_REDUCE_MOTION, false)
-        _alwaysUseExternal.value = sp.getBoolean(KEY_ALWAYS_EXTERNAL, false)
-        _externalPackage.value = sp.getString(KEY_EXTERNAL_PACKAGE, "") ?: ""
-        _swapVolumeBrightness.value = sp.getBoolean(KEY_SWAP_VOL_BRIGHTNESS, false)
-        _swapIndicator.value = sp.getBoolean(KEY_SWAP_INDICATOR, false)
-        _audioFocus.value = sp.getBoolean(KEY_AUDIO_FOCUS, true)
-        _pauseOnNoisy.value = sp.getBoolean(KEY_PAUSE_ON_NOISY, true)
-        _volumeBoost.value = sp.getBoolean(KEY_VOLUME_BOOST, false)
-        _backgroundPlay.value = sp.getBoolean(KEY_BACKGROUND_PLAY, false)
-        _skipIntroMs.value = sp.getInt(KEY_SKIP_INTRO_MS, DEFAULT_SKIP_INTRO_MS).coerceIn(10_000, 300_000)
+        _autoplayEnabled.value = sp.getBoolean(PrefKeys.Player.AUTOPLAY, true)
+        _controlsTimeoutMs.value = sp.getInt(PrefKeys.Player.CONTROLS_TIMEOUT, 4_000)
+        _displayVolPer.value = sp.getBoolean(PrefKeys.Player.DISPLAY_VOL_PER, true)
+        _invertDuration.value = sp.getBoolean(PrefKeys.Player.INVERT_DURATION, false)
+        _speedPresets.value =
+            sp.getStringSet(PrefKeys.Player.SPEED_PRESETS, DEFAULT_SPEED_PRESETS) ?: DEFAULT_SPEED_PRESETS
+        _playerFullscreen.value = sp.getBoolean(PrefKeys.Player.PLAYER_FULLSCREEN, true)
+        _reduceMotion.value = sp.getBoolean(PrefKeys.Player.REDUCE_MOTION, false)
+        _alwaysUseExternal.value = sp.getBoolean(PrefKeys.Player.ALWAYS_EXTERNAL, false)
+        _externalPackage.value = sp.getString(PrefKeys.Player.EXTERNAL_PACKAGE, "") ?: ""
+        _swapVolumeBrightness.value = sp.getBoolean(PrefKeys.Player.SWAP_VOL_BRIGHTNESS, false)
+        _swapIndicator.value = sp.getBoolean(PrefKeys.Player.SWAP_INDICATOR, false)
+        _audioFocus.value = sp.getBoolean(PrefKeys.Player.AUDIO_FOCUS, true)
+        _pauseOnNoisy.value = sp.getBoolean(PrefKeys.Player.PAUSE_ON_NOISY, true)
+        _volumeBoost.value = sp.getBoolean(PrefKeys.Player.VOLUME_BOOST, false)
+        _backgroundPlay.value = sp.getBoolean(PrefKeys.Player.BACKGROUND_PLAY, false)
+        _skipIntroMs.value = sp.getInt(PrefKeys.Player.SKIP_INTRO_MS, DEFAULT_SKIP_INTRO_MS).coerceIn(10_000, 300_000)
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
         appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
             .edit()
             .apply(block)
             .apply()
@@ -223,133 +192,133 @@ object PlayerPrefs {
 
     fun setQuality(value: Int) {
         quality = value
-        edit { putInt(KEY_QUALITY, value) }
+        edit { putInt(PrefKeys.Player.QUALITY, value) }
     }
 
     fun setHiddenButtons(value: Set<PlayerButton>) {
         _hiddenButtons.value = value
-        edit { putStringSet(KEY_HIDDEN_BUTTONS, value.map { it.name }.toSet()) }
+        edit { putStringSet(PrefKeys.Player.HIDDEN_BUTTONS, value.map { it.name }.toSet()) }
     }
 
     fun setGesturesEnabled(value: Boolean) {
         _gesturesEnabled.value = value
-        edit { putBoolean(KEY_GESTURES, value) }
+        edit { putBoolean(PrefKeys.Player.GESTURES, value) }
     }
 
     fun setProgressPreference(value: Float) {
         _progressPreference.value = value
-        edit { putFloat(KEY_PROGRESS_PREF, value) }
+        edit { putFloat(PrefKeys.Player.PROGRESS_PREF, value) }
     }
 
     fun setSwitchOnFailure(value: Boolean) {
         _switchOnFailure.value = value
-        edit { putBoolean(KEY_SWITCH_ON_FAILURE, value) }
+        edit { putBoolean(PrefKeys.Player.SWITCH_ON_FAILURE, value) }
     }
 
     fun setDefaultOrientation(value: PlayerOrientation) {
         _defaultOrientation.value = value
-        edit { putString(KEY_ORIENTATION, value.name) }
+        edit { putString(PrefKeys.Player.ORIENTATION, value.name) }
     }
 
     fun setShowLoadingCircle(value: Boolean) {
         _showLoadingCircle.value = value
-        edit { putBoolean(KEY_SHOW_LOADING_CIRCLE, value) }
+        edit { putBoolean(PrefKeys.Player.SHOW_LOADING_CIRCLE, value) }
     }
 
     fun setRememberLevels(value: Boolean) {
         _rememberLevels.value = value
-        edit { putBoolean(KEY_REMEMBER_LEVELS, value) }
+        edit { putBoolean(PrefKeys.Player.REMEMBER_LEVELS, value) }
     }
 
     fun setBrightnessValue(value: Float) {
         _brightnessValue.value = value
-        edit { putFloat(KEY_BRIGHTNESS_VALUE, value) }
+        edit { putFloat(PrefKeys.Player.BRIGHTNESS_VALUE, value) }
     }
 
     fun setVolumeValue(value: Int) {
         _volumeValue.value = value
-        edit { putInt(KEY_VOLUME_VALUE, value) }
+        edit { putInt(PrefKeys.Player.VOLUME_VALUE, value) }
     }
 
     fun setEnablePip(value: Boolean) {
         _enablePip.value = value
-        edit { putBoolean(KEY_ENABLE_PIP, value) }
+        edit { putBoolean(PrefKeys.Player.ENABLE_PIP, value) }
     }
 
     fun setAutoplayEnabled(value: Boolean) {
         _autoplayEnabled.value = value
-        edit { putBoolean(KEY_AUTOPLAY, value) }
+        edit { putBoolean(PrefKeys.Player.AUTOPLAY, value) }
     }
 
     fun setControlsTimeoutMs(value: Int) {
         _controlsTimeoutMs.value = value
-        edit { putInt(KEY_CONTROLS_TIMEOUT, value) }
+        edit { putInt(PrefKeys.Player.CONTROLS_TIMEOUT, value) }
     }
 
     fun setDisplayVolPer(value: Boolean) {
         _displayVolPer.value = value
-        edit { putBoolean(KEY_DISPLAY_VOL_PER, value) }
+        edit { putBoolean(PrefKeys.Player.DISPLAY_VOL_PER, value) }
     }
 
     fun setInvertDuration(value: Boolean) {
         _invertDuration.value = value
-        edit { putBoolean(KEY_INVERT_DURATION, value) }
+        edit { putBoolean(PrefKeys.Player.INVERT_DURATION, value) }
     }
 
     fun setPlayerFullscreen(value: Boolean) {
         _playerFullscreen.value = value
-        edit { putBoolean(KEY_PLAYER_FULLSCREEN, value) }
+        edit { putBoolean(PrefKeys.Player.PLAYER_FULLSCREEN, value) }
     }
 
     fun setReduceMotion(value: Boolean) {
         _reduceMotion.value = value
-        edit { putBoolean(KEY_REDUCE_MOTION, value) }
+        edit { putBoolean(PrefKeys.Player.REDUCE_MOTION, value) }
     }
 
     fun setAlwaysUseExternal(value: Boolean) {
         _alwaysUseExternal.value = value
-        edit { putBoolean(KEY_ALWAYS_EXTERNAL, value) }
+        edit { putBoolean(PrefKeys.Player.ALWAYS_EXTERNAL, value) }
     }
 
     fun setExternalPackage(value: String) {
         _externalPackage.value = value
-        edit { putString(KEY_EXTERNAL_PACKAGE, value) }
+        edit { putString(PrefKeys.Player.EXTERNAL_PACKAGE, value) }
     }
 
     fun setSwapVolumeBrightness(value: Boolean) {
         _swapVolumeBrightness.value = value
-        edit { putBoolean(KEY_SWAP_VOL_BRIGHTNESS, value) }
+        edit { putBoolean(PrefKeys.Player.SWAP_VOL_BRIGHTNESS, value) }
     }
 
     fun setSwapIndicator(value: Boolean) {
         _swapIndicator.value = value
-        edit { putBoolean(KEY_SWAP_INDICATOR, value) }
+        edit { putBoolean(PrefKeys.Player.SWAP_INDICATOR, value) }
     }
 
     fun setAudioFocus(value: Boolean) {
         _audioFocus.value = value
-        edit { putBoolean(KEY_AUDIO_FOCUS, value) }
+        edit { putBoolean(PrefKeys.Player.AUDIO_FOCUS, value) }
     }
 
     fun setPauseOnNoisy(value: Boolean) {
         _pauseOnNoisy.value = value
-        edit { putBoolean(KEY_PAUSE_ON_NOISY, value) }
+        edit { putBoolean(PrefKeys.Player.PAUSE_ON_NOISY, value) }
     }
 
     fun setVolumeBoost(value: Boolean) {
         _volumeBoost.value = value
-        edit { putBoolean(KEY_VOLUME_BOOST, value) }
+        edit { putBoolean(PrefKeys.Player.VOLUME_BOOST, value) }
     }
 
     fun setBackgroundPlay(value: Boolean) {
         _backgroundPlay.value = value
-        edit { putBoolean(KEY_BACKGROUND_PLAY, value) }
+        edit { putBoolean(PrefKeys.Player.BACKGROUND_PLAY, value) }
     }
 
     fun setSkipIntroMs(value: Int) {
         val v = value.coerceIn(10_000, 300_000)
         _skipIntroMs.value = v
-        edit { putInt(KEY_SKIP_INTRO_MS, v) }
+        edit { putInt(PrefKeys.Player.SKIP_INTRO_MS, v) }
     }
 
     fun exportJson(): JSONObject =

@@ -3,6 +3,7 @@ package com.uwu.animex.core.notification
 import android.content.Context
 import android.content.SharedPreferences
 import com.uwu.animex.BuildConfig
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,12 +16,6 @@ data class NotificationSettings(
 )
 
 object NotificationPrefs {
-    private const val PREFS = "notification_prefs"
-    private const val K_ENABLED = "enabled"
-    private const val K_EPISODES = "episodes"
-    private const val K_APP_UPDATES = "app_updates"
-    private const val K_PRERELEASES = "prereleases"
-
     private var sp: SharedPreferences? = null
     private val _state = MutableStateFlow(NotificationSettings())
     val state: StateFlow<NotificationSettings> = _state.asStateFlow()
@@ -28,15 +23,15 @@ object NotificationPrefs {
     @Synchronized
     fun init(context: Context) {
         if (sp != null) return
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = context.applicationContext.getSharedPreferences(PrefKeys.Notification.FILE, Context.MODE_PRIVATE)
         sp = prefs
         val d = NotificationSettings()
         _state.value =
             NotificationSettings(
-                enabled = prefs.getBoolean(K_ENABLED, d.enabled),
-                episodes = prefs.getBoolean(K_EPISODES, d.episodes),
-                appUpdates = prefs.getBoolean(K_APP_UPDATES, d.appUpdates),
-                prereleases = prefs.getBoolean(K_PRERELEASES, d.prereleases),
+                enabled = prefs.getBoolean(PrefKeys.Notification.ENABLED, d.enabled),
+                episodes = prefs.getBoolean(PrefKeys.Notification.EPISODES, d.episodes),
+                appUpdates = prefs.getBoolean(PrefKeys.Notification.APP_UPDATES, d.appUpdates),
+                prereleases = prefs.getBoolean(PrefKeys.Notification.PRERELEASES, d.prereleases),
             )
     }
 
@@ -46,10 +41,10 @@ object NotificationPrefs {
         _state.value = next
         sp
             ?.edit()
-            ?.putBoolean(K_ENABLED, next.enabled)
-            ?.putBoolean(K_EPISODES, next.episodes)
-            ?.putBoolean(K_APP_UPDATES, next.appUpdates)
-            ?.putBoolean(K_PRERELEASES, next.prereleases)
+            ?.putBoolean(PrefKeys.Notification.ENABLED, next.enabled)
+            ?.putBoolean(PrefKeys.Notification.EPISODES, next.episodes)
+            ?.putBoolean(PrefKeys.Notification.APP_UPDATES, next.appUpdates)
+            ?.putBoolean(PrefKeys.Notification.PRERELEASES, next.prereleases)
             ?.apply()
     }
 }

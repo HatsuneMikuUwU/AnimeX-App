@@ -3,6 +3,7 @@ package com.uwu.animex.core.network
 import android.content.Context
 import android.content.SharedPreferences
 import com.uwu.animex.core.cache.monotonicMs
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,9 +44,6 @@ enum class DohProvider(
 }
 
 object DohSettings {
-    private const val PREFS = "network_settings"
-    private const val KEY_PROVIDER = "doh_provider"
-
     @Volatile
     private var prefs: SharedPreferences? = null
 
@@ -55,16 +53,16 @@ object DohSettings {
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
-        val appPrefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val appPrefs = context.applicationContext.getSharedPreferences(PrefKeys.Network.FILE, Context.MODE_PRIVATE)
         prefs = appPrefs
-        val stored = appPrefs.getString(KEY_PROVIDER, null)
+        val stored = appPrefs.getString(PrefKeys.Network.PROVIDER, null)
         _selected.value = DohProvider.entries.firstOrNull { it.name == stored } ?: DohProvider.SYSTEM
     }
 
     fun setProvider(provider: DohProvider) {
         if (_selected.value == provider) return
         _selected.value = provider
-        prefs?.edit()?.putString(KEY_PROVIDER, provider.name)?.apply()
+        prefs?.edit()?.putString(PrefKeys.Network.PROVIDER, provider.name)?.apply()
         DohDns.clearAnswers()
         NetworkModule.evictConnectionsForDnsChange()
     }

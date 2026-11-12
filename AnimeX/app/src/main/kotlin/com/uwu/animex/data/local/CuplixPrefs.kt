@@ -1,15 +1,12 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
+import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object CuplixPrefs {
-    private const val PREFS = "cuplix"
-    private const val KEY_ENABLED = "enabled"
-    private const val KEY_MUTED = "muted"
-
     private lateinit var appContext: Context
 
     private val _enabled = MutableStateFlow(true)
@@ -21,18 +18,18 @@ object CuplixPrefs {
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
-        val sp = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        _enabled.value = sp.getBoolean(KEY_ENABLED, true)
-        _muted.value = sp.getBoolean(KEY_MUTED, false)
+        val sp = appContext.getSharedPreferences(PrefKeys.Cuplix.FILE, Context.MODE_PRIVATE)
+        _enabled.value = sp.getBoolean(PrefKeys.Cuplix.ENABLED, true)
+        _muted.value = sp.getBoolean(PrefKeys.Cuplix.MUTED, false)
     }
 
     fun setMuted(value: Boolean) {
         _muted.value = value
         if (!::appContext.isInitialized) return
         appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.Cuplix.FILE, Context.MODE_PRIVATE)
             .edit()
-            .putBoolean(KEY_MUTED, value)
+            .putBoolean(PrefKeys.Cuplix.MUTED, value)
             .apply()
     }
 
@@ -40,9 +37,9 @@ object CuplixPrefs {
         _enabled.value = value
         if (!::appContext.isInitialized) return
         appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getSharedPreferences(PrefKeys.Cuplix.FILE, Context.MODE_PRIVATE)
             .edit()
-            .putBoolean(KEY_ENABLED, value)
+            .putBoolean(PrefKeys.Cuplix.ENABLED, value)
             .apply()
     }
 }
