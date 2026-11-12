@@ -6,22 +6,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
-foreach(k AX_K0 AX_K1 AX_K2 AX_K3)
-    if(NOT DEFINED ${k})
-        set(${k} "")
+# Rahasia (sudah di-XOR) dikirim dari app/build.gradle.kts.
+# Jika tidak diisi, nilainya string kosong supaya build tetap berhasil.
+foreach(masked_secret_name
+        ANIMEX_MASKED_SECRET_MY_ANIME_LIST
+        ANIMEX_MASKED_SECRET_ANILIST
+        ANIMEX_MASKED_SECRET_API_GATE
+        ANIMEX_MASKED_SECRET_API_BASE)
+    if(NOT DEFINED ${masked_secret_name})
+        set(${masked_secret_name} "")
     endif()
 endforeach()
 
 add_library(animexcore SHARED
-    ax_core.cpp
+    animex_core.cpp
     jni_bridge.cpp
 )
 
 target_compile_definitions(animexcore PRIVATE
-    "AX_K0=\"${AX_K0}\""
-    "AX_K1=\"${AX_K1}\""
-    "AX_K2=\"${AX_K2}\""
-    "AX_K3=\"${AX_K3}\""
+    "ANIMEX_MASKED_SECRET_MY_ANIME_LIST=\"${ANIMEX_MASKED_SECRET_MY_ANIME_LIST}\""
+    "ANIMEX_MASKED_SECRET_ANILIST=\"${ANIMEX_MASKED_SECRET_ANILIST}\""
+    "ANIMEX_MASKED_SECRET_API_GATE=\"${ANIMEX_MASKED_SECRET_API_GATE}\""
+    "ANIMEX_MASKED_SECRET_API_BASE=\"${ANIMEX_MASKED_SECRET_API_BASE}\""
 )
 
 target_compile_options(animexcore PRIVATE

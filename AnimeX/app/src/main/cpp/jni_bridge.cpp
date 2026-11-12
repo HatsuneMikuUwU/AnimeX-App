@@ -3,82 +3,109 @@
 #include <string>
 #include <vector>
 
-#include "ax_core.h"
+#include "animex_core.h"
 
-#ifndef AX_K0
-#define AX_K0 ""
+// Nilai rahasia (sudah di-XOR) dikirim dari Gradle lewat CMake.
+// Jika tidak diisi, nilainya string kosong supaya build tetap berhasil.
+#ifndef ANIMEX_MASKED_SECRET_MY_ANIME_LIST
+#define ANIMEX_MASKED_SECRET_MY_ANIME_LIST ""
 #endif
-#ifndef AX_K1
-#define AX_K1 ""
+#ifndef ANIMEX_MASKED_SECRET_ANILIST
+#define ANIMEX_MASKED_SECRET_ANILIST ""
 #endif
-#ifndef AX_K2
-#define AX_K2 ""
+#ifndef ANIMEX_MASKED_SECRET_API_GATE
+#define ANIMEX_MASKED_SECRET_API_GATE ""
 #endif
-#ifndef AX_K3
-#define AX_K3 ""
+#ifndef ANIMEX_MASKED_SECRET_API_BASE
+#define ANIMEX_MASKED_SECRET_API_BASE ""
 #endif
 
 namespace {
 
-std::string to_std(JNIEnv* env, jstring s) {
-    if (s == nullptr) return "";
-    const char* c = env->GetStringUTFChars(s, nullptr);
-    if (c == nullptr) return "";
-    std::string out(c);
-    env->ReleaseStringUTFChars(s, c);
-    return out;
+// Java String -> std::string. Mengembalikan string kosong jika null.
+std::string javaStringToStdString(JNIEnv* environment, jstring javaString) {
+    if (javaString == nullptr) return "";
+
+    const char* utf8Characters = environment->GetStringUTFChars(javaString, nullptr);
+    if (utf8Characters == nullptr) return "";
+
+    std::string standardString(utf8Characters);
+    environment->ReleaseStringUTFChars(javaString, utf8Characters);
+    return standardString;
 }
 
-jstring to_j(JNIEnv* env, const std::string& s) { return env->NewStringUTF(s.c_str()); }
+// std::string -> Java String.
+jstring stdStringToJavaString(JNIEnv* environment, const std::string& standardString) {
+    return environment->NewStringUTF(standardString.c_str());
+}
 
-jobjectArray to_arr(JNIEnv* env, const std::vector<std::string>& v) {
-    jclass cls = env->FindClass("java/lang/String");
-    jobjectArray arr = env->NewObjectArray(static_cast<jsize>(v.size()), cls, nullptr);
-    for (std::size_t i = 0; i < v.size(); ++i) {
-        jstring s = to_j(env, v[i]);
-        env->SetObjectArrayElement(arr, static_cast<jsize>(i), s);
-        env->DeleteLocalRef(s);
+// std::vector<std::string> -> Java Array<String>.
+jobjectArray stdStringListToJavaArray(JNIEnv* environment,
+                                      const std::vector<std::string>& stringList) {
+    jclass stringClass = environment->FindClass("java/lang/String");
+    jobjectArray javaArray = environment->NewObjectArray(
+        static_cast<jsize>(stringList.size()), stringClass, nullptr);
+
+    for (std::size_t index = 0; index < stringList.size(); ++index) {
+        jstring javaString = stdStringToJavaString(environment, stringList[index]);
+        environment->SetObjectArrayElement(javaArray, static_cast<jsize>(index), javaString);
+        environment->DeleteLocalRef(javaString);
     }
-    env->DeleteLocalRef(cls);
-    return arr;
+
+    environment->DeleteLocalRef(stringClass);
+    return javaArray;
 }
 
-}
+}  // namespace
 
-#define FN(ret, name) extern "C" JNIEXPORT ret JNICALL Java_com_uwu_animex_core_security_NativeCore_##name
+// Nama fungsi JNI harus sama dengan package dan class Kotlin:
+// com.uwu.animex.core.security.NativeCore
+#define NATIVE_CORE_FUNCTION(returnType, functionName) \
+    extern "C" JNIEXPORT returnType JNICALL            \
+        Java_com_uwu_animex_core_security_NativeCore_##functionName
 
-FN(jstring, secret)(JNIEnv* env, jobject, jint id) {
-    const char* masked = "";
-    switch (id) {
-        case ax::MAL: masked = AX_K0; break;
-        case ax::ANILIST: masked = AX_K1; break;
-        case ax::GATE: masked = AX_K2; break;
-        case ax::BASE: masked = AX_K3; break;
+NATIVE_CORE_FUNCTION(jstring, secret)(JNIEnv* environment, jobject, jint secretId) {
+    const char* maskedHexText = "";
+    switch (secretId) {
+        case animex::SECRET_MY_ANIME_LIST: maskedHexText = ANIMEX_MASKED_SECRET_MY_ANIME_LIST; break;
+        case animex::SECRET_ANILIST:       maskedHexText = ANIMEX_MASKED_SECRET_ANILIST;       break;
+        case animex::SECRET_API_GATE:      maskedHexText = ANIMEX_MASKED_SECRET_API_GATE;      break;
+        case animex::SECRET_API_BASE:      maskedHexText = ANIMEX_MASKED_SECRET_API_BASE;      break;
         default: break;
     }
-    return to_j(env, ax::secret(id, masked));
+    return stdStringToJavaString(environment, animex::decodeSecret(secretId, maskedHexText));
 }
 
-FN(jstring, endpoint)(JNIEnv* env, jobject, jint op, jstring arg) {
-    return to_j(env, ax::endpoint(op, to_std(env, arg)));
+NATIVE_CORE_FUNCTION(jstring, endpoint)(JNIEnv* environment, jobject, jint operation,
+                                        jstring argument) {
+    return stdStringToJavaString(
+        environment,
+        animex::buildEndpointPath(operation, javaStringToStdString(environment, argument)));
 }
 
-FN(jboolean, isVolatile)(JNIEnv* env, jobject, jstring path) {
-    return ax::is_volatile(to_std(env, path)) ? JNI_TRUE : JNI_FALSE;
+NATIVE_CORE_FUNCTION(jboolean, isVolatile)(JNIEnv* environment, jobject, jstring path) {
+    return animex::isVolatilePath(javaStringToStdString(environment, path)) ? JNI_TRUE : JNI_FALSE;
 }
 
-FN(jobjectArray, exploreTarget)(JNIEnv* env, jobject, jstring kind) {
-    return to_arr(env, ax::explore_target(to_std(env, kind)));
+NATIVE_CORE_FUNCTION(jobjectArray, exploreTarget)(JNIEnv* environment, jobject, jstring kind) {
+    return stdStringListToJavaArray(
+        environment, animex::exploreTargetFor(javaStringToStdString(environment, kind)));
 }
 
-FN(jobjectArray, searchPlan)(JNIEnv* env, jobject) { return to_arr(env, ax::search_plan()); }
-
-FN(jobjectArray, scheduleDays)(JNIEnv* env, jobject) { return to_arr(env, ax::schedule_days()); }
-
-FN(jstring, normalizeBase)(JNIEnv* env, jobject, jstring raw) {
-    return to_j(env, ax::normalize_base(to_std(env, raw)));
+NATIVE_CORE_FUNCTION(jobjectArray, searchPlan)(JNIEnv* environment, jobject) {
+    return stdStringListToJavaArray(environment, animex::buildSearchPlan());
 }
 
-FN(jstring, gateDomain)(JNIEnv* env, jobject, jstring json) {
-    return to_j(env, ax::gate_domain(to_std(env, json)));
+NATIVE_CORE_FUNCTION(jobjectArray, scheduleDays)(JNIEnv* environment, jobject) {
+    return stdStringListToJavaArray(environment, animex::scheduleDayNames());
+}
+
+NATIVE_CORE_FUNCTION(jstring, normalizeBase)(JNIEnv* environment, jobject, jstring rawUrl) {
+    return stdStringToJavaString(
+        environment, animex::normalizeBaseUrl(javaStringToStdString(environment, rawUrl)));
+}
+
+NATIVE_CORE_FUNCTION(jstring, gateDomain)(JNIEnv* environment, jobject, jstring jsonText) {
+    return stdStringToJavaString(
+        environment, animex::extractGateDomain(javaStringToStdString(environment, jsonText)));
 }
