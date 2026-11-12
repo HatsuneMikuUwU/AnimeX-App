@@ -73,12 +73,12 @@ internal fun HomeGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.PlayCircleOutline,
-            title = "Aktifkan Cuplix",
-            subtitle = "Tampilkan Cuplix di beranda dan putar klip pendeknya. Matikan untuk menyembunyikan fitur ini",
+            title = "Nonaktifkan Cuplix",
+            subtitle = "Sembunyikan Cuplix dari beranda dan matikan putar klip pendeknya",
             shape = itemShape(1, 2),
-            checked = cuplixEnabled,
+            checked = !cuplixEnabled,
             enabled = true,
-            onChange = CuplixPrefs::setEnabled,
+            onChange = { CuplixPrefs.setEnabled(!it) },
         )
     }
 
