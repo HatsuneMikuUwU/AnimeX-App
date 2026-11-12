@@ -47,14 +47,19 @@ object HomeSectionPrefs {
     fun move(
         section: HomeSection,
         delta: Int,
+        among: List<HomeSection> = HomeSection.entries,
     ) {
         _layout.update { current ->
-            val from = current.order.indexOf(section)
-            val to = (from + delta).coerceIn(0, current.order.lastIndex)
-            if (from < 0 || from == to) {
+            val other = among.indexOf(section).takeIf { it >= 0 }?.let { among.getOrNull(it + delta) }
+            if (other == null) {
                 current
             } else {
-                current.copy(order = current.order.toMutableList().apply { add(to, removeAt(from)) })
+                val list = current.order.toMutableList()
+                val first = list.indexOf(section)
+                val second = list.indexOf(other)
+                list[first] = other
+                list[second] = section
+                current.copy(order = list)
             }
         }
         persist()

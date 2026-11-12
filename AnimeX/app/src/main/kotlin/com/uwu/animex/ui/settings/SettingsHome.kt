@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.HomeSection
 import com.uwu.animex.data.local.HomeSectionPrefs
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -78,6 +79,8 @@ internal fun HomeGroup() {
 @Composable
 private fun HomeSectionSheet(onDismiss: () -> Unit) {
     val layout by HomeSectionPrefs.layout.collectAsStateWithLifecycle()
+    val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
+    val sections = layout.order.filter { it != HomeSection.Cuplix || cuplixEnabled }
     val sheetState =
         rememberBottomSheetState(
             initialValue = SheetValue.Hidden,
@@ -91,11 +94,11 @@ private fun HomeSectionSheet(onDismiss: () -> Unit) {
     ) {
         WindowBlurEffect()
         LazyColumn(Modifier.weight(1f, fill = false)) {
-            itemsIndexed(layout.order, key = { _, section -> section.key }) { index, section ->
+            itemsIndexed(sections, key = { _, section -> section.key }) { index, section ->
                 HomeSectionRow(
                     section = section,
                     index = index,
-                    count = layout.order.size,
+                    sections = sections,
                     modifier = animateItemExpressive(),
                 )
             }
@@ -122,12 +125,13 @@ private fun HomeSectionSheet(onDismiss: () -> Unit) {
 private fun HomeSectionRow(
     section: HomeSection,
     index: Int,
-    count: Int,
+    sections: List<HomeSection>,
     modifier: Modifier = Modifier,
 ) {
+    val count = sections.size
     val cs = MaterialTheme.colorScheme
-    val moveUp = hapticClick { HomeSectionPrefs.move(section, -1) }
-    val moveDown = hapticClick { HomeSectionPrefs.move(section, 1) }
+    val moveUp = hapticClick { HomeSectionPrefs.move(section, -1, sections) }
+    val moveDown = hapticClick { HomeSectionPrefs.move(section, 1, sections) }
     SheetItemSurface(
         shape = groupedItemShape(index, count),
         modifier = modifier,
