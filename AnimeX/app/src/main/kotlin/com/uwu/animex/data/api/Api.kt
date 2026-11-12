@@ -82,8 +82,8 @@ object Api {
 
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
-    private const val KEY_DOMAIN = "base_url"
-    private const val KEY_DOMAIN_ALPHA = "base_url_alpha"
+    private const val KEY_DOMAIN = "domain_api"
+    private const val KEY_DOMAIN_ALPHA = "domain_api_alpha"
     private const val GATE_RETRY_MS = 60 * 1000L
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
