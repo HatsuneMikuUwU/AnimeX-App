@@ -1,5 +1,6 @@
 package com.uwu.animex.ui.navigation
 
+import com.uwu.animex.data.model.toEpisodeIndex
 import android.content.res.Configuration
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -420,7 +421,7 @@ fun App() {
                                 "player/${Uri.encode(clip.id_episode.orEmpty())}" +
                                     "?title=${Uri.encode(clip.anime.orEmpty())}" +
                                     "&movieId=${Uri.encode(clip.id_movie.orEmpty())}" +
-                                    "&epIndex=${Uri.encode(clip.episode.orEmpty())}",
+                                    "&epIndex=${Uri.encode(clip.episode.toEpisodeIndex().orEmpty())}",
                             )
                         },
                         onNeedLogin = { nav.navigate("login") },

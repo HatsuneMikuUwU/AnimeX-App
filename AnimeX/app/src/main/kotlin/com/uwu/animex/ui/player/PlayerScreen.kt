@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.player
 
+import com.uwu.animex.data.model.toEpisodeIndex
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -169,7 +170,7 @@ fun PlayerScreen(
 ) {
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
-    var curIndex by rememberSaveable { mutableStateOf(epIndex) }
+    var curIndex by rememberSaveable { mutableStateOf(epIndex.toEpisodeIndex()) }
     var initialPositionMs by rememberSaveable(epId) { mutableStateOf(startAtMs) }
     var curUploadDate by remember { mutableStateOf<String?>(null) }
 

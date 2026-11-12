@@ -1,5 +1,6 @@
 package com.uwu.animex.ui.cuplix
 
+import com.uwu.animex.data.model.toEpisodeIndex
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -84,7 +85,7 @@ internal fun rememberClipDownload(onMessage: (String) -> Unit): (Cuplix) -> Unit
                 Downloads.Meta(
                     movieId = clip.id_movie,
                     movieTitle = clip.anime?.takeIf { it.isNotBlank() } ?: clip.caption,
-                    epIndex = clip.episode,
+                    epIndex = clip.episode.toEpisodeIndex(),
                     epTitle = clip.caption,
                     image = clip.poster?.takeIf { it.isNotBlank() } ?: clip.url_thumbnail,
                     quality = server.quality,

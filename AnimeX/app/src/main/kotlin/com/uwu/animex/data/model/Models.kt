@@ -108,6 +108,11 @@ data class Slider(
     val link: String? = null,
 )
 
+fun String?.toEpisodeIndex(): String? {
+    val raw = this?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return Regex("""\d+(?:\.\d+)?""").findAll(raw).lastOrNull()?.value ?: raw
+}
+
 data class Cuplix(
     val id: String? = null,
     val caption: String? = null,
