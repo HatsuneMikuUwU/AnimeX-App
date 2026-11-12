@@ -4,7 +4,6 @@ object NativeCore {
     const val SECRET_MAL = 0
     const val SECRET_ANILIST = 1
     const val SECRET_GATE = 2
-    const val SECRET_BASE = 3
 
     const val GATE_SETUP = 0
     const val HOME_LIST = 1

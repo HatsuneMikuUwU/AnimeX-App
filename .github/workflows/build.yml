@@ -62,7 +62,6 @@ jobs:
           MAL_KEY: ${{ secrets.MAL_KEY }}
           ANILIST_KEY: ${{ secrets.ANILIST_KEY }}
           API_GATE_URL: ${{ secrets.API_GATE_URL }}
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
           ANIMEIN_DEFAULT_USER: ${{ secrets.ANIMEIN_DEFAULT_USER }}
           ANIMEIN_DEFAULT_PASS: ${{ secrets.ANIMEIN_DEFAULT_PASS }}
           GITHUB_ACTOR: ${{ github.actor }}

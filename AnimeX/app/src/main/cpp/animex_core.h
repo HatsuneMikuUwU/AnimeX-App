@@ -9,7 +9,6 @@ enum SecretKind {
   SECRET_MY_ANIME_LIST = 0,
   SECRET_ANILIST = 1,
   SECRET_API_GATE = 2,
-  SECRET_API_BASE = 3,
 };
 
 enum EndpointOperation {

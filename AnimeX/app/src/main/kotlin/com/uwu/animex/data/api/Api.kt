@@ -208,9 +208,7 @@ object Api {
                 runCatching { normalizeBase(value) }.getOrNull()
             }
         hasSavedBase = saved != null
-        baseUrl = saved
-            ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
-            ?: ""
+        baseUrl = saved ?: ""
         primaryBase = baseUrl
         alphaBase =
             prefs?.getString(KEY_ALPHA, null)?.takeIf { it.isNotBlank() }?.let { value ->
@@ -472,18 +470,8 @@ object Api {
     private suspend fun resolveBaseLocked() {
         if (resolved) return
         val gate = Secrets.apiGateUrl
-        val default = Secrets.apiBaseUrl
         if (gate.isBlank()) {
-            if (default.isBlank()) {
-                throw ApiException.Config(
-                    "API_GATE_URL / API_BASE_URL belum diisi " +
-                        "(env atau api.gate / api.base di local.properties)",
-                )
-            }
-            baseUrl = normalizeBase(default)
-            primaryBase = baseUrl
-            resolved = true
-            return
+            throw ApiException.Config("API_GATE_URL belum diisi (env atau api.gate di local.properties)")
         }
 
         val now = SystemClock.elapsedRealtime()
@@ -517,13 +505,7 @@ object Api {
             throw e
         } catch (e: Exception) {
             lastGateFailure = now
-
-            val fallback =
-                baseUrl.takeIf { it.isNotBlank() }
-                    ?: default.takeIf { it.isNotBlank() }?.let(::normalizeBase)
-            if (fallback == null) throw e.normalized()
-            baseUrl = fallback
-            if (primaryBase.isBlank()) primaryBase = fallback
+            if (baseUrl.isBlank()) throw e.normalized()
         }
     }
 

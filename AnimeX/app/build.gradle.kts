@@ -79,7 +79,6 @@ android {
                         "-DANIMEX_MASKED_SECRET_MY_ANIME_LIST=${mask(secret("MAL_KEY", "mal.key"))}",
                         "-DANIMEX_MASKED_SECRET_ANILIST=${mask(secret("ANILIST_KEY", "anilist.key"))}",
                         "-DANIMEX_MASKED_SECRET_API_GATE=${mask(secret("API_GATE_URL", "api.gate"))}",
-                        "-DANIMEX_MASKED_SECRET_API_BASE=${mask(secret("API_BASE_URL", "api.base"))}",
                     )
             }
         }

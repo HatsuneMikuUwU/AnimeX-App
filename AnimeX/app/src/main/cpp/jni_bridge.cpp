@@ -14,9 +14,6 @@
 #ifndef ANIMEX_MASKED_SECRET_API_GATE
 #define ANIMEX_MASKED_SECRET_API_GATE ""
 #endif
-#ifndef ANIMEX_MASKED_SECRET_API_BASE
-#define ANIMEX_MASKED_SECRET_API_BASE ""
-#endif
 
 namespace {
 
@@ -65,8 +62,6 @@ const char *maskedSecretFor(jint secretId) {
     return ANIMEX_MASKED_SECRET_ANILIST;
   case animex::SECRET_API_GATE:
     return ANIMEX_MASKED_SECRET_API_GATE;
-  case animex::SECRET_API_BASE:
-    return ANIMEX_MASKED_SECRET_API_BASE;
   default:
     return "";
   }
