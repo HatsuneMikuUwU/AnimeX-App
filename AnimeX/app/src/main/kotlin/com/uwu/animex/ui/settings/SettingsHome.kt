@@ -55,11 +55,11 @@ internal fun HomeGroup() {
     SettingGroup(icon = Icons.Outlined.Dashboard, title = "Beranda", initiallyExpanded = false) {
         PrefItem(
             icon = Icons.Outlined.ViewAgenda,
-            title = "Atur section beranda",
+            title = "Atur daftar beranda",
             subtitle =
                 when {
-                    layout.isDefault -> "Pindahkan urutan section di beranda"
-                    else -> "Urutan section sudah diubah"
+                    layout.isDefault -> "Pindahkan urutan daftar di beranda"
+                    else -> "Urutan daftar sudah diubah"
                 },
             shape = itemShape(0, 1),
             container = itemContainer(),
@@ -77,7 +77,6 @@ internal fun HomeGroup() {
 
 @Composable
 private fun HomeSectionSheet(onDismiss: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
     val layout by HomeSectionPrefs.layout.collectAsStateWithLifecycle()
     val sheetState =
         rememberBottomSheetState(
@@ -91,18 +90,6 @@ private fun HomeSectionSheet(onDismiss: () -> Unit) {
         sheetState = sheetState,
     ) {
         WindowBlurEffect()
-        Text(
-            "Section beranda",
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.titleLarge,
-            color = cs.onSurface,
-        )
-        Text(
-            "Pakai panah buat memindah urutan section",
-            modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 12.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = cs.onSurfaceVariant,
-        )
         LazyColumn(Modifier.weight(1f, fill = false)) {
             itemsIndexed(layout.order, key = { _, section -> section.key }) { index, section ->
                 HomeSectionRow(
