@@ -25,7 +25,6 @@ import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.detail.bestDirect
-import com.uwu.animex.ui.detail.feedDirect
 import kotlinx.coroutines.launch
 
 internal const val OPEN_ENDED_CLIP_MS = 60_000L
@@ -40,7 +39,6 @@ internal fun Cuplix.clipEndTimeMs(startMs: Long = clipStartTimeMs()): Long =
 internal suspend fun resolveClipServer(
     clip: Cuplix,
     force: Boolean = false,
-    forPlayback: Boolean = false,
 ): Server? {
     val clipId = clip.id.orEmpty()
     val episodeId = clip.id_episode.orEmpty()
@@ -49,10 +47,7 @@ internal suspend fun resolveClipServer(
             .takeIf { it.isNotBlank() }
             ?.let { runSuspendCatching { Api.cuplixServers(it).clipServer() }.getOrNull() }
             ?.takeIf { !it.link.isNullOrBlank() }
-    return direct
-        ?: runSuspendCatching {
-            Api.servers(episodeId, force = force).let { if (forPlayback) it.feedDirect() else it.bestDirect() }
-        }.getOrNull()
+    return direct ?: runSuspendCatching { Api.servers(episodeId, force = force).bestDirect() }.getOrNull()
 }
 
 @Composable

@@ -265,7 +265,7 @@ internal fun CuplixClipPage(
         if (!loadStream || streamUrl != null) return@LaunchedEffect
         val server =
             (if (attempt == 0) ClipStreamPrefetch.take(clip) else null)
-                ?: resolveClipServer(clip, force = attempt > 0, forPlayback = true)
+                ?: resolveClipServer(clip, force = attempt > 0)
         val link = server?.link
         if (link.isNullOrBlank()) failed = true else streamUrl = link
     }

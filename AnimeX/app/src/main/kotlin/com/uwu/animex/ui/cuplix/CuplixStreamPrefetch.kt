@@ -21,7 +21,7 @@ internal object ClipStreamPrefetch {
         val key = cuplixKey(clip)
         synchronized(lock) {
             if (pending.containsKey(key)) return
-            pending[key] = AppScope.io.async { resolveClipServer(clip, forPlayback = true) }
+            pending[key] = AppScope.io.async { resolveClipServer(clip) }
             while (pending.size > MAX_PENDING) {
                 val eldest = pending.keys.first()
                 pending.remove(eldest)?.cancel()
