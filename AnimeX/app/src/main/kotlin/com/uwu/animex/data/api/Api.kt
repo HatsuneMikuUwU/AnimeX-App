@@ -61,6 +61,7 @@ import okhttp3.Request
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 object Api {
@@ -83,8 +84,17 @@ object Api {
 
     private const val MAX_EPISODE_PAGES = 100
     private const val GATE_RETRY_MS = 60 * 1000L
+    private const val GATE_TTL_MS = 6 * 60 * 60 * 1000L
+    private const val RESTORE_MAX_MS = 10 * 60 * 1000L
+    private const val GATE_TIMEOUT_S = 15L
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
+    private val gateHttp: OkHttpClient by lazy {
+        NetworkModule.apiClient
+            .newBuilder()
+            .callTimeout(GATE_TIMEOUT_S, TimeUnit.SECONDS)
+            .build()
+    }
     private val homeCuplixPath: String by lazy { NativeCore.path(NativeCore.HOME_CUPLIX) }
     private val cuplixScrollPath: String by lazy { NativeCore.path(NativeCore.FYP_SCROLL) }
     private val cuplixServerPath: String by lazy { NativeCore.path(NativeCore.FYP_SERVER) }
@@ -119,6 +129,18 @@ object Api {
 
     @Volatile
     private var lastGateFailure = 0L
+
+    @Volatile
+    private var resolvedAt = 0L
+
+    @Volatile
+    private var lastForcedGateAt = 0L
+
+    @Volatile
+    private var restoreDelayMs = GATE_RETRY_MS
+
+    @Volatile
+    private var restoring = false
     private val mutex = Mutex()
 
     private class NextHit(
@@ -237,6 +259,7 @@ object Api {
         domain: String,
         path: String,
         params: Map<String, String>,
+        client: OkHttpClient = http,
     ): String =
         withContext(Dispatchers.IO) {
             val url =
@@ -245,7 +268,7 @@ object Api {
                     .newBuilder()
                     .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                     .build()
-            val call = http.newCall(Request.Builder().url(url).build())
+            val call = client.newCall(Request.Builder().url(url).build())
 
             val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
             try {
@@ -391,17 +414,21 @@ object Api {
         }
     }
 
-    private suspend fun ensureDomains() {
-        if (resolved) return
+    private fun gateFresh(): Boolean =
+        resolved && SystemClock.elapsedRealtime() - resolvedAt < GATE_TTL_MS
 
-        if (hasSavedDomain && activeDomain.isNotBlank() && Secrets.apiGateUrl.isNotBlank()) {
-            refreshDomainsInBackground()
+    private suspend fun ensureDomains() {
+        if (gateFresh()) return
+
+        if (hasSavedDomain && activeDomain.isNotBlank()) {
+            if (Secrets.apiGateUrl.isNotBlank()) refreshDomainsInBackground()
             return
         }
         mutex.withLock { resolveDomainsLocked() }
     }
 
     private fun restoreMainIfDue() {
+        val before = activeDomain
         activeDomain =
             ApiDomainPolicy.restoreMainDomain(
                 currentDomain = activeDomain,
@@ -409,30 +436,75 @@ object Api {
                 alphaDomain = alphaDomain,
                 fallbackAt = fallbackAt,
                 now = SystemClock.elapsedRealtime(),
-                retryAfterMs = GATE_RETRY_MS,
+                retryAfterMs = restoreDelayMs,
             )
+        if (activeDomain != before) restoring = true
+    }
+
+    private fun onDomainSuccess(domain: String) {
+        if (domain == mainDomain) {
+            restoring = false
+            restoreDelayMs = GATE_RETRY_MS
+        }
+    }
+
+    private fun switchTo(domain: String) {
+        activeDomain = domain
+        if (domain == mainDomain) {
+            restoring = false
+            restoreDelayMs = GATE_RETRY_MS
+            return
+        }
+        fallbackAt = SystemClock.elapsedRealtime()
+        restoreDelayMs =
+            if (restoring) (restoreDelayMs * 2).coerceAtMost(RESTORE_MAX_MS) else GATE_RETRY_MS
+        restoring = false
     }
 
     suspend fun <T> withFallback(block: suspend (domain: String) -> T): T {
         restoreMainIfDue()
         val first = activeDomain
-        try {
-            return block(first)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            val other = ApiDomainPolicy.fallbackDomain(first, mainDomain, alphaDomain, e) ?: throw e
-            val result =
-                try {
-                    block(other)
-                } catch (c: CancellationException) {
-                    throw c
-                } catch (_: Exception) {
-                    throw e
-                }
-            activeDomain = other
-            fallbackAt = SystemClock.elapsedRealtime()
-            return result
+        val failure: Exception =
+            try {
+                return block(first).also { onDomainSuccess(first) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e
+            }
+        if (!ApiDomainPolicy.isDomainDown(failure)) throw failure
+
+        val tried = mutableSetOf(first)
+        ApiDomainPolicy.fallbackDomain(first, mainDomain, alphaDomain, failure)?.let { other ->
+            tried += other
+            try {
+                return block(other).also { switchTo(other) }
+            } catch (c: CancellationException) {
+                throw c
+            } catch (_: Exception) {
+            }
+        }
+
+        refreshGateAfterFailure()
+        for (domain in listOf(mainDomain, alphaDomain)) {
+            if (domain.isBlank() || !tried.add(domain)) continue
+            try {
+                return block(domain).also { switchTo(domain) }
+            } catch (c: CancellationException) {
+                throw c
+            } catch (_: Exception) {
+            }
+        }
+        throw failure
+    }
+
+    private suspend fun refreshGateAfterFailure() {
+        if (Secrets.apiGateUrl.isBlank()) return
+        mutex.withLock {
+            val now = SystemClock.elapsedRealtime()
+            if (lastForcedGateAt != 0L && now - lastForcedGateAt < GATE_RETRY_MS) return
+            lastForcedGateAt = now
+            resolveDomainsLocked(force = true)
         }
     }
 
@@ -456,10 +528,11 @@ object Api {
         }
     }
 
-    private suspend fun resolveDomainsLocked() {
-        if (resolved) return
+    private suspend fun resolveDomainsLocked(force: Boolean = false) {
+        if (!force && gateFresh()) return
         val gate = Secrets.apiGateUrl
         if (gate.isBlank()) {
+            if (activeDomain.isNotBlank()) return
             throw ApiException.Config("API_GATE_URL belum diisi (env atau api.gate di local.properties)")
         }
 
@@ -469,7 +542,7 @@ object Api {
 
         try {
             val secureGate = normalizeDomain(gate)
-            val json = fetch(secureGate, NativeCore.path(NativeCore.GATE_SETUP), emptyMap())
+            val json = fetch(secureGate, NativeCore.path(NativeCore.GATE_SETUP), emptyMap(), gateHttp)
             val config = RemoteConfigParser.parse(json)
             val resolvedMainDomain =
                 config.domainApi.takeIf { it.isNotBlank() }?.let(::normalizeDomain)
@@ -477,25 +550,28 @@ object Api {
             val resolvedAlphaDomain =
                 config.domainApiAlpha
                     ?.let { runCatching { normalizeDomain(it) }.getOrNull() }
+                    ?.takeIf { it != resolvedMainDomain }
                     ?: ""
             remoteConfig = config
             activeDomain = resolvedMainDomain
             mainDomain = resolvedMainDomain
-            alphaDomain =
-                resolvedAlphaDomain
+            alphaDomain = resolvedAlphaDomain
             prefs
                 ?.edit()
                 ?.also { editor ->
-                    editor.putString(PrefKeys.Api.DOMAIN, activeDomain)
-                    if (alphaDomain.isBlank()) {
+                    editor.putString(PrefKeys.Api.DOMAIN, resolvedMainDomain)
+                    if (resolvedAlphaDomain.isBlank()) {
                         editor.remove(PrefKeys.Api.DOMAIN_ALPHA)
                     } else {
-                        editor.putString(PrefKeys.Api.DOMAIN_ALPHA, alphaDomain)
+                        editor.putString(PrefKeys.Api.DOMAIN_ALPHA, resolvedAlphaDomain)
                     }
                 }?.apply()
             lastGateFailure = 0L
             hasSavedDomain = true
             resolved = true
+            resolvedAt = SystemClock.elapsedRealtime()
+            restoring = false
+            restoreDelayMs = GATE_RETRY_MS
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

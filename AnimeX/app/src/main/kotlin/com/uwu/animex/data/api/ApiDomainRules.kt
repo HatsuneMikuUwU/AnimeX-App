@@ -63,7 +63,7 @@ object ApiDomainPolicy {
             currentDomain
         }
 
-    private fun isDomainDown(failure: Throwable): Boolean =
+    fun isDomainDown(failure: Throwable): Boolean =
         when (failure) {
             is ApiException.Unreachable, is ApiException.Timeout, is ApiException.Tls -> true
             is ApiException.Http -> failure.code >= 500

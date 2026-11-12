@@ -93,4 +93,15 @@ class ApiDomainRulesTest {
             ),
         )
     }
+
+    @Test
+    fun treatsOnlyConnectivityAndServerErrorsAsDomainDown() {
+        assertEquals(true, ApiDomainPolicy.isDomainDown(ApiException.Unreachable()))
+        assertEquals(true, ApiDomainPolicy.isDomainDown(ApiException.Timeout()))
+        assertEquals(true, ApiDomainPolicy.isDomainDown(ApiException.Tls()))
+        assertEquals(true, ApiDomainPolicy.isDomainDown(ApiException.Http(503)))
+        assertEquals(false, ApiDomainPolicy.isDomainDown(ApiException.Http(404)))
+        assertEquals(false, ApiDomainPolicy.isDomainDown(ApiException.Remote("x")))
+        assertEquals(false, ApiDomainPolicy.isDomainDown(ApiException.Offline()))
+    }
 }
