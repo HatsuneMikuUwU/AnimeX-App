@@ -93,12 +93,14 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
+import com.uwu.animex.core.cache.ClipMediaCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
@@ -195,7 +197,13 @@ private fun buildClipPlayer(
     startMs: Long,
     endMs: Long,
 ): ExoPlayer {
-    val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient).setUserAgent(BROWSER_UA)
+    val dataSource =
+        CacheDataSource
+            .Factory()
+            .setCache(ClipMediaCache.get(ctx))
+            .setUpstreamDataSourceFactory(
+                OkHttpDataSource.Factory(NetworkModule.streamClient).setUserAgent(BROWSER_UA),
+            ).setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     val loadControl =
         DefaultLoadControl
             .Builder()
@@ -234,6 +242,7 @@ private fun buildClipPlayer(
 internal fun CuplixClipPage(
     clip: Cuplix,
     active: Boolean,
+    preload: Boolean,
     liked: Boolean,
     onLikedChange: (Boolean) -> Unit,
     onOpenAnime: () -> Unit,
@@ -251,17 +260,19 @@ internal fun CuplixClipPage(
     var attempt by remember { mutableIntStateOf(0) }
     var streamUrl by remember(episodeId, attempt) { mutableStateOf<String?>(null) }
     var failed by remember(episodeId, attempt) { mutableStateOf(false) }
-    LaunchedEffect(episodeId, attempt) {
+    val loadStream = active || preload
+    LaunchedEffect(episodeId, attempt, loadStream) {
+        if (!loadStream || streamUrl != null) return@LaunchedEffect
         val server =
             (if (attempt == 0) ClipStreamPrefetch.take(clip) else null)
-                ?: resolveClipServer(clip, force = attempt > 0)
+                ?: resolveClipServer(clip, force = attempt > 0, forPlayback = true)
         val link = server?.link
         if (link.isNullOrBlank()) failed = true else streamUrl = link
     }
 
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
-    DisposableEffect(streamUrl, startMs, endMs) {
-        val created = streamUrl?.let { buildClipPlayer(ctx, it, startMs, endMs) }
+    DisposableEffect(streamUrl, startMs, endMs, loadStream) {
+        val created = streamUrl?.takeIf { loadStream }?.let { buildClipPlayer(ctx, it, startMs, endMs) }
         player = created
         onDispose {
             player = null

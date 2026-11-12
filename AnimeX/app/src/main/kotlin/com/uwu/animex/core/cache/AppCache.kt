@@ -46,6 +46,7 @@ object AppCache {
             CharacterRepo.clearCache()
             MalIdLookup.clearCache()
             AniSkip.clearCache()
+            runCatching { ClipMediaCache.clear(app) }
             DohDns.clearAnswers()
             File(app.cacheDir, "updates").deleteRecursively()
             AppUpdate.onCacheCleared()

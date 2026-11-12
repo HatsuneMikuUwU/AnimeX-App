@@ -36,6 +36,16 @@ internal fun List<Server>.bestDirect(): Server? {
         ?: direct.firstOrNull()
 }
 
+private const val FEED_QUALITY = 480
+
+internal fun List<Server>.feedDirect(): Server? {
+    val direct = filter { it.isDirect && !it.link.isNullOrBlank() }
+    return direct
+        .filter { it.qualityValue > 0 }
+        .minWithOrNull(compareBy<Server>({ abs(it.qualityValue - FEED_QUALITY) }, { it.qualityValue }))
+        ?: direct.firstOrNull()
+}
+
 internal fun List<Server>.browserLink(): String? =
     (firstOrNull { !it.isDirect && !it.link.isNullOrBlank() } ?: bestDirect())?.link
 

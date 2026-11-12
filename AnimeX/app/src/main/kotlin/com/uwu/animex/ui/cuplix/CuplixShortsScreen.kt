@@ -225,6 +225,7 @@ fun CuplixShortsScreen(
                     CuplixClipPage(
                         clip = clip,
                         active = positioned && page == pagerState.currentPage,
+                        preload = positioned && page == pagerState.currentPage + 1,
                         liked = liked[key] ?: clip.likedByMe,
                         onLikedChange = { value ->
                             if (!UserSession.isLoggedIn()) {
