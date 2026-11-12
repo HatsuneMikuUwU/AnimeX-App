@@ -99,6 +99,10 @@ object Api {
         private set
 
     @Volatile
+    var remoteConfig: RemoteConfig = RemoteConfig.EMPTY
+        private set
+
+    @Volatile
     private var mainDomain: String = ""
 
     @Volatile
@@ -479,17 +483,19 @@ object Api {
         try {
             val secureGate = normalizeDomain(gate)
             val json = fetch(secureGate, NativeCore.path(NativeCore.GATE_SETUP), emptyMap())
-            val v =
-                NativeCore.domainApi(json).takeIf { it.isNotBlank() }
+            val config = RemoteConfigParser.parse(json)
+            val resolvedMainDomain =
+                config.domainApi.takeIf { it.isNotBlank() }?.let(::normalizeDomain)
                     ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
-            activeDomain = normalizeDomain(v)
-            mainDomain = activeDomain
-            alphaDomain =
-                NativeCore
-                    .domainApiAlpha(json)
-                    .takeIf { it.isNotBlank() }
+            val resolvedAlphaDomain =
+                config.domainApiAlpha
                     ?.let { runCatching { normalizeDomain(it) }.getOrNull() }
                     ?: ""
+            remoteConfig = config
+            activeDomain = resolvedMainDomain
+            mainDomain = resolvedMainDomain
+            alphaDomain =
+                resolvedAlphaDomain
             prefs
                 ?.edit()
                 ?.also { editor ->
