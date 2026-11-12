@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -34,9 +35,13 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eygraber.compose.placeholder.PlaceholderHighlight
 import com.eygraber.compose.placeholder.material3.fade
 import com.eygraber.compose.placeholder.material3.placeholder
+import com.uwu.animex.data.local.CuplixPrefs
+import com.uwu.animex.data.local.HomeSection
+import com.uwu.animex.data.local.HomeSectionPrefs
 
 fun Modifier.defaultPlaceholder(visible: Boolean = true): Modifier =
     composed {
@@ -362,17 +367,66 @@ private fun HeroBannerPlaceholder() {
 }
 
 @Composable
+private fun NewTitleRowPlaceholder() {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        userScrollEnabled = false,
+    ) {
+        items(2) {
+            Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(2) { NewTitleCardPlaceholder(Modifier.fillMaxWidth()) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WaitingRowPlaceholder() {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        userScrollEnabled = false,
+    ) {
+        items(2) { WaitingCardPlaceholder(Modifier.width(280.dp)) }
+    }
+}
+
+@Composable
 fun HomePlaceholder() {
+    val layout by HomeSectionPrefs.layout.collectAsStateWithLifecycle()
+    val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = 16.dp + LocalTopInset.current)) {
         HeroBannerPlaceholder()
-        SectionHeaderPlaceholder()
-        CuplixRowPlaceholder()
-        SectionHeaderPlaceholder()
-        ContinueRowPlaceholder()
-        SectionHeaderPlaceholder()
-        PosterRowPlaceholder()
-        SectionHeaderPlaceholder()
-        HotRowPlaceholder()
+        layout.order.forEach { section ->
+            when (section) {
+                HomeSection.Cuplix -> if (cuplixEnabled) {
+                    SectionHeaderPlaceholder()
+                    CuplixRowPlaceholder()
+                }
+                HomeSection.ContinueWatching -> {
+                    SectionHeaderPlaceholder()
+                    ContinueRowPlaceholder()
+                }
+                HomeSection.NewEpisodes -> {
+                    SectionHeaderPlaceholder()
+                    PosterRowPlaceholder()
+                }
+                HomeSection.Hot, HomeSection.Popular -> {
+                    SectionHeaderPlaceholder()
+                    HotRowPlaceholder()
+                }
+                HomeSection.NewTitles -> {
+                    SectionHeaderPlaceholder()
+                    NewTitleRowPlaceholder()
+                }
+                HomeSection.Waiting -> {
+                    SectionHeaderPlaceholder()
+                    WaitingRowPlaceholder()
+                }
+                HomeSection.Today -> Unit
+            }
+        }
     }
 }
 
