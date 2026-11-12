@@ -23,7 +23,6 @@ import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.core.storage.PrefKeys
-import com.uwu.animex.data.local.ApiProviderPref
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.CuplixListData
@@ -42,7 +41,6 @@ import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
-import com.uwu.animex.data.wibutime.WibutimeApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -226,8 +224,6 @@ object Api {
         if (prefs != null) return
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PrefKeys.Api.FILE, Context.MODE_PRIVATE)
-        ApiProviderPref.init(app)
-        WibutimeApi.init(app)
         cache.init(File(app.cacheDir, "api_cache"))
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
@@ -246,7 +242,6 @@ object Api {
 
     fun clearCache() {
         cache.clear()
-        WibutimeApi.clearCache()
         nextCache.clear()
         lastPageCache.clear()
         oldestCache.clear()
@@ -337,7 +332,6 @@ object Api {
     }
 
     fun peekDetail(id: String): DetailResult? {
-        if (ApiProviderPref.isWibutime) return null
         val data =
             peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
         val movie = data.movie ?: return null
@@ -345,14 +339,7 @@ object Api {
     }
 
     fun peekEpisodes(id: String): List<Episode>? =
-        if (ApiProviderPref.isWibutime) {
-            null
-        } else {
-            peek<EpisodeListData>(
-                NativeCore.path(NativeCore.EPISODE_LIST, id),
-                EpisodeListData::class.java,
-            )?.episode
-        }
+        peek<EpisodeListData>(NativeCore.path(NativeCore.EPISODE_LIST, id), EpisodeListData::class.java)?.episode
 
     private val kindRules: List<Pair<String, CacheKind>> by lazy {
         val rules = ArrayList<Pair<String, CacheKind>>()
@@ -427,7 +414,8 @@ object Api {
         }
     }
 
-    private fun gateFresh(): Boolean = resolved && SystemClock.elapsedRealtime() - resolvedAt < GATE_TTL_MS
+    private fun gateFresh(): Boolean =
+        resolved && SystemClock.elapsedRealtime() - resolvedAt < GATE_TTL_MS
 
     private suspend fun ensureDomains() {
         if (gateFresh()) return
@@ -708,7 +696,6 @@ object Api {
     }
 
     suspend fun home(force: Boolean = false): HomeData {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.home(force)
         val cached = homeMem
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
             return cached
@@ -790,7 +777,6 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.homeMovies(section, page, force)
         val path = NativeCore.path(NativeCore.HOME_SECTION, section)
         val params = homeListParams(page)
         return firstNonEmpty(
@@ -803,7 +789,6 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.newEpisodes(page, force)
         val path = NativeCore.path(NativeCore.HOME_NEW_EPISODE)
         val params = homeListParams(page)
         return firstNonEmpty(
@@ -816,7 +801,6 @@ object Api {
         force: Boolean = false,
         page: Int = 1,
     ): List<Cuplix> {
-        if (ApiProviderPref.isWibutime) return emptyList()
         val params =
             buildMap {
                 put("limit", "$API_LIMIT")
@@ -847,7 +831,6 @@ object Api {
         force: Boolean = true,
         limit: Int = API_LIMIT,
     ): CuplixPage {
-        if (ApiProviderPref.isWibutime) return CuplixPage(emptyList(), emptyMap())
         val params =
             buildMap {
                 put("limit", limit.coerceAtLeast(1).toString())
@@ -921,21 +904,17 @@ object Api {
     }
 
     suspend fun cuplixServers(clipId: String): List<Server> =
-        if (ApiProviderPref.isWibutime) {
-            emptyList()
-        } else {
-            get<StreamData>(
-                cuplixServerPath,
-                StreamData::class.java,
-                mapOf("id_fyp" to clipId),
-                force = true,
-            )?.server
-                .orEmpty()
-                .filter { !it.link.isNullOrBlank() }
-                .mapNotNull { server ->
-                    UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
-                }
-        }
+        get<StreamData>(
+            cuplixServerPath,
+            StreamData::class.java,
+            mapOf("id_fyp" to clipId),
+            force = true,
+        )?.server
+            .orEmpty()
+            .filter { !it.link.isNullOrBlank() }
+            .mapNotNull { server ->
+                UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
+            }
 
     private fun homeListParams(page: Int): Map<String, String> =
         buildMap {
@@ -979,29 +958,25 @@ object Api {
     }
 
     suspend fun schedule(force: Boolean = false): List<Movie> =
-        if (ApiProviderPref.isWibutime) {
-            WibutimeApi.schedule(force)
-        } else {
-            coroutineScope {
-                val results =
-                    SCHEDULE_DAYS
-                        .map { day ->
-                            async {
-                                val fresh = runSuspendCatching { scheduleForDay(day, force) }
-                                if (force && fresh.isFailure) {
-                                    runSuspendCatching { scheduleForDay(day, false) }
-                                } else {
-                                    fresh
-                                }
+        coroutineScope {
+            val results =
+                SCHEDULE_DAYS
+                    .map { day ->
+                        async {
+                            val fresh = runSuspendCatching { scheduleForDay(day, force) }
+                            if (force && fresh.isFailure) {
+                                runSuspendCatching { scheduleForDay(day, false) }
+                            } else {
+                                fresh
                             }
-                        }.awaitAll()
-                val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
-                if (list.isEmpty()) {
-                    results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
-                    throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
-                }
-                list
+                        }
+                    }.awaitAll()
+            val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
+            if (list.isEmpty()) {
+                results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
+                throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
             }
+            list
         }
 
     suspend fun search(
@@ -1009,7 +984,6 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.search(q, page, force)
         val query = q.trim()
         if (query.isBlank()) return emptyList()
         val p = page.coerceAtLeast(0)
@@ -1032,7 +1006,6 @@ object Api {
         q: String,
         limit: Int = 6,
     ): List<Movie> {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.suggest(q, limit)
         val query = q.trim()
         if (query.length < 2) return emptyList()
         return runSuspendCatching {
@@ -1063,7 +1036,6 @@ object Api {
         id: String,
         force: Boolean = false,
     ): DetailResult {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.detailFull(id, force)
         val data =
             get<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java, force = force)
         return DetailResult(
@@ -1078,7 +1050,6 @@ object Api {
         page: Int? = null,
         force: Boolean = false,
     ): List<Episode> {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.episodes(id, page, force)
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>(
             NativeCore.path(NativeCore.EPISODE_LIST, id),
@@ -1092,7 +1063,6 @@ object Api {
         movieId: String,
         force: Boolean = false,
     ): List<Trailer> {
-        if (ApiProviderPref.isWibutime) return emptyList()
         val params = mapOf("id_movie" to movieId)
         return firstNonEmpty(
             {
@@ -1280,7 +1250,6 @@ object Api {
         episodeId: String,
         force: Boolean = false,
     ): List<Server> {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.servers(episodeId, force)
         return get<StreamData>(NativeCore.path(NativeCore.STREAM, episodeId), StreamData::class.java, force = force)
             ?.server
             .orEmpty()
@@ -1318,7 +1287,6 @@ object Api {
         force: Boolean = false,
         preview: Boolean = true,
     ): ExploreData {
-        if (ApiProviderPref.isWibutime) return WibutimeApi.explore(force, preview)
         val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "$API_LIMIT")
         val primary = runSuspendCatching { getData(NativeCore.path(NativeCore.EXPLORE_DATA), params, force) }
         val d = primary.getOrNull()
@@ -1359,45 +1327,29 @@ object Api {
     }
 
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> =
-        if (ApiProviderPref.isWibutime) {
-            WibutimeApi.explore(force, preview = false).genre
-        } else {
-            firstNonEmpty(
-                {
-                    getData(
-                        NativeCore.path(NativeCore.EXPLORE_GENRE),
-                        force = force,
-                    )?.exploreItems("genre", "genres", "list", "data").orEmpty()
-                },
-                { explore(force = force, preview = false).genre },
-            )
-        }
+        firstNonEmpty(
+            {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_GENRE),
+                    force = force,
+                )?.exploreItems("genre", "genres", "list", "data").orEmpty()
+            },
+            { explore(force = force, preview = false).genre },
+        )
 
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> =
-        if (ApiProviderPref.isWibutime) {
-            WibutimeApi.explore(force, preview = false).year
-        } else {
-            firstNonEmpty(
-                {
-                    getData(
-                        NativeCore.path(NativeCore.EXPLORE_YEAR),
-                        force = force,
-                    )?.exploreItems("year", "years", "list", "data").orEmpty()
-                },
-                { explore(force = force, preview = false).year },
-            )
-        }
+        firstNonEmpty(
+            {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_YEAR),
+                    force = force,
+                )?.exploreItems("year", "years", "list", "data").orEmpty()
+            },
+            { explore(force = force, preview = false).year },
+        )
 
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
-        if (ApiProviderPref.isWibutime) {
-            WibutimeApi
-                .explore(
-                    force,
-                    preview = false,
-                ).studio
-        } else {
-            explore(force = force, preview = false).studio
-        }
+        explore(force = force, preview = false).studio
 
     suspend fun exploreMovies(
         kind: String,
@@ -1409,17 +1361,6 @@ object Api {
         season: String = "",
         genreIn: String = "",
     ): List<Movie> {
-        if (ApiProviderPref.isWibutime) {
-            return WibutimeApi.exploreMovies(
-                kind,
-                idOrName,
-                page,
-                force,
-                sort,
-                season,
-                genreIn,
-            )
-        }
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
         val p = page.coerceAtLeast(0)

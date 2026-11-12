@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.local.ApiProviderPref
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -47,11 +45,6 @@ class PagedListViewModel(
 
     init {
         loadInitial(force = false)
-        viewModelScope.launch {
-            ApiProviderPref.provider.drop(1).collect {
-                loadInitial(force = true)
-            }
-        }
     }
 
     fun refresh() {

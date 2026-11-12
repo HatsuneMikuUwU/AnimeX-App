@@ -105,16 +105,6 @@ private val TITLES =
         "history" to "Lanjut Nonton",
         "waiting" to "Paling Ditunggu",
         "today" to "Jadwal Hari Ini",
-        "wibu_trending" to "Paling Tren",
-        "wibu_top_all_time" to "Terpopuler Sepanjang Masa",
-        "wibu_random" to "Anime Acak",
-        "wibu_animes" to "Pilihan Wibutime",
-        "wibu_latest_anime" to "Anime Terbaru",
-        "wibu_latest_movie" to "Film Anime Terbaru",
-        "wibu_latest_donghua" to "Donghua Terbaru",
-        "wibu_completed_anime" to "Anime Tamat",
-        "wibu_completed_movie" to "Film Anime Tamat",
-        "wibu_completed_donghua" to "Donghua Tamat",
     )
 
 @Composable

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.local.ApiProviderPref
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -15,9 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 private const val RECONNECT_DEBOUNCE_MS = 800L
@@ -28,7 +25,6 @@ open class LoadViewModel<T>(
     initial: (() -> T?)? = null,
     private val needsRevalidate: (() -> Boolean)? = null,
     private val revalidateLoader: (suspend () -> T)? = null,
-    refreshOnApiProviderChange: Boolean = false,
 ) : ViewModel() {
     private val _state =
         MutableStateFlow<UiState<T>>(
@@ -68,13 +64,6 @@ open class LoadViewModel<T>(
 
     init {
         if (autoLoad) refresh(force = false)
-        if (refreshOnApiProviderChange) {
-            viewModelScope.launch {
-                ApiProviderPref.provider.drop(1).collect {
-                    refresh(force = true, showIndicator = false)
-                }
-            }
-        }
         viewModelScope.launch {
             ConnectivityMonitor.online.collectLatest { online ->
                 if (online && _state.value is UiState.Error) {

@@ -39,9 +39,9 @@ import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.HomeSection
 import com.uwu.animex.data.local.HomeSectionPrefs
 import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.ShapedIconBadge
 import com.uwu.animex.ui.common.SheetItemSurface
 import com.uwu.animex.ui.common.SheetOptionItem
+import com.uwu.animex.ui.common.ShapedIconBadge
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.common.hapticClick
@@ -61,8 +61,8 @@ internal fun HomeGroup() {
             title = "Atur daftar beranda",
             subtitle =
                 when {
-                    layout.isDefault -> "Urutkan kategori ${layout.provider.label} di beranda"
-                    else -> "Urutan kategori ${layout.provider.label} sudah diubah"
+                    layout.isDefault -> "Pindahkan urutan daftar di beranda"
+                    else -> "Urutan daftar sudah diubah"
                 },
             shape = itemShape(0, 2),
             container = itemContainer(),

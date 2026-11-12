@@ -25,7 +25,6 @@ object PrefKeys {
         const val FILE = "api_state"
         const val DOMAIN = "domain_api"
         const val DOMAIN_ALPHA = "domain_api_alpha"
-        const val PROVIDER = "catalog_provider"
     }
 
     object AppUpdate {
@@ -117,8 +116,6 @@ object PrefKeys {
     object HomeSection {
         const val FILE = "home_sections"
         const val ORDER = "order"
-        const val ANIMEIN_ORDER = "order_animein"
-        const val WIBUTIME_ORDER = "order_wibutime"
     }
 
     object Mal {
