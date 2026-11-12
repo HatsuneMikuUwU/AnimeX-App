@@ -11,8 +11,7 @@ constexpr unsigned char obfuscationByteAt(std::size_t index) {
   return static_cast<unsigned char>(0x5A ^ ((index * 7 + 3) & 0xFF));
 }
 
-template <std::size_t LiteralSize>
-struct ObfuscatedText {
+template <std::size_t LiteralSize> struct ObfuscatedText {
   char obfuscatedCharacters[LiteralSize]{};
 
   constexpr explicit ObfuscatedText(const char (&literal)[LiteralSize]) {
@@ -26,8 +25,8 @@ struct ObfuscatedText {
     std::string revealedText;
     revealedText.reserve(LiteralSize);
     for (std::size_t index = 0; index + 1 < LiteralSize; ++index) {
-      revealedText.push_back(static_cast<char>(
-          obfuscatedCharacters[index] ^ obfuscationByteAt(index)));
+      revealedText.push_back(static_cast<char>(obfuscatedCharacters[index] ^
+                                               obfuscationByteAt(index)));
     }
     return revealedText;
   }
@@ -602,9 +601,9 @@ std::vector<std::string> buildSearchPlan() {
 
 std::vector<std::string> scheduleDayNames() {
   return {
-      OBFUSCATED_TEXT("SENIN"), OBFUSCATED_TEXT("SELASA"),
-      OBFUSCATED_TEXT("RABU"),  OBFUSCATED_TEXT("KAMIS"),
-      OBFUSCATED_TEXT("JUMAT"), OBFUSCATED_TEXT("SABTU"),
+      OBFUSCATED_TEXT("SENIN"),  OBFUSCATED_TEXT("SELASA"),
+      OBFUSCATED_TEXT("RABU"),   OBFUSCATED_TEXT("KAMIS"),
+      OBFUSCATED_TEXT("JUMAT"),  OBFUSCATED_TEXT("SABTU"),
       OBFUSCATED_TEXT("MINGGU"),
   };
 }

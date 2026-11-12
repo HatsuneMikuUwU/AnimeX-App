@@ -22,8 +22,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,8 +64,6 @@ import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.Button
@@ -76,7 +72,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -314,7 +309,13 @@ internal fun PlayerWatchPage(
                     onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
                     onShare = {
                         if (movieId != null) {
-                            shareEpisode(ctx, movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle, movieId, currentEpId, currentIndex)
+                            shareEpisode(
+                                ctx,
+                                movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                                movieId,
+                                currentEpId,
+                                currentIndex,
+                            )
                         } else {
                             shareAnime(ctx, Movie(id = movieId, title = animeTitle))
                         }

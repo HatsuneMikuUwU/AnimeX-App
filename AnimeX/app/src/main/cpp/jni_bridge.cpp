@@ -78,28 +78,28 @@ const char *maskedSecretFor(jint secretId) {
   extern "C" JNIEXPORT returnType JNICALL                                      \
       Java_com_uwu_animex_core_security_NativeCore_##functionName
 
-NATIVE_CORE_FUNCTION(jstring, secret)(JNIEnv *environment, jobject,
-                                      jint secretId) {
+NATIVE_CORE_FUNCTION(jstring, secret)
+(JNIEnv *environment, jobject, jint secretId) {
   const std::string secret = animex::decodeSecret(maskedSecretFor(secretId));
   return stdStringToJavaString(environment, secret);
 }
 
-NATIVE_CORE_FUNCTION(jstring, endpoint)(JNIEnv *environment, jobject,
-                                        jint operation, jstring argument) {
+NATIVE_CORE_FUNCTION(jstring, endpoint)
+(JNIEnv *environment, jobject, jint operation, jstring argument) {
   const std::string path = animex::buildEndpointPath(
       operation, javaStringToStdString(environment, argument));
   return stdStringToJavaString(environment, path);
 }
 
-NATIVE_CORE_FUNCTION(jboolean, isVolatile)(JNIEnv *environment, jobject,
-                                           jstring path) {
+NATIVE_CORE_FUNCTION(jboolean, isVolatile)
+(JNIEnv *environment, jobject, jstring path) {
   const bool pathIsVolatile =
       animex::isVolatilePath(javaStringToStdString(environment, path));
   return pathIsVolatile ? JNI_TRUE : JNI_FALSE;
 }
 
-NATIVE_CORE_FUNCTION(jobjectArray, exploreTarget)(JNIEnv *environment, jobject,
-                                                  jstring kind) {
+NATIVE_CORE_FUNCTION(jobjectArray, exploreTarget)
+(JNIEnv *environment, jobject, jstring kind) {
   const std::vector<std::string> target =
       animex::exploreTargetFor(javaStringToStdString(environment, kind));
   return stdStringListToJavaArray(environment, target);
@@ -113,15 +113,15 @@ NATIVE_CORE_FUNCTION(jobjectArray, scheduleDays)(JNIEnv *environment, jobject) {
   return stdStringListToJavaArray(environment, animex::scheduleDayNames());
 }
 
-NATIVE_CORE_FUNCTION(jstring, normalizeBase)(JNIEnv *environment, jobject,
-                                             jstring rawUrl) {
+NATIVE_CORE_FUNCTION(jstring, normalizeBase)
+(JNIEnv *environment, jobject, jstring rawUrl) {
   const std::string normalizedUrl =
       animex::normalizeBaseUrl(javaStringToStdString(environment, rawUrl));
   return stdStringToJavaString(environment, normalizedUrl);
 }
 
-NATIVE_CORE_FUNCTION(jstring, gateDomain)(JNIEnv *environment, jobject,
-                                          jstring jsonText) {
+NATIVE_CORE_FUNCTION(jstring, gateDomain)
+(JNIEnv *environment, jobject, jstring jsonText) {
   const std::string gateDomain =
       animex::extractGateDomain(javaStringToStdString(environment, jsonText));
   return stdStringToJavaString(environment, gateDomain);

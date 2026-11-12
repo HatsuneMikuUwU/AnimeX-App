@@ -106,7 +106,11 @@ object CuplixWatched {
             }
             dao.upsertAll(rows.values.toList())
             dao.trimClips(MAX_CLIPS)
-            p.edit().remove(KEY_KEYS).remove(KEY_CLIPS).apply()
+            p
+                .edit()
+                .remove(KEY_KEYS)
+                .remove(KEY_CLIPS)
+                .apply()
         }
     }
 }

@@ -179,8 +179,7 @@ internal fun ExoView(
                     .Builder(ctx, renderers)
                     .setMediaSourceFactory(
                         DefaultMediaSourceFactory(ctx, extractors).setDataSourceFactory(defaultDataSource),
-                    )
-                    .setLoadControl(loadControl)
+                    ).setLoadControl(loadControl)
                     .setWakeMode(C.WAKE_MODE_NETWORK)
                     .build()
             }
