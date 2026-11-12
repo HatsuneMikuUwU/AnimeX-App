@@ -65,6 +65,7 @@ class DetailViewModel(
             val episodes = Api.peekEpisodes(animeId)
             if (full != null && episodes != null) buildPayload(full, episodes) else null
         },
+        refreshOnApiProviderChange = true,
     ) {
     val id: String get() = animeId
 

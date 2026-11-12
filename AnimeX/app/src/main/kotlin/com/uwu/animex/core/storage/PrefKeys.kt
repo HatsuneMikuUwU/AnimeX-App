@@ -25,6 +25,7 @@ object PrefKeys {
         const val FILE = "api_state"
         const val DOMAIN = "domain_api"
         const val DOMAIN_ALPHA = "domain_api_alpha"
+        const val PROVIDER = "catalog_provider"
     }
 
     object AppUpdate {

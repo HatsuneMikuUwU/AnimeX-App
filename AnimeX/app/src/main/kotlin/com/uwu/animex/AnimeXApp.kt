@@ -15,6 +15,7 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
+import com.uwu.animex.data.local.ApiProviderPref
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
@@ -30,6 +31,7 @@ class AnimeXApp :
 
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
+        ApiProviderPref.init(this)
         Api.init(this)
         com.uwu.animex.data.user.UserSession
             .init(this)

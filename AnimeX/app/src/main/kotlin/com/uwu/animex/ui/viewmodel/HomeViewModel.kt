@@ -9,4 +9,5 @@ class HomeViewModel :
         loader = { force -> Api.home(force) },
         needsRevalidate = { !Api.fetchedThisSession(NativeCore.path(NativeCore.HOME_LIST)) },
         revalidateLoader = { Api.home(force = true) },
+        refreshOnApiProviderChange = true,
     )

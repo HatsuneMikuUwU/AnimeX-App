@@ -95,6 +95,9 @@ import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.local.ApiProvider
+import com.uwu.animex.data.local.ApiProviderPref
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
@@ -175,6 +178,7 @@ fun SettingsSheet(
                         NightModeGroup()
                         NotificationsGroup()
                         PlayerGroup()
+                        ApiProviderGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
@@ -273,6 +277,42 @@ private fun NotificationsGroup() {
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
+        )
+    }
+}
+
+@Composable
+private fun ApiProviderGroup() {
+    val selected by ApiProviderPref.provider.collectAsStateWithLifecycle()
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    val cs = MaterialTheme.colorScheme
+
+    SettingGroup(icon = Icons.Outlined.Cloud, title = "Sumber API", initiallyExpanded = false) {
+        PrefItem(
+            icon = Icons.Outlined.Cloud,
+            title = "API katalog anime",
+            subtitle = "${selected.label} · ${selected.description}",
+            shape = itemShape(0, 1),
+            container = cs.surfaceContainerHighest,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showDialog = true },
+        )
+    }
+
+    if (showDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Cloud,
+            title = "Pilih sumber API",
+            options = ApiProvider.entries,
+            selected = selected,
+            label = { "${it.label} — ${it.description}" },
+            onSelect = { provider ->
+                ApiProviderPref.set(provider)
+                Api.clearCache()
+            },
+            onDismiss = { showDialog = false },
         )
     }
 }
@@ -565,9 +605,9 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             title = "Restore dari backup?",
             text = {
                 Text(
-                    "Bookmark, riwayat, progres nonton, pengingat episode, pengaturan tampilan, dan pengaturan pemutar dari backup " +
-                        "bakal digabung ke data sekarang. Data dengan id yang sama ditimpa versi backup. " +
-                        "Login MAL dan unduhan offline nggak ikut.",
+                    "Bookmark, riwayat, progres nonton, pengingat episode, pengaturan tampilan, dan pengaturan " +
+                        "pemutar dari backup bakal digabung ke data sekarang. Data dengan id yang sama ditimpa " +
+                        "versi backup. Login MAL dan unduhan offline nggak ikut.",
                 )
             },
             confirmButton = {

@@ -7,4 +7,5 @@ class ScheduleViewModel :
     LoadViewModel<List<Movie>>(
         loader = { force -> Api.schedule(force) },
         needsRevalidate = { !Api.fetchedThisSession("schedule/data") },
+        refreshOnApiProviderChange = true,
     )

@@ -7,21 +7,26 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
 
-class GenresViewModel : LoadViewModel<List<ExploreItem>>(loader = { force -> Api.exploreGenres(force) })
+class GenresViewModel :
+    LoadViewModel<List<ExploreItem>>(loader = { force -> Api.exploreGenres(force) }, refreshOnApiProviderChange = true)
 
-class YearsViewModel : LoadViewModel<List<ExploreItem>>(loader = { force -> Api.exploreYears(force) })
+class YearsViewModel :
+    LoadViewModel<List<ExploreItem>>(loader = { force -> Api.exploreYears(force) }, refreshOnApiProviderChange = true)
 
-class StudiosViewModel : LoadViewModel<List<ExploreItem>>(loader = { force -> Api.exploreStudios(force) })
+class StudiosViewModel :
+    LoadViewModel<List<ExploreItem>>(loader = { force -> Api.exploreStudios(force) }, refreshOnApiProviderChange = true)
 
 class TypesViewModel :
     LoadViewModel<List<ExploreItem>>(
         loader = { force -> Api.explore(force = force, preview = false).typeOrDefault },
+        refreshOnApiProviderChange = true,
     )
 
 class ExploreViewModel :
     LoadViewModel<ExploreData>(
         loader = { force -> Api.explore(force = force, preview = true) },
         needsRevalidate = { !Api.fetchedThisSession("explore/data") },
+        refreshOnApiProviderChange = true,
     )
 
 object ExploreViewModels {
