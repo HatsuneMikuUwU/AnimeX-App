@@ -1,4 +1,4 @@
-name: Format Kotlin
+name: Format Code
 
 on:
   workflow_dispatch:
@@ -22,8 +22,17 @@ jobs:
           chmod +x ktlint
           sudo mv ktlint /usr/local/bin/
 
-      - name: Format
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Format Kotlin
         run: ktlint --format "AnimeX/**/*.kt" "AnimeX/**/*.kts" || true
+
+      - name: Format C++
+        working-directory: AnimeX/app/src/main/cpp
+        run: clang-format -i animex_core.h animex_core.cpp jni_bridge.cpp
 
       - name: Commit changes
         run: |
@@ -31,6 +40,6 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -A
-            git commit -m "style: format Kotlin with ktlint"
+            git commit -m "style: format Kotlin with ktlint and C++ with clang-format"
             git push
           fi
