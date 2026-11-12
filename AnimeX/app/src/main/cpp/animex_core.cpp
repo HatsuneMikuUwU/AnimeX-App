@@ -637,4 +637,16 @@ std::string extractGateDomain(const std::string &jsonText) {
   return domainValue;
 }
 
+std::string extractGateAlphaDomain(const std::string &jsonText) {
+  const std::vector<std::string> keyPath = {OBFUSCATED_TEXT("data"),
+                                            OBFUSCATED_TEXT("domain_api_alpha"),
+                                            OBFUSCATED_TEXT("value")};
+
+  JsonReader jsonReader(jsonText);
+  std::string domainValue;
+  if (!jsonReader.findStringByPath(keyPath, &domainValue))
+    return "";
+  return domainValue;
+}
+
 }

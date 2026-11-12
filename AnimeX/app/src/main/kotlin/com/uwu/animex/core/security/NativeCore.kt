@@ -70,6 +70,8 @@ object NativeCore {
 
     external fun gateDomain(json: String): String
 
+    external fun gateDomainAlpha(json: String): String
+
     fun path(
         op: Int,
         arg: String = "",

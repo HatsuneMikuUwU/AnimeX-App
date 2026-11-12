@@ -126,3 +126,10 @@ NATIVE_CORE_FUNCTION(jstring, gateDomain)
       animex::extractGateDomain(javaStringToStdString(environment, jsonText));
   return stdStringToJavaString(environment, gateDomain);
 }
+
+NATIVE_CORE_FUNCTION(jstring, gateDomainAlpha)
+(JNIEnv *environment, jobject, jstring jsonText) {
+  const std::string gateDomainAlpha =
+      animex::extractGateAlphaDomain(javaStringToStdString(environment, jsonText));
+  return stdStringToJavaString(environment, gateDomainAlpha);
+}

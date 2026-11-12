@@ -83,6 +83,7 @@ object Api {
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
+    private const val KEY_ALPHA = "base_url_alpha"
     private const val GATE_RETRY_MS = 60 * 1000L
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
@@ -98,6 +99,15 @@ object Api {
     @Volatile
     var baseUrl: String = ""
         private set
+
+    @Volatile
+    private var primaryBase: String = ""
+
+    @Volatile
+    private var alphaBase: String = ""
+
+    @Volatile
+    private var failoverAt = 0L
 
     @Volatile
     private var resolved = false
@@ -201,6 +211,11 @@ object Api {
         baseUrl = saved
             ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
             ?: ""
+        primaryBase = baseUrl
+        alphaBase =
+            prefs?.getString(KEY_ALPHA, null)?.takeIf { it.isNotBlank() }?.let { value ->
+                runCatching { normalizeBase(value) }.getOrNull()
+            } ?: ""
     }
 
     fun clearCache() {
@@ -369,7 +384,7 @@ object Api {
 
         return try {
             ensureBase()
-            val body = fetchShared(key, baseUrl, path, params)
+            val body = withFailover { base -> fetchShared(key, base, path, params) }
             networkPaths.add(path)
             if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
             body
@@ -392,6 +407,46 @@ object Api {
             return
         }
         mutex.withLock { resolveBaseLocked() }
+    }
+
+    private fun isDomainDown(e: Throwable): Boolean =
+        when (e) {
+            is ApiException.Unreachable, is ApiException.Timeout, is ApiException.Tls -> true
+            is ApiException.Http -> e.code >= 500
+            else -> false
+        }
+
+    private fun restorePrimaryIfDue() {
+        val current = baseUrl
+        if (current.isBlank() || current != alphaBase || primaryBase.isBlank() || current == primaryBase) return
+        if (SystemClock.elapsedRealtime() - failoverAt >= GATE_RETRY_MS) baseUrl = primaryBase
+    }
+
+    private fun alternateFor(base: String): String? =
+        (if (base == alphaBase) primaryBase else alphaBase).takeIf { it.isNotBlank() && it != base }
+
+    suspend fun <T> withFailover(block: suspend (base: String) -> T): T {
+        restorePrimaryIfDue()
+        val first = baseUrl
+        try {
+            return block(first)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val alternate = alternateFor(first)
+            if (alternate == null || !isDomainDown(e)) throw e
+            val result =
+                try {
+                    block(alternate)
+                } catch (c: CancellationException) {
+                    throw c
+                } catch (_: Exception) {
+                    throw e
+                }
+            baseUrl = alternate
+            failoverAt = SystemClock.elapsedRealtime()
+            return result
+        }
     }
 
     @Volatile
@@ -426,6 +481,7 @@ object Api {
                 )
             }
             baseUrl = normalizeBase(default)
+            primaryBase = baseUrl
             resolved = true
             return
         }
@@ -441,7 +497,19 @@ object Api {
                 NativeCore.gateDomain(json).takeIf { it.isNotBlank() }
                     ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
             baseUrl = normalizeBase(v)
-            prefs?.edit()?.putString(KEY_BASE, baseUrl)?.apply()
+            primaryBase = baseUrl
+            alphaBase =
+                NativeCore
+                    .gateDomainAlpha(json)
+                    .takeIf { it.isNotBlank() }
+                    ?.let { runCatching { normalizeBase(it) }.getOrNull() }
+                    ?: ""
+            prefs
+                ?.edit()
+                ?.also { editor ->
+                    editor.putString(KEY_BASE, baseUrl)
+                    if (alphaBase.isBlank()) editor.remove(KEY_ALPHA) else editor.putString(KEY_ALPHA, alphaBase)
+                }?.apply()
             lastGateFailure = 0L
             hasSavedBase = true
             resolved = true
@@ -455,6 +523,7 @@ object Api {
                     ?: default.takeIf { it.isNotBlank() }?.let(::normalizeBase)
             if (fallback == null) throw e.normalized()
             baseUrl = fallback
+            if (primaryBase.isBlank()) primaryBase = fallback
         }
     }
 

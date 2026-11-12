@@ -71,4 +71,6 @@ std::string normalizeBaseUrl(const std::string &rawUrl);
 
 std::string extractGateDomain(const std::string &jsonText);
 
+std::string extractGateAlphaDomain(const std::string &jsonText);
+
 }

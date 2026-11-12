@@ -66,13 +66,6 @@ object UserApi {
                     else -> form
                 }
 
-            val url =
-                (base() + path.trimStart('/'))
-                    .toHttpUrl()
-                    .newBuilder()
-                    .apply { finalQuery.forEach { (k, v) -> addQueryParameter(k, v) } }
-                    .build()
-
             val body =
                 when {
                     jsonBody != null -> gson.toJson(jsonBody).toRequestBody(jsonMedia)
@@ -92,33 +85,45 @@ object UserApi {
                     else -> null
                 }
 
-            val builder =
-                Request
+            fun build(base: String): Request {
+                val url =
+                    (base.trimEnd('/') + "/" + path.trimStart('/'))
+                        .toHttpUrl()
+                        .newBuilder()
+                        .apply { finalQuery.forEach { (k, v) -> addQueryParameter(k, v) } }
+                        .build()
+                return Request
                     .Builder()
                     .url(url)
                     .method(method, body)
-
-            try {
-                http.newCall(builder.build()).execute().use { r ->
-                    val text = r.body.string()
-                    val obj =
-                        runCatching {
-                            JsonParser.parseString(text).takeIf { it.isJsonObject }?.asJsonObject
-                        }.getOrNull()
-                    val flagged =
-                        runCatching { obj?.get("error")?.asBoolean }.getOrNull() == true
-                    val message = messageOf(obj)
-                    when {
-                        !r.isSuccessful && message == null -> throw ApiException.Http(r.code)
-                        !r.isSuccessful || flagged -> throw ApiException.Remote(message ?: "API error")
-                    }
-                    obj ?: throw ApiException.Parse()
-                }
-            } catch (e: ApiException) {
-                throw e
-            } catch (e: IOException) {
-                throw e.toApiException()
+                    .build()
             }
+
+            suspend fun send(base: String): JsonObject =
+                try {
+                    http.newCall(build(base)).execute().use { r ->
+                        val text = r.body.string()
+                        val obj =
+                            runCatching {
+                                JsonParser.parseString(text).takeIf { it.isJsonObject }?.asJsonObject
+                            }.getOrNull()
+                        val flagged =
+                            runCatching { obj?.get("error")?.asBoolean }.getOrNull() == true
+                        val message = messageOf(obj)
+                        when {
+                            !r.isSuccessful && message == null -> throw ApiException.Http(r.code)
+                            !r.isSuccessful || flagged -> throw ApiException.Remote(message ?: "API error")
+                        }
+                        obj ?: throw ApiException.Parse()
+                    }
+                } catch (e: ApiException) {
+                    throw e
+                } catch (e: IOException) {
+                    throw e.toApiException()
+                }
+
+            val primary = base()
+            if (readOnly) Api.withFailover { send(it) } else send(primary)
         }
 
     private fun avatarOf(user: JsonObject): String? {
