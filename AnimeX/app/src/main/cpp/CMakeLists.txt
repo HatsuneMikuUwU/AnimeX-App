@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
-# Rahasia (sudah di-XOR) dikirim dari app/build.gradle.kts.
-# Jika tidak diisi, nilainya string kosong supaya build tetap berhasil.
 foreach(masked_secret_name
         ANIMEX_MASKED_SECRET_MY_ANIME_LIST
         ANIMEX_MASKED_SECRET_ANILIST

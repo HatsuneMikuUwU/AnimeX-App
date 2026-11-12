@@ -5,8 +5,6 @@
 
 namespace animex {
 
-// Penanda rahasia yang disimpan di sisi native.
-// Nilai angkanya harus sama dengan SECRET_* di NativeCore.kt.
 enum SecretKind {
     SECRET_MY_ANIME_LIST = 0,
     SECRET_ANILIST = 1,
@@ -14,8 +12,6 @@ enum SecretKind {
     SECRET_API_BASE = 3,
 };
 
-// Penanda endpoint API.
-// Nilai angkanya harus sama dengan konstanta di NativeCore.kt.
 enum EndpointOperation {
     GATE_SETUP = 0,
     HOME_LIST = 1,
@@ -59,33 +55,20 @@ enum EndpointOperation {
     FOR_YOU_PAGE_COMMENT_REPORT = 39,
 };
 
-// Mengubah rahasia berformat hex (sudah di-XOR saat build) menjadi teks asli.
-// Mengembalikan string kosong jika input tidak valid.
-std::string decodeSecret(int secretId, const char* maskedHexText);
+std::string decodeSecret(const char* maskedHexText);
 
-// Mengembalikan path endpoint untuk sebuah operasi.
-// `argument` ditambahkan di belakang path untuk operasi yang membutuhkannya.
 std::string buildEndpointPath(int operation, const std::string& argument);
 
-// True jika path berisi data yang tidak boleh di-cache (misalnya link streaming).
 bool isVolatilePath(const std::string& path);
 
-// Mengembalikan {path, nama parameter pencarian, "1" jika memakai halaman}.
 std::vector<std::string> exploreTargetFor(const std::string& kind);
 
-// Daftar rencana pencarian. Tiap item berformat "path|parameter|memakaiHalaman".
 std::vector<std::string> buildSearchPlan();
 
-// Nama hari dalam bahasa Indonesia, dari Senin sampai Minggu.
 std::vector<std::string> scheduleDayNames();
 
-// Merapikan alamat dasar API. Mengembalikan:
-//   ""   jika alamat tidak valid,
-//   "!q" jika alamat memuat query atau fragment,
-//   atau alamat https yang berakhir dengan "/".
 std::string normalizeBaseUrl(const std::string& rawUrl);
 
-// Mengambil data.domain_api.value dari JSON. Mengembalikan "" jika tidak ada.
 std::string extractGateDomain(const std::string& jsonText);
 
-}  // namespace animex
+}
