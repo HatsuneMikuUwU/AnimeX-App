@@ -41,9 +41,6 @@ class PlayerViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    private val _episodes = MutableStateFlow<UiState<List<Episode>>>(UiState.Loading)
-    val episodes: StateFlow<UiState<List<Episode>>> = _episodes.asStateFlow()
-
     private val _episodeList = MutableStateFlow(PlayerEpisodeList())
     val episodeList: StateFlow<PlayerEpisodeList> = _episodeList.asStateFlow()
 
@@ -51,7 +48,6 @@ class PlayerViewModel(
     val aniZip: StateFlow<AniZipInfo?> = _aniZip.asStateFlow()
 
     private var serversJob: Job? = null
-    private var episodesJob: Job? = null
     private var listJob: Job? = null
     private var moreJob: Job? = null
     private var pinJob: Job? = null
@@ -126,47 +122,6 @@ class PlayerViewModel(
     }
 
     fun refreshServers() = loadServers(currentEpId, force = true)
-
-    fun loadEpisodes(
-        movieId: String,
-        force: Boolean = false,
-    ) {
-        episodesJob?.cancel()
-        episodesJob =
-            viewModelScope.launch {
-                if (_episodes.value !is UiState.Ready) {
-                    _episodes.value = UiState.Loading
-                }
-                try {
-                    val all = LinkedHashMap<String, Episode>()
-
-                    fun add(list: List<Episode>) = list.forEach { e -> e.id?.let { all.putIfAbsent(it, e) } }
-                    add(Api.episodes(movieId, force = force))
-                    var page = 1
-                    while (page <= MAX_EPISODE_PAGES) {
-                        val batch =
-                            try {
-                                Api.episodes(movieId, page = page, force = force)
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (_: Exception) {
-                                break
-                            }
-                        if (batch.isEmpty()) break
-                        add(batch)
-                        page++
-                    }
-                    _episodes.value =
-                        UiState.Ready(all.values.sortedBy { it.index?.toIntOrNull() ?: Int.MAX_VALUE })
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    if (_episodes.value !is UiState.Ready) {
-                        _episodes.value = UiState.Error(e.toUserMessage())
-                    }
-                }
-            }
-    }
 
     fun openEpisodeList(
         movieId: String,
@@ -308,7 +263,6 @@ class PlayerViewModel(
     }
 
     companion object {
-        private const val MAX_EPISODE_PAGES = 40
         private const val PAGE_SIZE = 30
 
         fun factory(epId: String): ViewModelProvider.Factory =

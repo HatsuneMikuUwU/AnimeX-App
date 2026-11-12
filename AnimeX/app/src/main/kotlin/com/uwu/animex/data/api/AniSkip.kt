@@ -8,7 +8,6 @@ import com.uwu.animex.core.network.NetworkModule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -82,9 +81,6 @@ object AniSkip {
         val stamps: List<SkipStamp>,
         val failed: Boolean,
     )
-
-    private val gate = Semaphore(3)
-    private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
 
     suspend fun stamps(
         malId: Int,

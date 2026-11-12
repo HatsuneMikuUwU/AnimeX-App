@@ -24,9 +24,6 @@
         <package android:name="com.mxtech.videoplayer.free" />
         <package android:name="org.videolan.vlc" />
         <package android:name="com.brouken.player" />
-        <package android:name="com.simplemobiletools.clock" />
-        <package android:name="com.google.android.youtube" />
-        <package android:name="com.google.android.apps.youtube.unplugged" />
     </queries>
 
     <application
