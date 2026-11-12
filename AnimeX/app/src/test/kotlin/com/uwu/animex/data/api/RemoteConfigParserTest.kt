@@ -16,16 +16,16 @@ class RemoteConfigParserTest {
               "data": {
                 "ads": {"id": "5", "code": "ADS_BANNER_FLAG_X", "value": "banner-value", "key_status": "active"},
                 "ads_video_ctr": {"id": "7", "code": "ADS_INTERSTISIAL_VIDEO_CTR", "value": "10", "key_status": "active"},
-                "domain_api": {"id": "17", "code": "DOMAIN_API", "value": "https://xyz-api.animein.net/", "key_status": "active"},
-                "domain_api_alpha": {"id": "26", "code": "DOMAIN_API_ALPHA", "value": "https://alpha-api.animein.net/", "key_status": "active"},
+                "domain_api": {"id": "17", "code": "DOMAIN_API", "value": "https://api.example.test/", "key_status": "active"},
+                "domain_api_alpha": {"id": "26", "code": "DOMAIN_API_ALPHA", "value": "https://alpha.example.test/", "key_status": "active"},
                 "ads_source": {"id": "18", "code": "ADS_SOURCE", "value": "LOKLOK_COMBINE", "key_status": "active"}
               }
             }
             """.trimIndent(),
         )
 
-        assertEquals("https://xyz-api.animein.net/", config.domainApi)
-        assertEquals("https://alpha-api.animein.net/", config.domainApiAlpha)
+        assertEquals("https://api.example.test/", config.domainApi)
+        assertEquals("https://alpha.example.test/", config.domainApiAlpha)
     }
 
     @Test

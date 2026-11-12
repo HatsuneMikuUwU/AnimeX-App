@@ -66,10 +66,4 @@ std::vector<std::string> buildSearchPlan();
 
 std::vector<std::string> scheduleDayNames();
 
-std::string normalizeDomainUrl(const std::string &rawUrl);
-
-std::string extractDomainApi(const std::string &jsonText);
-
-std::string extractDomainApiAlpha(const std::string &jsonText);
-
 }

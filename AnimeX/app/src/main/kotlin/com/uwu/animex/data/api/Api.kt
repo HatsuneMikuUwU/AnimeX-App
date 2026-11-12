@@ -17,7 +17,6 @@ import com.uwu.animex.core.cache.canonicalCacheKey
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
-import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
@@ -231,15 +230,7 @@ object Api {
         CuplixAllFeed.clear()
     }
 
-    private fun normalizeDomain(raw: String): String {
-        val normalized = NativeCore.normalizeDomain(raw)
-        if (normalized == "!q") {
-            throw ApiException.Config("Domain API tidak boleh memakai query atau fragment")
-        }
-        val secured = UrlSecurity.secureOrNull(normalized.takeIf { it.isNotEmpty() })
-            ?: throw ApiException.Config("Domain API tidak valid; gunakan alamat HTTP(S) dengan host yang valid")
-        return secured.trimEnd('/') + "/"
-    }
+    private fun normalizeDomain(raw: String): String = ApiDomainConfig.normalize(raw)
 
     private suspend fun fetch(
         domain: String,
@@ -409,21 +400,17 @@ object Api {
         mutex.withLock { resolveDomainsLocked() }
     }
 
-    private fun isDomainDown(e: Throwable): Boolean =
-        when (e) {
-            is ApiException.Unreachable, is ApiException.Timeout, is ApiException.Tls -> true
-            is ApiException.Http -> e.code >= 500
-            else -> false
-        }
-
     private fun restoreMainIfDue() {
-        val current = activeDomain
-        if (current.isBlank() || current != alphaDomain || mainDomain.isBlank() || current == mainDomain) return
-        if (SystemClock.elapsedRealtime() - fallbackAt >= GATE_RETRY_MS) activeDomain = mainDomain
+        activeDomain =
+            ApiDomainPolicy.restoreMainDomain(
+                currentDomain = activeDomain,
+                mainDomain = mainDomain,
+                alphaDomain = alphaDomain,
+                fallbackAt = fallbackAt,
+                now = SystemClock.elapsedRealtime(),
+                retryAfterMs = GATE_RETRY_MS,
+            )
     }
-
-    private fun otherDomain(domain: String): String? =
-        (if (domain == alphaDomain) mainDomain else alphaDomain).takeIf { it.isNotBlank() && it != domain }
 
     suspend fun <T> withFallback(block: suspend (domain: String) -> T): T {
         restoreMainIfDue()
@@ -433,8 +420,7 @@ object Api {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val other = otherDomain(first)
-            if (other == null || !isDomainDown(e)) throw e
+            val other = ApiDomainPolicy.fallbackDomain(first, mainDomain, alphaDomain, e) ?: throw e
             val result =
                 try {
                     block(other)

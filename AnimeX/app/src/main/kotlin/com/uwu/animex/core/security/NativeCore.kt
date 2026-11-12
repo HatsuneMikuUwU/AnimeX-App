@@ -65,12 +65,6 @@ object NativeCore {
 
     external fun scheduleDays(): Array<String>
 
-    external fun normalizeDomain(raw: String): String
-
-    external fun domainApi(json: String): String
-
-    external fun domainApiAlpha(json: String): String
-
     fun path(
         op: Int,
         arg: String = "",
