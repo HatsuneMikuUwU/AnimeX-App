@@ -67,6 +67,7 @@ fun HomeScreen(
         isRefreshing = isRefreshing,
         onRefresh = {
             previewCache = null
+            CuplixHomeFeed.markStale()
             viewModel.refresh()
         },
         errors = viewModel.refreshError,

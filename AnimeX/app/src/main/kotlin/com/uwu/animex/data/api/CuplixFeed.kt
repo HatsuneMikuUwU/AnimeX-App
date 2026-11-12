@@ -66,6 +66,13 @@ class CuplixPager(
     @Volatile
     private var scrollFailures = 0
 
+    @Volatile
+    private var replaceOnNextSeed = false
+
+    fun markStale() {
+        replaceOnNextSeed = true
+    }
+
     private fun resetPaging() {
         scrollPage = 1
         legacyPage = 1
@@ -101,7 +108,9 @@ class CuplixPager(
         appendToExisting: Boolean = false,
     ) {
         if (token != 0L && _state.value.baseToken == token) return
-        val existingClips = if (appendToExisting) _state.value.clips else emptyList()
+        val append = appendToExisting && !replaceOnNextSeed
+        replaceOnNextSeed = false
+        val existingClips = if (append) _state.value.clips else emptyList()
         generation++
         resetPaging()
         if (next != null) {
@@ -119,7 +128,7 @@ class CuplixPager(
                 .let { if (filterPlayable) it.filter(::isCuplixPlayable) else it }
                 .let { if (deduplicate) it.distinctBy(::cuplixKey) else it }
         val clips =
-            if (appendToExisting && deduplicate) {
+            if (append && deduplicate) {
                 (existingClips + seededClips).distinctBy(::cuplixKey)
             } else {
                 existingClips + seededClips
