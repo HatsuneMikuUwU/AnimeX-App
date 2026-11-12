@@ -165,18 +165,13 @@ internal fun ClipViewsChip(
         modifier
             .clip(RoundedCornerShape(50))
             .background(OverlayChipColor)
-            .padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(
-            Icons.Outlined.Visibility,
-            null,
-            Modifier.size(16.dp),
-            tint = Color.White,
-        )
+        ShadowIcon(Icons.Outlined.Visibility, null, size = 16.dp)
         Text(
             "$views dilihat",
-            Modifier.padding(start = 6.dp),
             color = Color.White,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
