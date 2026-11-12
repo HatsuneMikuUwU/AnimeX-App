@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -160,18 +161,29 @@ internal fun ClipViewsChip(
 ) {
     if (rememberHideStats()) return
     val views = cuplixCountText(clip.count_views) ?: return
-    Text(
-        "$views dilihat",
+    Row(
         modifier
             .clip(RoundedCornerShape(50))
             .background(OverlayChipColor)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        color = Color.White,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Medium,
-        maxLines = 1,
-        style = TextStyle(shadow = OverlayShadow),
-    )
+            .padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Visibility,
+            null,
+            Modifier.size(16.dp),
+            tint = Color.White,
+        )
+        Text(
+            "$views dilihat",
+            Modifier.padding(start = 6.dp),
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            style = TextStyle(shadow = OverlayShadow),
+        )
+    }
 }
 
 internal fun List<Server>.clipServer(): Server? {
