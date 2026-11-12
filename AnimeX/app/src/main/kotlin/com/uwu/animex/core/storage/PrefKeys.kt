@@ -117,6 +117,8 @@ object PrefKeys {
     object HomeSection {
         const val FILE = "home_sections"
         const val ORDER = "order"
+        const val ANIMEIN_ORDER = "order_animein"
+        const val WIBUTIME_ORDER = "order_wibutime"
     }
 
     object Mal {

@@ -158,6 +158,7 @@ data class HomeData(
     val cuplix: List<Cuplix> = emptyList(),
     val cuplixNext: CuplixNext? = null,
     val cuplixToken: Long = 0L,
+    val providerSections: Map<String, List<Movie>> = emptyMap(),
 )
 
 data class ExploreItem(

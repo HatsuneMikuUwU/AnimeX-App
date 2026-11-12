@@ -140,7 +140,9 @@ private fun HomeContent(
         layout.order.forEach { entry ->
             when (entry) {
                 HomeSection.Cuplix ->
-                    if (cuplixEnabled && (cuplixClips.isNotEmpty() || cuplixView.loadingMore || cuplixView.loadMoreFailed)) {
+                    if (cuplixEnabled &&
+                        (cuplixClips.isNotEmpty() || cuplixView.loadingMore || cuplixView.loadMoreFailed)
+                    ) {
                         item(key = "header:Cuplix") {
                             Box(animateItemExpressive()) {
                                 SectionHeader("Cuplix", { onMore("cuplix") }, icon = entry.icon)
@@ -204,6 +206,17 @@ private fun HomeContent(
 
                 HomeSection.Popular ->
                     section(entry.title, entry.icon, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
+
+                else -> {
+                    val movies = h.providerSections[entry.key].orEmpty()
+                    section(entry.title, entry.icon, movies, { onMore(entry.key) }) {
+                        if (entry == HomeSection.WibuTrending) {
+                            HotBlock(movies, onOpen)
+                        } else {
+                            PortraitRow(movies, onOpen, genreAsChip = true)
+                        }
+                    }
+                }
             }
         }
     }

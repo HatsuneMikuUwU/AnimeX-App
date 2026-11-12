@@ -425,6 +425,10 @@ fun HomePlaceholder() {
                     WaitingRowPlaceholder()
                 }
                 HomeSection.Today -> Unit
+                else -> {
+                    SectionHeaderPlaceholder()
+                    PosterRowPlaceholder()
+                }
             }
         }
     }

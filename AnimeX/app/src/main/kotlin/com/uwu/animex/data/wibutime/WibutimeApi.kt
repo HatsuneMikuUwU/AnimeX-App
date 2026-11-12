@@ -1,6 +1,7 @@
 package com.uwu.animex.data.wibutime
 
 import android.content.Context
+import android.os.Build
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -17,7 +18,10 @@ import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.model.Slider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -57,7 +61,8 @@ object WibutimeApi {
         body: String? = null,
         force: Boolean = false,
     ): JsonElement {
-        val cacheKey = "$path?${params.toSortedMap().entries.joinToString("&") { "${it.key}=${it.value}" }}"
+        val queryKey = params.toSortedMap().entries.joinToString("&") { "${it.key}=${it.value}" }
+        val cacheKey = "$path?$queryKey|body=${body.orEmpty()}"
         if (!force) {
             cache.getMemory(cacheKey, CACHE_TTL_MS)?.let { return JsonParser.parseString(it) }
             withContext(
@@ -78,15 +83,24 @@ object WibutimeApi {
                 .header("apikey", ANON_KEY)
                 .header("Authorization", "Bearer $ANON_KEY")
                 .header("Accept", "application/json")
+                .header("X-Client-Info", "supabase-kt/3.5.0")
+                .header("X-Supabase-Client-Platform", "Android")
+                .header("X-Supabase-Client-Platform-Version", Build.VERSION.RELEASE)
                 .apply { if (body != null) post(requestBody!!) }
                 .build()
         val responseText =
-            withContext(Dispatchers.IO) {
-                NetworkModule.apiClient.newCall(request).execute().use { response ->
-                    val text = response.body.string()
-                    if (!response.isSuccessful) throw ApiException.Http(response.code)
-                    text
+            try {
+                withContext(Dispatchers.IO) {
+                    NetworkModule.apiClient.newCall(request).execute().use { response ->
+                        val text = response.body.string()
+                        if (!response.isSuccessful) throw ApiException.Http(response.code)
+                        text
+                    }
                 }
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                if (!force) cache.getStale(cacheKey)?.let { return JsonParser.parseString(it) }
+                throw error
             }
         if (!force) withContext(Dispatchers.IO) { cache.put(cacheKey, responseText) }
         return JsonParser.parseString(responseText)
@@ -123,7 +137,7 @@ object WibutimeApi {
     private fun JsonObject.toMovie(day: String? = null): Movie {
         val id = string("slug") ?: string("id") ?: string("anime_id")
         val genres = stringList("genres").joinToString(", ").ifBlank { string("genre").orEmpty() }
-        val episodeNumber = string("latest_episode_number") ?: string("total_episodes")
+        val episodeNumber = string("latest_episode_number") ?: string("total_episodes") ?: string("eps")
         return Movie(
             id = id,
             title = string("title") ?: string("name"),
@@ -163,43 +177,74 @@ object WibutimeApi {
         force: Boolean = false,
     ): List<JsonObject> = json("animes", params, force = force).arrayObjects()
 
-    suspend fun home(force: Boolean = false): HomeData {
-        val root = json("rpc/get_home_feed", body = "{}", force = force)
-        val data = root.arrayObjects().firstOrNull() ?: root.objOrNull() ?: JsonObject()
-
-        fun movies(key: String): List<Movie> =
-            data
-                .get(key)
-                ?.arrayObjects()
-                ?.map { it.toMovie() }
-                .orEmpty()
-        val hero = movies("hero_pool")
-        val sliders = hero.mapNotNull { movie ->
-            val id = movie.id ?: return@mapNotNull null
-            val image = movie.image_cover ?: movie.image_poster ?: return@mapNotNull null
-            Slider(id = id, image = image, type = "anime", link = id)
-        }
-        val latestAnime = movies("latest_anime")
-        val latestAll = movies("latest_semua").ifEmpty { latestAnime }
-        val trending = runCatching {
-            json("rpc/get_trending_series", body = "{}", force = force).arrayObjects().mapNotNull { wrapper ->
-                wrapper.get("card")?.objOrNull()?.let { card ->
-                    card.toMovie().copy(views = wrapper.numberString("views") ?: "0")
-                } ?: wrapper.toMovie()
+    private suspend fun seriesRpc(
+        name: String,
+        limit: Int,
+        force: Boolean,
+        cardWrapped: Boolean = true,
+    ): List<Movie> =
+        json(
+            "rpc/$name",
+            body = gson.toJson(mapOf("p_limit" to limit)),
+            force = force,
+        ).arrayObjects().mapNotNull { row ->
+            if (cardWrapped) {
+                row.get("card")?.objOrNull()?.let { card ->
+                    card.toMovie().copy(views = row.numberString("views") ?: card.numberString("view_count") ?: "0")
+                } ?: row.toMovie()
+            } else {
+                row.toMovie()
             }
-        }.getOrDefault(emptyList())
-        val scheduleToday = runCatching { schedule(force) }.getOrDefault(emptyList())
-        return HomeData(
-            slider = sliders,
-            update = latestAnime,
-            hot = trending.ifEmpty { hero.take(18) },
-            new = movies("animes"),
-            today = scheduleToday,
-            random = movies("latest_donghua"),
-            waiting = movies("completed_anime"),
-            popular = trending.ifEmpty { hero },
-        ).let { base -> base.copy(update = latestAll.ifEmpty { base.update }) }
-    }
+        }
+
+    suspend fun home(force: Boolean = false): HomeData =
+        coroutineScope {
+            val feedRequest = async { json("rpc/get_home_feed_v3", body = "{}", force = force) }
+            val trendingRequest =
+                async { runCatching { seriesRpc("get_trending_series", 20, force) }.getOrDefault(emptyList()) }
+            val topRequest =
+                async { runCatching { seriesRpc("get_top_series_all_time", 20, force) }.getOrDefault(emptyList()) }
+            val randomRequest = async {
+                runCatching { seriesRpc("random_series", 20, force, cardWrapped = false) }.getOrDefault(emptyList())
+            }
+            val root = feedRequest.await()
+            val data = root.arrayObjects().firstOrNull() ?: root.objOrNull() ?: JsonObject()
+
+            fun movies(key: String): List<Movie> =
+                data
+                    .get(key)
+                    ?.arrayObjects()
+                    ?.map { it.toMovie() }
+                    .orEmpty()
+
+            val hero = movies("hero_pool")
+            val sliders = hero.mapNotNull { movie ->
+                val id = movie.id ?: return@mapNotNull null
+                val image = movie.image_cover ?: movie.image_poster ?: return@mapNotNull null
+                Slider(id = id, image = image, type = "anime", link = id)
+            }
+            val trending = trendingRequest.await()
+            val top = topRequest.await()
+            val random = randomRequest.await()
+            val providerSections =
+                mapOf(
+                    "wibu_trending" to trending,
+                    "wibu_top_all_time" to top,
+                    "wibu_random" to random,
+                    "wibu_animes" to movies("animes"),
+                    "wibu_latest_anime" to movies("latest_anime"),
+                    "wibu_latest_movie" to movies("latest_movie"),
+                    "wibu_latest_donghua" to movies("latest_donghua"),
+                    "wibu_completed_anime" to movies("completed_anime"),
+                    "wibu_completed_movie" to movies("completed_movie"),
+                    "wibu_completed_donghua" to movies("completed_donghua"),
+                )
+            HomeData(
+                slider = sliders,
+                random = random,
+                providerSections = providerSections,
+            )
+        }
 
     suspend fun homeMovies(
         section: String,
@@ -207,16 +252,7 @@ object WibutimeApi {
         force: Boolean = false,
     ): List<Movie> {
         val feed = home(force)
-        val sectionRows = when (section.lowercase()) {
-            "update", "latest", "latest_anime" -> feed.update
-            "hot", "trending" -> feed.hot
-            "new", "animes", "latest_semua" -> feed.new.ifEmpty { feed.update }
-            "today", "schedule" -> feed.today
-            "waiting", "completed" -> feed.waiting
-            "popular", "top" -> feed.popular
-            "history" -> emptyList()
-            else -> feed.new.ifEmpty { feed.update }
-        }
+        val sectionRows = feed.providerSections[section.lowercase()].orEmpty()
         val start = page.coerceAtLeast(0) * Api.API_LIMIT
         return sectionRows.drop(start).take(Api.API_LIMIT)
     }
@@ -224,26 +260,24 @@ object WibutimeApi {
     suspend fun newEpisodes(
         page: Int = 0,
         force: Boolean = false,
-    ): List<Movie> = homeMovies("update", page, force)
+    ): List<Movie> = homeMovies("wibu_latest_anime", page, force)
 
     suspend fun search(
         q: String,
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
-        val query = q.trim().lowercase()
+        val query = q.trim()
         if (query.isBlank()) return emptyList()
-        val rows = animes(
-            mapOf(
-                "select" to "*",
-                "title_lower" to "ilike.*$query*",
-                "limit" to PAGE_SIZE.toString(),
-                "offset" to (page.coerceAtLeast(0) * PAGE_SIZE).toString(),
-                "order" to "title.asc",
-            ),
-            force,
-        )
-        return rows.map { it.toMovie() }
+        val safePage = page.coerceAtLeast(0)
+        val limit = ((safePage + 1) * PAGE_SIZE).coerceAtMost(TABLE_LIMIT)
+        val rows =
+            json(
+                "rpc/search_animes_cards",
+                body = gson.toJson(mapOf("p_query" to query, "p_limit" to limit)),
+                force = force,
+            ).arrayObjects()
+        return rows.drop(safePage * PAGE_SIZE).take(PAGE_SIZE).map { it.toMovie() }
     }
 
     suspend fun suggest(
@@ -256,7 +290,16 @@ object WibutimeApi {
         force: Boolean = false,
     ): Api.DetailResult {
         val slug = id.trim()
-        val row = animes(mapOf("select" to "*", "slug" to "eq.$slug", "limit" to "1"), force).firstOrNull()
+        val row =
+            animes(
+                mapOf(
+                    "select" to
+                        "slug,title,poster_art_index,genres,type,status,rating,year,studio,episode_count_label,poster_url,latest_episode_id,latest_episode_number,latest_episode_created_at,synopsis,air_day,duration_minutes,alt_titles",
+                    "slug" to "eq.$slug",
+                    "limit" to "1",
+                ),
+                force,
+            ).firstOrNull()
         val movie = row?.toMovie()
         val latest = row?.let { anime ->
             val episodeId = anime.string("latest_episode_id")
@@ -376,31 +419,21 @@ object WibutimeApi {
     }
 
     suspend fun schedule(force: Boolean = false): List<Movie> {
-        val rows = json(
-            "schedules",
-            mapOf("select" to "*", "limit" to TABLE_LIMIT.toString()),
-            force = force,
-        ).arrayObjects()
-        if (rows.isEmpty()) return emptyList()
-        val ids = rows.mapNotNull { it.string("anime_id") }.distinct()
-        val inValue = ids.joinToString(",", "(", ")")
-        val animeRows = if (ids.isEmpty()) {
-            emptyList()
-        } else {
-            animes(
+        val rows =
+            json(
+                "schedules",
                 mapOf(
-                    "select" to "*",
-                    "slug" to "in.$inValue",
+                    "select" to
+                        "anime_id,day_of_week,animes(title,poster_art_index,poster_url,type,rating,genres,episode_count_label,status)",
                     "limit" to TABLE_LIMIT.toString(),
                 ),
-                force,
-            )
-        }
-        val bySlug = animeRows.associateBy { it.string("slug") }
+                force = force,
+            ).arrayObjects()
         return rows
             .mapNotNull { row ->
                 val slug = row.string("anime_id") ?: return@mapNotNull null
-                val anime = row.get("anime")?.objOrNull() ?: bySlug[slug] ?: return@mapNotNull null
+                val anime = row.get("animes")?.objOrNull() ?: return@mapNotNull null
+                anime.addProperty("slug", slug)
                 anime.toMovie(day = row.string("day_of_week"))
             }.distinctBy { it.id to it.day }
     }
