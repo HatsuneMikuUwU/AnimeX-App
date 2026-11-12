@@ -38,7 +38,7 @@ template <std::size_t LiteralSize> struct ObfuscatedText {
     return obfuscatedText.reveal();                                            \
   }())
 
-const char *const kBaseUrlHasQueryOrFragment = "!q";
+const char *const kDomainHasQueryOrFragment = "!q";
 
 std::string secretMaskingKey() { return OBFUSCATED_TEXT("com.uwu.animex:v1"); }
 
@@ -334,7 +334,7 @@ private:
   }
 };
 
-struct ParsedBaseUrl {
+struct ParsedDomainUrl {
   std::string scheme;
   std::string host;
   std::string port;
@@ -388,7 +388,7 @@ bool splitHostAndPort(const std::string &authority, std::string &host,
   return !host.empty();
 }
 
-bool parseBaseUrl(const std::string &rawUrl, ParsedBaseUrl &parsedUrl) {
+bool parseDomainUrl(const std::string &rawUrl, ParsedDomainUrl &parsedUrl) {
   const std::string preparedUrl = prepareRawUrl(rawUrl);
   if (preparedUrl.empty())
     return false;
@@ -410,7 +410,7 @@ bool parseBaseUrl(const std::string &rawUrl, ParsedBaseUrl &parsedUrl) {
   return splitHostAndPort(authority, parsedUrl.host, parsedUrl.port);
 }
 
-void upgradeToHttpsAndDropDefaultPort(ParsedBaseUrl &parsedUrl) {
+void upgradeToHttpsAndDropDefaultPort(ParsedDomainUrl &parsedUrl) {
   if (parsedUrl.scheme == "http") {
     if (parsedUrl.port == "80")
       parsedUrl.port.clear();
@@ -608,15 +608,15 @@ std::vector<std::string> scheduleDayNames() {
   };
 }
 
-std::string normalizeBaseUrl(const std::string &rawUrl) {
-  ParsedBaseUrl parsedUrl;
-  if (!parseBaseUrl(rawUrl, parsedUrl))
+std::string normalizeDomainUrl(const std::string &rawUrl) {
+  ParsedDomainUrl parsedUrl;
+  if (!parseDomainUrl(rawUrl, parsedUrl))
     return "";
 
   upgradeToHttpsAndDropDefaultPort(parsedUrl);
 
   if (parsedUrl.pathAndQuery.find_first_of("?#") != std::string::npos)
-    return kBaseUrlHasQueryOrFragment;
+    return kDomainHasQueryOrFragment;
   removeTrailingSlashes(parsedUrl.pathAndQuery);
 
   const std::string portSuffix =
@@ -625,7 +625,7 @@ std::string normalizeBaseUrl(const std::string &rawUrl) {
          parsedUrl.pathAndQuery + "/";
 }
 
-std::string extractGateDomain(const std::string &jsonText) {
+std::string extractDomainApi(const std::string &jsonText) {
   const std::vector<std::string> keyPath = {OBFUSCATED_TEXT("data"),
                                             OBFUSCATED_TEXT("domain_api"),
                                             OBFUSCATED_TEXT("value")};
@@ -637,7 +637,7 @@ std::string extractGateDomain(const std::string &jsonText) {
   return domainValue;
 }
 
-std::string extractGateAlphaDomain(const std::string &jsonText) {
+std::string extractDomainApiAlpha(const std::string &jsonText) {
   const std::vector<std::string> keyPath = {OBFUSCATED_TEXT("data"),
                                             OBFUSCATED_TEXT("domain_api_alpha"),
                                             OBFUSCATED_TEXT("value")};

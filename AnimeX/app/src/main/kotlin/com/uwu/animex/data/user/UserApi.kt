@@ -27,10 +27,10 @@ object UserApi {
     private val textMedia = "text/plain".toMediaType()
     private val http get() = NetworkModule.apiClient
 
-    private fun base(): String {
-        val b = Api.baseUrl.trimEnd('/')
-        if (b.isBlank()) throw ApiException.Config("API base belum siap")
-        return "$b/"
+    private fun domain(): String {
+        val d = Api.activeDomain.trimEnd('/')
+        if (d.isBlank()) throw ApiException.Config("Domain API belum siap")
+        return "$d/"
     }
 
     private fun JsonObject.str(name: String): String? =
@@ -85,9 +85,9 @@ object UserApi {
                     else -> null
                 }
 
-            fun build(base: String): Request {
+            fun build(domain: String): Request {
                 val url =
-                    (base.trimEnd('/') + "/" + path.trimStart('/'))
+                    (domain.trimEnd('/') + "/" + path.trimStart('/'))
                         .toHttpUrl()
                         .newBuilder()
                         .apply { finalQuery.forEach { (k, v) -> addQueryParameter(k, v) } }
@@ -99,9 +99,9 @@ object UserApi {
                     .build()
             }
 
-            suspend fun send(base: String): JsonObject =
+            suspend fun send(domain: String): JsonObject =
                 try {
-                    http.newCall(build(base)).execute().use { r ->
+                    http.newCall(build(domain)).execute().use { r ->
                         val text = r.body.string()
                         val obj =
                             runCatching {
@@ -122,8 +122,8 @@ object UserApi {
                     throw e.toApiException()
                 }
 
-            val primary = base()
-            if (readOnly) Api.withFailover { send(it) } else send(primary)
+            val current = domain()
+            if (readOnly) Api.withFallback { send(it) } else send(current)
         }
 
     private fun avatarOf(user: JsonObject): String? {

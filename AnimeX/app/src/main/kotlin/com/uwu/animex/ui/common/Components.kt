@@ -118,8 +118,8 @@ fun Poster(
     var failed by remember(url) { mutableStateOf(false) }
     var attempt by remember(url) { mutableIntStateOf(0) }
     var lastPainter by remember { mutableStateOf<Painter?>(null) }
-    val base = Api.baseUrl
-    val data = remember(url, base) { Api.absUrl(url) }
+    val domain = Api.activeDomain
+    val data = remember(url, domain) { Api.absUrl(url) }
     val request =
         remember(data, attempt, ctx) {
             ImageRequest

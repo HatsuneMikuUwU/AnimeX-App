@@ -82,8 +82,8 @@ object Api {
 
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
-    private const val KEY_BASE = "base_url"
-    private const val KEY_ALPHA = "base_url_alpha"
+    private const val KEY_DOMAIN = "base_url"
+    private const val KEY_DOMAIN_ALPHA = "base_url_alpha"
     private const val GATE_RETRY_MS = 60 * 1000L
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
@@ -97,23 +97,23 @@ object Api {
     private var prefs: SharedPreferences? = null
 
     @Volatile
-    var baseUrl: String = ""
+    var activeDomain: String = ""
         private set
 
     @Volatile
-    private var primaryBase: String = ""
+    private var mainDomain: String = ""
 
     @Volatile
-    private var alphaBase: String = ""
+    private var alphaDomain: String = ""
 
     @Volatile
-    private var failoverAt = 0L
+    private var fallbackAt = 0L
 
     @Volatile
     private var resolved = false
 
     @Volatile
-    private var hasSavedBase = false
+    private var hasSavedDomain = false
 
     @Volatile
     private var lastGateFailure = 0L
@@ -204,15 +204,15 @@ object Api {
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
         val saved =
-            prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->
-                runCatching { normalizeBase(value) }.getOrNull()
+            prefs?.getString(KEY_DOMAIN, null)?.takeIf { it.isNotBlank() }?.let { value ->
+                runCatching { normalizeDomain(value) }.getOrNull()
             }
-        hasSavedBase = saved != null
-        baseUrl = saved ?: ""
-        primaryBase = baseUrl
-        alphaBase =
-            prefs?.getString(KEY_ALPHA, null)?.takeIf { it.isNotBlank() }?.let { value ->
-                runCatching { normalizeBase(value) }.getOrNull()
+        hasSavedDomain = saved != null
+        activeDomain = saved ?: ""
+        mainDomain = activeDomain
+        alphaDomain =
+            prefs?.getString(KEY_DOMAIN_ALPHA, null)?.takeIf { it.isNotBlank() }?.let { value ->
+                runCatching { normalizeDomain(value) }.getOrNull()
             } ?: ""
     }
 
@@ -229,24 +229,24 @@ object Api {
         CuplixAllFeed.clear()
     }
 
-    private fun normalizeBase(raw: String): String {
-        val normalized = NativeCore.normalizeBase(raw)
+    private fun normalizeDomain(raw: String): String {
+        val normalized = NativeCore.normalizeDomain(raw)
         if (normalized == "!q") {
-            throw ApiException.Config("URL API base tidak boleh memakai query atau fragment")
+            throw ApiException.Config("Domain API tidak boleh memakai query atau fragment")
         }
         val secured = UrlSecurity.secureOrNull(normalized.takeIf { it.isNotEmpty() })
-            ?: throw ApiException.Config("URL API tidak valid; gunakan alamat HTTP(S) dengan host yang valid")
+            ?: throw ApiException.Config("Domain API tidak valid; gunakan alamat HTTP(S) dengan host yang valid")
         return secured.trimEnd('/') + "/"
     }
 
     private suspend fun fetch(
-        base: String,
+        domain: String,
         path: String,
         params: Map<String, String>,
     ): String =
         withContext(Dispatchers.IO) {
             val url =
-                (base + path)
+                (domain + path)
                     .toHttpUrl()
                     .newBuilder()
                     .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
@@ -269,7 +269,7 @@ object Api {
 
     private suspend fun fetchShared(
         key: String,
-        base: String,
+        domain: String,
         path: String,
         params: Map<String, String>,
     ): String {
@@ -278,7 +278,7 @@ object Api {
                 inflight.getOrPut(key) {
                     AppScope.io.async(start = CoroutineStart.LAZY) {
                         try {
-                            fetch(base, path, params)
+                            fetch(domain, path, params)
                         } finally {
                             synchronized(inflight) { inflight.remove(key) }
                         }
@@ -381,8 +381,8 @@ object Api {
         }
 
         return try {
-            ensureBase()
-            val body = withFailover { base -> fetchShared(key, base, path, params) }
+            ensureDomains()
+            val body = withFallback { domain -> fetchShared(key, domain, path, params) }
             networkPaths.add(path)
             if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
             body
@@ -397,14 +397,14 @@ object Api {
         }
     }
 
-    private suspend fun ensureBase() {
+    private suspend fun ensureDomains() {
         if (resolved) return
 
-        if (hasSavedBase && baseUrl.isNotBlank() && Secrets.apiGateUrl.isNotBlank()) {
-            refreshBaseInBackground()
+        if (hasSavedDomain && activeDomain.isNotBlank() && Secrets.apiGateUrl.isNotBlank()) {
+            refreshDomainsInBackground()
             return
         }
-        mutex.withLock { resolveBaseLocked() }
+        mutex.withLock { resolveDomainsLocked() }
     }
 
     private fun isDomainDown(e: Throwable): Boolean =
@@ -414,35 +414,35 @@ object Api {
             else -> false
         }
 
-    private fun restorePrimaryIfDue() {
-        val current = baseUrl
-        if (current.isBlank() || current != alphaBase || primaryBase.isBlank() || current == primaryBase) return
-        if (SystemClock.elapsedRealtime() - failoverAt >= GATE_RETRY_MS) baseUrl = primaryBase
+    private fun restoreMainIfDue() {
+        val current = activeDomain
+        if (current.isBlank() || current != alphaDomain || mainDomain.isBlank() || current == mainDomain) return
+        if (SystemClock.elapsedRealtime() - fallbackAt >= GATE_RETRY_MS) activeDomain = mainDomain
     }
 
-    private fun alternateFor(base: String): String? =
-        (if (base == alphaBase) primaryBase else alphaBase).takeIf { it.isNotBlank() && it != base }
+    private fun otherDomain(domain: String): String? =
+        (if (domain == alphaDomain) mainDomain else alphaDomain).takeIf { it.isNotBlank() && it != domain }
 
-    suspend fun <T> withFailover(block: suspend (base: String) -> T): T {
-        restorePrimaryIfDue()
-        val first = baseUrl
+    suspend fun <T> withFallback(block: suspend (domain: String) -> T): T {
+        restoreMainIfDue()
+        val first = activeDomain
         try {
             return block(first)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val alternate = alternateFor(first)
-            if (alternate == null || !isDomainDown(e)) throw e
+            val other = otherDomain(first)
+            if (other == null || !isDomainDown(e)) throw e
             val result =
                 try {
-                    block(alternate)
+                    block(other)
                 } catch (c: CancellationException) {
                     throw c
                 } catch (_: Exception) {
                     throw e
                 }
-            baseUrl = alternate
-            failoverAt = SystemClock.elapsedRealtime()
+            activeDomain = other
+            fallbackAt = SystemClock.elapsedRealtime()
             return result
         }
     }
@@ -450,14 +450,14 @@ object Api {
     @Volatile
     private var refreshing = false
 
-    private fun refreshBaseInBackground() {
+    private fun refreshDomainsInBackground() {
         val throttled =
             lastGateFailure != 0L && SystemClock.elapsedRealtime() - lastGateFailure < GATE_RETRY_MS
         if (refreshing || throttled) return
         refreshing = true
         AppScope.io.launch {
             try {
-                mutex.withLock { resolveBaseLocked() }
+                mutex.withLock { resolveDomainsLocked() }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -467,7 +467,7 @@ object Api {
         }
     }
 
-    private suspend fun resolveBaseLocked() {
+    private suspend fun resolveDomainsLocked() {
         if (resolved) return
         val gate = Secrets.apiGateUrl
         if (gate.isBlank()) {
@@ -476,36 +476,36 @@ object Api {
 
         val now = SystemClock.elapsedRealtime()
         val throttled = lastGateFailure != 0L && now - lastGateFailure < GATE_RETRY_MS
-        if (throttled && baseUrl.isNotBlank()) return
+        if (throttled && activeDomain.isNotBlank()) return
 
         try {
-            val secureGate = normalizeBase(gate)
+            val secureGate = normalizeDomain(gate)
             val json = fetch(secureGate, NativeCore.path(NativeCore.GATE_SETUP), emptyMap())
             val v =
-                NativeCore.gateDomain(json).takeIf { it.isNotBlank() }
+                NativeCore.domainApi(json).takeIf { it.isNotBlank() }
                     ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
-            baseUrl = normalizeBase(v)
-            primaryBase = baseUrl
-            alphaBase =
+            activeDomain = normalizeDomain(v)
+            mainDomain = activeDomain
+            alphaDomain =
                 NativeCore
-                    .gateDomainAlpha(json)
+                    .domainApiAlpha(json)
                     .takeIf { it.isNotBlank() }
-                    ?.let { runCatching { normalizeBase(it) }.getOrNull() }
+                    ?.let { runCatching { normalizeDomain(it) }.getOrNull() }
                     ?: ""
             prefs
                 ?.edit()
                 ?.also { editor ->
-                    editor.putString(KEY_BASE, baseUrl)
-                    if (alphaBase.isBlank()) editor.remove(KEY_ALPHA) else editor.putString(KEY_ALPHA, alphaBase)
+                    editor.putString(KEY_DOMAIN, activeDomain)
+                    if (alphaDomain.isBlank()) editor.remove(KEY_DOMAIN_ALPHA) else editor.putString(KEY_DOMAIN_ALPHA, alphaDomain)
                 }?.apply()
             lastGateFailure = 0L
-            hasSavedBase = true
+            hasSavedDomain = true
             resolved = true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             lastGateFailure = now
-            if (baseUrl.isBlank()) throw e.normalized()
+            if (activeDomain.isBlank()) throw e.normalized()
         }
     }
 
@@ -618,8 +618,8 @@ object Api {
             when {
                 raw.startsWith("//") -> "https:$raw"
                 hasScheme -> raw
-                baseUrl.isBlank() -> return null
-                else -> baseUrl.trimEnd('/') + "/" + raw.trimStart('/')
+                activeDomain.isBlank() -> return null
+                else -> activeDomain.trimEnd('/') + "/" + raw.trimStart('/')
             }
         return UrlSecurity.secureOrNull(candidate)
     }

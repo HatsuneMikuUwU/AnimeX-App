@@ -108,23 +108,23 @@ NATIVE_CORE_FUNCTION(jobjectArray, scheduleDays)(JNIEnv *environment, jobject) {
   return stdStringListToJavaArray(environment, animex::scheduleDayNames());
 }
 
-NATIVE_CORE_FUNCTION(jstring, normalizeBase)
+NATIVE_CORE_FUNCTION(jstring, normalizeDomain)
 (JNIEnv *environment, jobject, jstring rawUrl) {
   const std::string normalizedUrl =
-      animex::normalizeBaseUrl(javaStringToStdString(environment, rawUrl));
+      animex::normalizeDomainUrl(javaStringToStdString(environment, rawUrl));
   return stdStringToJavaString(environment, normalizedUrl);
 }
 
-NATIVE_CORE_FUNCTION(jstring, gateDomain)
+NATIVE_CORE_FUNCTION(jstring, domainApi)
 (JNIEnv *environment, jobject, jstring jsonText) {
-  const std::string gateDomain =
-      animex::extractGateDomain(javaStringToStdString(environment, jsonText));
-  return stdStringToJavaString(environment, gateDomain);
+  const std::string domainApi =
+      animex::extractDomainApi(javaStringToStdString(environment, jsonText));
+  return stdStringToJavaString(environment, domainApi);
 }
 
-NATIVE_CORE_FUNCTION(jstring, gateDomainAlpha)
+NATIVE_CORE_FUNCTION(jstring, domainApiAlpha)
 (JNIEnv *environment, jobject, jstring jsonText) {
-  const std::string gateDomainAlpha =
-      animex::extractGateAlphaDomain(javaStringToStdString(environment, jsonText));
-  return stdStringToJavaString(environment, gateDomainAlpha);
+  const std::string domainApiAlpha =
+      animex::extractDomainApiAlpha(javaStringToStdString(environment, jsonText));
+  return stdStringToJavaString(environment, domainApiAlpha);
 }
