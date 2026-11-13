@@ -511,7 +511,7 @@ fun PlayerScreen(
 
     val chips =
         buildList {
-            add(WatchChip(Icons.Outlined.Speed, speedLabel(speed)) { showSpeed = true })
+            add(WatchChip(Icons.Outlined.Speed, speedLabel(speed), highlighted = speed != 1f) { showSpeed = true })
             val q = currentServer?.quality?.takeIf { it.isNotBlank() } ?: "Kualitas"
             add(
                 WatchChip(Icons.Outlined.HighQuality, q) {
@@ -522,6 +522,7 @@ fun PlayerScreen(
                 WatchChip(
                     Icons.Outlined.Bedtime,
                     sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
+                    highlighted = sleepDeadlineMs > 0L || sleepAfterEpisode,
                 ) { showSleep = true },
             )
             add(

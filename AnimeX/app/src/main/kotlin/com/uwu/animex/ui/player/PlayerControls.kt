@@ -38,13 +38,13 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -55,8 +55,10 @@ import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -653,7 +655,7 @@ fun PlayerChrome(
                     Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(playedFrac)
-                        .background(YtRed),
+                        .background(MaterialTheme.colorScheme.primary),
                 )
             }
         }
@@ -686,12 +688,11 @@ fun PlayerChrome(
                         .padding(horizontal = 4.dp, vertical = if (compact) 4.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    YtIconButton(onBack) {
+                    OverlayButton(onBack) {
                         Icon(
-                            if (compact) Icons.Outlined.KeyboardArrowDown else Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = if (compact) "Kecilkan player" else "Balik",
+                            if (compact) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = if (compact) "Tutup" else "Balik",
                             tint = Color.White,
-                            modifier = Modifier.size(if (compact) 32.dp else 24.dp),
                         )
                     }
                     if (compact) {
@@ -722,7 +723,7 @@ fun PlayerChrome(
                         Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
                         if (onComment != null) {
                             Spacer(Modifier.width(8.dp))
-                            YtIconButton(onComment) {
+                            OverlayButton(onComment) {
                                 Icon(Icons.Outlined.Forum, contentDescription = "Komentar episode", tint = Color.White)
                             }
                             Spacer(Modifier.width(4.dp))
@@ -732,22 +733,24 @@ fun PlayerChrome(
                     }
                 }
 
-                val sideBtn = if (compact) 48.dp else 56.dp
-                val sideIcon = if (compact) 32.dp else 36.dp
-                val mainBtn = if (compact) 64.dp else 80.dp
-                val mainIcon = if (compact) 48.dp else 60.dp
+                val sideBtn = if (compact) 44.dp else 56.dp
+                val sideIcon = if (compact) 26.dp else 32.dp
+                val mainBtn = if (compact) 60.dp else 76.dp
+                val mainIcon = if (compact) 34.dp else 44.dp
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 28.dp else 56.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    YtIconButton(
-                        onClick = {
+                    FilledIconButton(
+                        onClick = hapticClick {
                             onPrev()
                             poke++
                         },
                         enabled = hasPrev,
                         modifier = Modifier.size(sideBtn),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
                     ) {
                         Icon(
                             Icons.Outlined.SkipPrevious,
@@ -758,12 +761,14 @@ fun PlayerChrome(
                     }
 
                     if (!compact) {
-                        YtIconButton(
-                            onClick = {
+                        FilledIconButton(
+                            onClick = hapticClick {
                                 seekBy(-SEEK_STEP_MS)
                                 poke++
                             },
                             modifier = Modifier.size(sideBtn),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
                         ) {
                             Icon(
                                 Icons.Outlined.Replay10,
@@ -774,17 +779,19 @@ fun PlayerChrome(
                         }
                     }
 
-                    YtIconButton(
-                        onClick = {
+                    FilledIconButton(
+                        onClick = hapticClick {
                             togglePlay()
                             poke++
                         },
                         modifier = Modifier.size(mainBtn),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
                     ) {
                         if (buffering) {
                             LoadingIndicator(
                                 color = Color.White,
-                                modifier = Modifier.size(if (compact) 32.dp else 40.dp),
+                                modifier = Modifier.size(if (compact) 28.dp else 36.dp),
                             )
                         } else {
                             Icon(
@@ -802,12 +809,14 @@ fun PlayerChrome(
                     }
 
                     if (!compact) {
-                        YtIconButton(
-                            onClick = {
+                        FilledIconButton(
+                            onClick = hapticClick {
                                 seekBy(SEEK_STEP_MS)
                                 poke++
                             },
                             modifier = Modifier.size(sideBtn),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
                         ) {
                             Icon(
                                 Icons.Outlined.Forward10,
@@ -818,13 +827,15 @@ fun PlayerChrome(
                         }
                     }
 
-                    YtIconButton(
-                        onClick = {
+                    FilledIconButton(
+                        onClick = hapticClick {
                             onNext()
                             poke++
                         },
                         enabled = hasNext,
                         modifier = Modifier.size(sideBtn),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
                     ) {
                         Icon(
                             Icons.Outlined.SkipNext,
@@ -841,36 +852,49 @@ fun PlayerChrome(
                         .fillMaxWidth()
                         .safeDrawingPadding()
                         .padding(
-                            start = if (compact) 12.dp else 24.dp,
-                            end = if (compact) 4.dp else 24.dp,
-                            top = 0.dp,
+                            start = if (compact) 12.dp else 16.dp,
+                            end = if (compact) 4.dp else 16.dp,
+                            top = if (compact) 0.dp else 8.dp,
                             bottom = if (compact) 0.dp else 8.dp,
                         ),
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        val shownPos = scrubPos ?: pos
                         Text(
                             if (invertDuration) {
-                                "-" + formatTime((dur - shownPos).coerceAtLeast(0))
+                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
                             } else {
-                                formatTime(shownPos)
+                                formatTime(scrubPos ?: pos)
                             },
                             color = Color.White,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        SeekBar(
+                            position = pos,
+                            buffered = buffered,
+                            duration = dur,
+                            onScrub = { scrubPos = it },
+                            onSeek = { t ->
+                                player.seekTo(t)
+                                pos = t
+                                poke++
+                            },
+                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                         )
                         Text(
-                            " / " + formatTime(dur),
-                            color = Color(0xB3FFFFFF),
-                            style = MaterialTheme.typography.labelMedium,
+                            if (invertDuration) {
+                                formatTime(scrubPos ?: pos)
+                            } else {
+                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                            },
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
                         )
-                        Spacer(Modifier.weight(1f))
                         if (compact) {
                             IconButton(
                                 onClick = hapticClick {
                                     onToggleFullscreen()
                                     poke++
                                 },
-                                modifier = Modifier.size(40.dp),
                             ) {
                                 Icon(
                                     Icons.Outlined.Fullscreen,
@@ -880,18 +904,6 @@ fun PlayerChrome(
                             }
                         }
                     }
-                    SeekBar(
-                        position = pos,
-                        buffered = buffered,
-                        duration = dur,
-                        onScrub = { scrubPos = it },
-                        onSeek = { t ->
-                            player.seekTo(t)
-                            pos = t
-                            poke++
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(end = if (compact) 8.dp else 0.dp),
-                    )
                     if (!compact) {
                         Row(
                             Modifier.fillMaxWidth().horizontalScroll(pillScroll),
