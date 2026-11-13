@@ -45,7 +45,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -62,12 +61,15 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -110,9 +112,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -142,7 +146,6 @@ import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
-import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OverlayChip
 import com.uwu.animex.ui.common.Poster
@@ -286,40 +289,38 @@ internal fun PlayerWatchPage(
                         epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
                         epMeta?.runtime?.let { "${it}m" },
                         AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
+                        movie
+                            ?.favorites
+                            ?.takeIf { it.isNotBlank() && !hideStats }
+                            ?.let { "${fmtNum(it)} favorit" },
                     )
                 WatchHeader(
                     title = headerTitle,
+                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
                     details = headerDetails,
                 )
             }
             item(key = "actions") {
                 WatchActionRow(
                     poster = movie?.image_poster ?: movie?.image_cover,
-                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                    favorites =
-                        movie
-                            ?.favorites
-                            ?.takeIf { it.isNotBlank() && !hideStats }
-                            ?.let { "${fmtNum(it)} favorit" },
                     status = synced.status,
                     statusEnabled = movie != null && movieId != null,
                     onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                     onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
-                    chips =
-                        chips +
-                            WatchChip(Icons.Outlined.Share, "Bagikan") {
-                                if (movieId != null) {
-                                    shareEpisode(
-                                        ctx,
-                                        movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                                        movieId,
-                                        currentEpId,
-                                        currentIndex,
-                                    )
-                                } else {
-                                    shareAnime(ctx, Movie(id = movieId, title = animeTitle))
-                                }
-                            },
+                    onShare = {
+                        if (movieId != null) {
+                            shareEpisode(
+                                ctx,
+                                movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                                movieId,
+                                currentEpId,
+                                currentIndex,
+                            )
+                        } else {
+                            shareAnime(ctx, Movie(id = movieId, title = animeTitle))
+                        }
+                    },
+                    chips = chips,
                 )
             }
             item(key = "comments-preview") {
@@ -456,16 +457,22 @@ private fun Modifier.endFade(
 @Composable
 private fun WatchHeader(
     title: String,
+    animeTitle: String,
     details: List<String>,
 ) {
     val cs = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     var titleOverflow by remember(title) { mutableStateOf(false) }
-    var metaOverflow by remember(details) { mutableStateOf(false) }
+    var metaOverflow by remember(animeTitle, details) { mutableStateOf(false) }
     val metaLine =
-        remember(details) {
+        remember(animeTitle, details, cs.onSurface) {
             buildAnnotatedString {
+                if (animeTitle.isNotBlank()) {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = cs.onSurface)) {
+                        append(animeTitle)
+                    }
+                }
                 details.forEach {
                     if (length > 0) append("   ")
                     append(it)
@@ -533,116 +540,101 @@ private fun WatchHeader(
 @Composable
 private fun WatchActionRow(
     poster: String?,
-    animeTitle: String,
-    favorites: String?,
     status: WatchStatus?,
     statusEnabled: Boolean,
     onStatusClick: () -> Unit,
     onOpenAnime: (() -> Unit)?,
+    onShare: () -> Unit,
     chips: List<WatchChip>,
 ) {
     val cs = MaterialTheme.colorScheme
-    Column(
+    val maxSlots = 3
+    val direct = if (chips.size <= maxSlots) chips else chips.take(maxSlots - 1)
+    val overflow = chips.drop(direct.size)
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        Box(
             Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(cs.surfaceContainerHigh)
+                .then(
+                    if (onOpenAnime != null) {
+                        Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(cs.surfaceContainerHigh)
-                    .then(
-                        if (onOpenAnime != null) {
-                            Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
-                        } else {
-                            Modifier
-                        },
-                    ),
-            ) {
-                Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    animeTitle,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (favorites != null) {
-                    Text(
-                        favorites,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = cs.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Button(
-                onClick = hapticClick(block = onStatusClick),
-                enabled = statusEnabled,
-                shapes = ButtonDefaults.shapes(),
-                colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
-                contentPadding = PaddingValues(horizontal = 12.dp),
-            ) {
+            Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
+        }
+        Spacer(Modifier.width(12.dp))
+        Button(
+            onClick = hapticClick(block = onStatusClick),
+            enabled = statusEnabled,
+            shapes = ButtonDefaults.shapes(),
+            colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
+            contentPadding = PaddingValues(horizontal = 12.dp),
+        ) {
+            Icon(
+                status?.icon ?: Icons.Outlined.BookmarkBorder,
+                contentDescription = status?.label ?: "Atur status",
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                Icons.Outlined.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        direct.forEach { chip ->
+            IconButton(onClick = hapticClick(block = chip.onClick)) {
                 Icon(
-                    status?.icon ?: Icons.Outlined.BookmarkBorder,
-                    contentDescription = status?.label ?: "Atur status",
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    chip.icon,
+                    contentDescription = chip.label,
+                    tint = if (chip.highlighted) cs.primary else cs.onSurface,
                 )
             }
         }
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(chips.size, key = { it }) { index ->
-                WatchActionChip(chips[index])
+        IconButton(onClick = hapticClick(block = onShare)) {
+            Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = cs.onSurface)
+        }
+        if (overflow.isNotEmpty()) {
+            Box {
+                IconButton(onClick = hapticClick(block = { menuOpen = true })) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = "Lainnya")
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    overflow.forEach { chip ->
+                        DropdownMenuItem(
+                            text = { Text(chip.label) },
+                            leadingIcon = {
+                                Icon(
+                                    chip.icon,
+                                    contentDescription = null,
+                                    tint = if (chip.highlighted) cs.primary else cs.onSurfaceVariant,
+                                )
+                            },
+                            onClick =
+                                hapticClick(
+                                    block = {
+                                        menuOpen = false
+                                        chip.onClick()
+                                    },
+                                ),
+                        )
+                    }
+                }
             }
         }
     }
-}
-
-@Composable
-private fun WatchActionChip(chip: WatchChip) {
-    val cs = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
-    val container by animateColorAsState(
-        targetValue = if (chip.highlighted) cs.primaryContainer else cs.surfaceContainerHigh,
-        animationSpec = motion.fastEffectsSpec(),
-        label = "chipContainer",
-    )
-    val content by animateColorAsState(
-        targetValue = if (chip.highlighted) cs.onPrimaryContainer else cs.onSurface,
-        animationSpec = motion.fastEffectsSpec(),
-        label = "chipContent",
-    )
-    ExpressiveChip(
-        label = chip.label,
-        onClick = chip.onClick,
-        containerColor = container,
-        contentColor = content,
-        leading = {
-            Icon(chip.icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-        },
-    )
 }
 
 @Composable
