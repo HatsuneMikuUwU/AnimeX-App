@@ -18,7 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 import java.util.function.Consumer
 
-private const val DefaultBlurRadius = 10
+private const val DefaultBlurRadius = 25
 
 @Composable
 fun WindowBlurEffect(

@@ -56,7 +56,7 @@ fun AppDialog(
         },
         text = text?.let(::scaledSlot),
         shape = MaterialTheme.shapes.extraLarge,
-        containerColor = glassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f),
+        containerColor = glassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
     )
 }
 

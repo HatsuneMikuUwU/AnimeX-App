@@ -30,7 +30,7 @@ fun AppModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier.glassStroke(cornerRadius = 28.dp),
         sheetState = sheetState,
-        containerColor = glassContainerColor(MaterialTheme.colorScheme.background, 0.6f),
+        containerColor = glassContainerColor(MaterialTheme.colorScheme.background),
     ) {
         WindowBlurEffect()
         val scope = this
@@ -49,7 +49,7 @@ fun AppDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
-        containerColor = glassContainerColor(MaterialTheme.colorScheme.surfaceContainer, 0.88f),
+        containerColor = glassContainerColor(),
     ) {
         val scope = this
         UiScaled { scope.content() }
