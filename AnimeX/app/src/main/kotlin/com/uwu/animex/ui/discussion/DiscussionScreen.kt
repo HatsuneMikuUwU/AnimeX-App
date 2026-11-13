@@ -52,6 +52,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -103,7 +104,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
-import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
@@ -915,7 +915,7 @@ internal fun DiscussionRow(
                                 }
                             }
                         }
-                        AppDropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
+                        DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
                             if (isMine) {
                                 DropdownMenuItem(
                                     text = { Text("Edit") },

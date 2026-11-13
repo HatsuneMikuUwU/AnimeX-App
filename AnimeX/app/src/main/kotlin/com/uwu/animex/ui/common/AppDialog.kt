@@ -27,8 +27,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.ui.theme.UiScaled
-import com.uwu.animex.ui.theme.glassContainerColor
-import com.uwu.animex.ui.theme.glassStroke
 import com.uwu.animex.ui.util.WindowBlurEffect
 
 @Composable
@@ -47,7 +45,7 @@ fun AppDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { UiScaled { confirmButton() } },
-        modifier = modifier.glassStroke(cornerRadius = 28.dp),
+        modifier = modifier,
         dismissButton = dismissButton?.let(::scaledSlot),
         icon = { UiScaled { Icon(icon, contentDescription = null) } },
         title = {
@@ -56,7 +54,6 @@ fun AppDialog(
         },
         text = text?.let(::scaledSlot),
         shape = MaterialTheme.shapes.extraLarge,
-        containerColor = glassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
     )
 }
 

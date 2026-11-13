@@ -12,11 +12,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.unit.dp
 import com.uwu.animex.ui.theme.UiScaled
-import com.uwu.animex.ui.theme.glassContainerColor
-import com.uwu.animex.ui.theme.glassStroke
-import com.uwu.animex.ui.util.WindowBlurEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,11 +24,10 @@ fun AppModalBottomSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        modifier = modifier.glassStroke(cornerRadius = 28.dp),
+        modifier = modifier,
         sheetState = sheetState,
-        containerColor = glassContainerColor(MaterialTheme.colorScheme.background),
+        containerColor = MaterialTheme.colorScheme.background,
     ) {
-        WindowBlurEffect()
         val scope = this
         UiScaled { scope.content() }
     }
@@ -49,7 +44,6 @@ fun AppDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
-        containerColor = glassContainerColor(),
     ) {
         val scope = this
         UiScaled { scope.content() }
