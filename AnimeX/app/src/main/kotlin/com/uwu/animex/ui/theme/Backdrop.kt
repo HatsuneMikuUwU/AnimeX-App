@@ -93,3 +93,18 @@ fun Modifier.barGlass(
         GlassStyle.Blur -> blurEffect(backdrop, shape = shape, blendColor = container).glassStroke(cornerRadius = strokeCornerRadius)
         GlassStyle.Flat -> (if (drawFlatBackground) background(container, shape) else this).glassStroke(cornerRadius = strokeCornerRadius)
     }
+
+/**
+ * Container color for window-based surfaces (sheets, dialogs, menus) that can't sample the in-app
+ * layer backdrop. Translucent when window blur is available so the blurred content shows through,
+ * solid otherwise.
+ */
+@Composable
+fun glassContainerColor(
+    base: Color = MaterialTheme.colorScheme.surfaceContainer,
+    alpha: Float = 0.62f,
+): Color {
+    val blurSetting by Appearance.settings.collectAsStateWithLifecycle()
+    val translucent = blurSetting.blur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    return if (translucent) base.copy(alpha = alpha) else base
+}

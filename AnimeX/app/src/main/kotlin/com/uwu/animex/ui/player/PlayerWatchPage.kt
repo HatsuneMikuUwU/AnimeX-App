@@ -68,7 +68,6 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -135,6 +134,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
+import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
@@ -611,7 +611,7 @@ private fun WatchActionRow(
                 IconButton(onClick = hapticClick(block = { menuOpen = true })) {
                     Icon(Icons.Outlined.MoreVert, contentDescription = "Lainnya")
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                AppDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     overflow.forEach { chip ->
                         DropdownMenuItem(
                             text = { Text(chip.label) },
