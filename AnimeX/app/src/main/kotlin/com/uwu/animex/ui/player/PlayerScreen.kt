@@ -281,7 +281,10 @@ fun PlayerScreen(
     LaunchedEffect(epId) {
         viewModel.loadServers(epId, force = false)
     }
-    val state by viewModel.servers.collectAsStateWithLifecycle()
+    val rawState by viewModel.servers.collectAsStateWithLifecycle()
+    val serversEpId by viewModel.serversEpId.collectAsStateWithLifecycle()
+    // Abaikan daftar server milik episode sebelumnya sampai server episode ini selesai dimuat.
+    val state: UiState<List<Server>> = if (serversEpId == epId) rawState else UiState.Loading
     val servers: List<Server> =
         when (val s = state) {
             is UiState.Ready -> s.value

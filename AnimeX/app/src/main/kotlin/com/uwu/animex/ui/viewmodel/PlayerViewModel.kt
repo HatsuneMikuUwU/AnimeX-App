@@ -38,6 +38,9 @@ class PlayerViewModel(
     private val _servers = MutableStateFlow<UiState<List<Server>>>(UiState.Loading)
     val servers: StateFlow<UiState<List<Server>>> = _servers.asStateFlow()
 
+    private val _serversEpId = MutableStateFlow<String?>(null)
+    val serversEpId: StateFlow<String?> = _serversEpId.asStateFlow()
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -80,6 +83,7 @@ class PlayerViewModel(
                 if (force && previous is UiState.Ready && sameEp) {
                     _isRefreshing.value = true
                 } else if (previous !is UiState.Ready || force || !sameEp) {
+                    _serversEpId.value = epId
                     _servers.value = UiState.Loading
                 }
                 try {
@@ -101,12 +105,14 @@ class PlayerViewModel(
                         }
                     if (gen == serversGeneration) {
                         loadedEpId = epId
+                        _serversEpId.value = epId
                         _servers.value = UiState.Ready(list)
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     if (gen == serversGeneration) {
+                        _serversEpId.value = epId
                         _servers.value =
                             when {
                                 previous is UiState.Ready && sameEp -> previous
