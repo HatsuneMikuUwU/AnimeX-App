@@ -173,6 +173,18 @@ internal fun SleepTimerPanel(
     }
 }
 
+internal val YtRed = Color(0xFFFF0000)
+
+@Composable
+internal fun YtIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    IconButton(onClick = hapticClick(block = onClick), modifier = modifier, enabled = enabled) { content() }
+}
+
 @Composable
 internal fun overlayButtonColors() =
     IconButtonDefaults.filledIconButtonColors(
@@ -211,7 +223,7 @@ internal fun SeekBar(
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val played = MaterialTheme.colorScheme.primary
+    val played = YtRed
     val scrubHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
     var drag by remember { mutableStateOf<Float?>(null) }
     val total = duration.coerceAtLeast(1L)
@@ -219,12 +231,12 @@ internal fun SeekBar(
     val bufFrac = (buffered.toFloat() / total).coerceIn(0f, 1f)
     Canvas(
         modifier
-            .height(40.dp)
+            .height(28.dp)
             .pointerInput(duration) {
                 detectTapGestures { o ->
                     if (duration > 0) {
                         scrubHaptic()
-                        onSeek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong())
+                        onSeek((((o.x - 8.dp.toPx()) / (size.width - 16.dp.toPx())).coerceIn(0f, 1f) * duration).toLong())
                     }
                 }
             }.pointerInput(duration) {
@@ -232,7 +244,7 @@ internal fun SeekBar(
                     onDragStart = { o ->
                         if (duration > 0) {
                             scrubHaptic()
-                            val f = (o.x / size.width).coerceIn(0f, 1f)
+                            val f = ((o.x - 8.dp.toPx()) / (size.width - 16.dp.toPx())).coerceIn(0f, 1f)
                             drag = f
                             onScrub((f * duration).toLong())
                         }
@@ -250,7 +262,7 @@ internal fun SeekBar(
                     onHorizontalDrag = { change, _ ->
                         if (drag != null) {
                             change.consume()
-                            val f = (change.position.x / size.width).coerceIn(0f, 1f)
+                            val f = ((change.position.x - 8.dp.toPx()) / (size.width - 16.dp.toPx())).coerceIn(0f, 1f)
                             drag = f
                             onScrub((f * duration).toLong())
                         }
@@ -258,17 +270,20 @@ internal fun SeekBar(
                 )
             },
     ) {
-        val trackH = 4.dp.toPx()
+        val dragging = drag != null
+        val trackH = (if (dragging) 5.dp else 3.dp).toPx()
+        val inset = 8.dp.toPx()
+        val w = size.width - inset * 2f
         val cy = size.height / 2f
         val top = cy - trackH / 2f
         val radius = CornerRadius(trackH / 2f)
-        drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
-        drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
-        drawRoundRect(played, Offset(0f, top), Size(size.width * frac, trackH), radius)
+        drawRoundRect(Color(0x4DFFFFFF), Offset(inset, top), Size(w, trackH), radius)
+        drawRoundRect(Color(0x80FFFFFF), Offset(inset, top), Size(w * bufFrac, trackH), radius)
+        drawRoundRect(played, Offset(inset, top), Size(w * frac, trackH), radius)
         drawCircle(
             color = played,
-            radius = (if (drag != null) 10.dp else 7.dp).toPx(),
-            center = Offset(size.width * frac, cy),
+            radius = (if (dragging) 9.dp else 6.dp).toPx(),
+            center = Offset(inset + w * frac, cy),
         )
     }
 }

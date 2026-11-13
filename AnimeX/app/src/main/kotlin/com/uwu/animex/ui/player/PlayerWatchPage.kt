@@ -14,7 +14,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -22,6 +21,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,6 +50,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,19 +60,15 @@ import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.UnfoldMore
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -112,11 +111,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -127,8 +123,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.api.AniZip
+import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
@@ -147,7 +145,6 @@ import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
-import com.uwu.animex.ui.common.OverlayChip
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
@@ -163,7 +160,7 @@ import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
-import com.uwu.animex.ui.detail.EpisodeRow
+import com.uwu.animex.ui.detail.DownloadButton
 import com.uwu.animex.ui.detail.shareAnime
 import com.uwu.animex.ui.detail.shareEpisode
 import com.uwu.animex.ui.discussion.DiscussionRow
@@ -172,8 +169,8 @@ import com.uwu.animex.ui.discussion.ThreadState
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerEpisodeList
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 internal data class WatchChip(
     val icon: ImageVector,
@@ -289,10 +286,6 @@ internal fun PlayerWatchPage(
                         epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
                         epMeta?.runtime?.let { "${it}m" },
                         AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
-                        movie
-                            ?.favorites
-                            ?.takeIf { it.isNotBlank() && !hideStats }
-                            ?.let { "${fmtNum(it)} favorit" },
                     )
                 WatchHeader(
                     title = headerTitle,
@@ -301,7 +294,17 @@ internal fun PlayerWatchPage(
                 )
             }
             item(key = "actions") {
+                val channelSub =
+                    listOfNotNull(
+                        movie?.genre?.takeIf { it.isNotBlank() },
+                        movie
+                            ?.favorites
+                            ?.takeIf { it.isNotBlank() && !hideStats }
+                            ?.let { "${fmtNum(it)} favorit" },
+                    ).joinToString(" • ").ifBlank { null }
                 WatchActionRow(
+                    channelName = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                    channelSub = channelSub,
                     poster = movie?.image_poster ?: movie?.image_cover,
                     status = synced.status,
                     statusEnabled = movie != null && movieId != null,
@@ -327,14 +330,14 @@ internal fun PlayerWatchPage(
                 CommentsPreviewCard(
                     state = commentsState,
                     onClick = onOpenComments,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 )
             }
             item(key = "sections") {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     WatchSectionToggleGroup(
@@ -354,6 +357,7 @@ internal fun PlayerWatchPage(
             if (section == 0) {
                 watchEpisodeItems(
                     movieId = movieId,
+                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
                     list = episodeList,
                     currentEpId = currentEpId,
                     fallbackImage = fallbackImage,
@@ -426,7 +430,7 @@ internal fun PlayerWatchPage(
     }
 }
 
-private val WATCH_SECTIONS = listOf("Episode", "Mirip")
+private val WATCH_SECTIONS = listOf("Episode", "Terkait")
 
 private fun Modifier.endFade(
     enabled: Boolean,
@@ -464,34 +468,20 @@ private fun WatchHeader(
     val motion = MaterialTheme.motionScheme
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     var titleOverflow by remember(title) { mutableStateOf(false) }
-    var metaOverflow by remember(animeTitle, details) { mutableStateOf(false) }
-    val metaLine =
-        remember(animeTitle, details, cs.onSurface) {
-            buildAnnotatedString {
-                if (animeTitle.isNotBlank()) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = cs.onSurface)) {
-                        append(animeTitle)
-                    }
-                }
-                details.forEach {
-                    if (length > 0) append("   ")
-                    append(it)
-                }
-            }
-        }
+    val summary = remember(animeTitle, details) { details.joinToString("   ").ifBlank { animeTitle } }
     Column(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = hapticClick(block = { expanded = !expanded }))
-            .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 4.dp)
+            .padding(horizontal = 12.dp)
+            .padding(top = 12.dp, bottom = 4.dp)
             .animateContentSize(motion.defaultSpatialSpec()),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
             maxLines = if (expanded) Int.MAX_VALUE else 1,
             softWrap = expanded,
             overflow = TextOverflow.Clip,
@@ -499,39 +489,41 @@ private fun WatchHeader(
             modifier = Modifier.endFade(!expanded && titleOverflow),
         )
         if (expanded) {
-            if (metaLine.isNotEmpty()) {
+            if (animeTitle.isNotBlank()) {
                 Text(
-                    metaLine,
+                    animeTitle,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            if (details.isNotEmpty()) {
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodySmall,
                     color = cs.onSurfaceVariant,
                 )
             }
             Text(
                 "lebih sedikit",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
             )
-        } else if (metaLine.isNotEmpty() || titleOverflow) {
+        } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    metaLine,
-                    style = MaterialTheme.typography.bodyMedium,
+                    summary,
+                    style = MaterialTheme.typography.bodySmall,
                     color = cs.onSurfaceVariant,
                     maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                    onTextLayout = { metaOverflow = it.hasVisualOverflow },
-                    modifier = Modifier.weight(1f, fill = false).endFade(metaOverflow),
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-                if (titleOverflow || metaOverflow) {
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "selengkapnya",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                    )
-                }
+                Text(
+                    "  ...selengkapnya",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
             }
         }
     }
@@ -539,6 +531,8 @@ private fun WatchHeader(
 
 @Composable
 private fun WatchActionRow(
+    channelName: String,
+    channelSub: String?,
     poster: String?,
     status: WatchStatus?,
     statusEnabled: Boolean,
@@ -548,92 +542,134 @@ private fun WatchActionRow(
     chips: List<WatchChip>,
 ) {
     val cs = MaterialTheme.colorScheme
-    val maxSlots = 3
-    val direct = if (chips.size <= maxSlots) chips else chips.take(maxSlots - 1)
-    val overflow = chips.drop(direct.size)
-    var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+    Column(Modifier.fillMaxWidth()) {
+        Row(
             Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(cs.surfaceContainerHigh)
-                .then(
-                    if (onOpenAnime != null) {
-                        Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
-                    } else {
-                        Modifier
-                    },
-                ),
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Button(
-            onClick = hapticClick(block = onStatusClick),
-            enabled = statusEnabled,
-            shapes = ButtonDefaults.shapes(),
-            colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
-            contentPadding = PaddingValues(horizontal = 12.dp),
-        ) {
-            Icon(
-                status?.icon ?: Icons.Outlined.BookmarkBorder,
-                contentDescription = status?.label ?: "Atur status",
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(4.dp))
-            Icon(
-                Icons.Outlined.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        direct.forEach { chip ->
-            IconButton(onClick = hapticClick(block = chip.onClick)) {
-                Icon(
-                    chip.icon,
-                    contentDescription = chip.label,
-                    tint = if (chip.highlighted) cs.primary else cs.onSurface,
-                )
-            }
-        }
-        IconButton(onClick = hapticClick(block = onShare)) {
-            Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = cs.onSurface)
-        }
-        if (overflow.isNotEmpty()) {
-            Box {
-                IconButton(onClick = hapticClick(block = { menuOpen = true })) {
-                    Icon(Icons.Outlined.MoreVert, contentDescription = "Lainnya")
+            Row(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .then(
+                        if (onOpenAnime != null) {
+                            Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
+                        } else {
+                            Modifier
+                        },
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(cs.surfaceContainerHigh),
+                ) {
+                    Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    overflow.forEach { chip ->
-                        DropdownMenuItem(
-                            text = { Text(chip.label) },
-                            leadingIcon = {
-                                Icon(
-                                    chip.icon,
-                                    contentDescription = null,
-                                    tint = if (chip.highlighted) cs.primary else cs.onSurfaceVariant,
-                                )
-                            },
-                            onClick =
-                                hapticClick(
-                                    block = {
-                                        menuOpen = false
-                                        chip.onClick()
-                                    },
-                                ),
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        channelName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!channelSub.isNullOrBlank()) {
+                        Text(
+                            channelSub,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = cs.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
+            Spacer(Modifier.width(8.dp))
+            val saved = status != null
+            Row(
+                Modifier
+                    .graphicsLayer { alpha = if (statusEnabled) 1f else 0.5f }
+                    .height(36.dp)
+                    .clip(CircleShape)
+                    .background(if (saved) cs.surfaceContainerHigh else cs.onSurface)
+                    .clickable(enabled = statusEnabled, onClick = hapticClick(block = onStatusClick))
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    status?.icon ?: Icons.Outlined.BookmarkBorder,
+                    contentDescription = null,
+                    tint = if (saved) cs.onSurface else cs.surface,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    status?.label ?: "Simpan",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (saved) cs.onSurface else cs.surface,
+                    maxLines = 1,
+                )
+                if (saved) {
+                    Spacer(Modifier.width(2.dp))
+                    Icon(
+                        Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = "Atur status",
+                        tint = cs.onSurface,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            WatchPill(Icons.Outlined.Share, "Bagikan", false, onShare)
+            chips.forEach { chip -> WatchPill(chip.icon, chip.label, chip.highlighted, chip.onClick) }
+        }
+    }
+}
+
+@Composable
+private fun WatchPill(
+    icon: ImageVector,
+    label: String,
+    highlighted: Boolean,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .height(36.dp)
+            .clip(CircleShape)
+            .background(cs.surfaceContainerHigh)
+            .clickable(onClick = hapticClick(block = onClick))
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (highlighted) cs.primary else cs.onSurface,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
     }
 }
 
@@ -650,15 +686,15 @@ private fun WatchSortButton(
         label = "sortFlip",
     )
     val container by animateColorAsState(
-        targetValue = if (newestFirst) cs.surfaceContainerHigh else cs.secondaryContainer,
+        targetValue = if (newestFirst) cs.surfaceContainerHigh else cs.onSurface,
         animationSpec = motion.fastEffectsSpec(),
         label = "sortContainer",
     )
     Box(
         modifier =
             Modifier
-                .size(40.dp)
-                .clip(CircleShape)
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(container)
                 .clickable(onClick = hapticClick(block = onClick)),
         contentAlignment = Alignment.Center,
@@ -666,8 +702,8 @@ private fun WatchSortButton(
         Icon(
             Icons.AutoMirrored.Outlined.Sort,
             contentDescription = if (newestFirst) "Urutan: terbaru dulu" else "Urutan: terlama dulu",
-            tint = if (newestFirst) cs.onSurface else cs.onSecondaryContainer,
-            modifier = Modifier.size(20.dp).graphicsLayer { scaleY = flip },
+            tint = if (newestFirst) cs.onSurface else cs.surface,
+            modifier = Modifier.size(18.dp).graphicsLayer { scaleY = flip },
         )
     }
 }
@@ -681,51 +717,36 @@ private fun WatchSectionToggleGroup(
 ) {
     val cs = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
-    val full = 20.dp
-    val inner = 8.dp
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         labels.forEachIndexed { i, label ->
             val isSelected = i == selected
-            val corner by animateDpAsState(
-                targetValue = if (isSelected) full else inner,
-                animationSpec = motion.fastSpatialSpec(),
-                label = "sectionCorner",
-            )
-            val startCorner = if (i == 0) full else corner.coerceAtLeast(0.dp)
-            val endCorner = if (i == labels.lastIndex) full else corner.coerceAtLeast(0.dp)
             val container by animateColorAsState(
-                targetValue = if (isSelected) cs.primaryContainer else cs.surfaceContainerHigh,
+                targetValue = if (isSelected) cs.onSurface else cs.surfaceContainerHigh,
                 animationSpec = motion.fastEffectsSpec(),
                 label = "sectionContainer",
             )
             val content by animateColorAsState(
-                targetValue = if (isSelected) cs.onPrimaryContainer else cs.onSurface,
+                targetValue = if (isSelected) cs.surface else cs.onSurface,
                 animationSpec = motion.fastEffectsSpec(),
                 label = "sectionContent",
             )
             Box(
                 modifier =
                     Modifier
-                        .height(40.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = startCorner,
-                                bottomStart = startCorner,
-                                topEnd = endCorner,
-                                bottomEnd = endCorner,
-                            ),
-                        ).background(container)
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(container)
                         .selectable(
                             selected = isSelected,
                             role = Role.Tab,
                             onClick = hapticClick(block = { onSelect(i) }),
-                        ).padding(horizontal = 20.dp),
+                        ).padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     label,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     color = content,
                     maxLines = 1,
                 )
@@ -750,7 +771,7 @@ private fun LazyListScope.watchSimilarItems(
                     "Belum ada rekomendasi buat anime ini.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 )
             }
         else ->
@@ -762,7 +783,7 @@ private fun LazyListScope.watchSimilarItems(
                 InlineHotRecCard(
                     movie = sm.movie,
                     onOpen = onOpenAnime,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(vertical = 6.dp),
                 )
             }
     }
@@ -770,6 +791,7 @@ private fun LazyListScope.watchSimilarItems(
 
 private fun LazyListScope.watchEpisodeItems(
     movieId: String?,
+    animeTitle: String,
     list: PlayerEpisodeList,
     currentEpId: String,
     fallbackImage: String?,
@@ -803,19 +825,21 @@ private fun LazyListScope.watchEpisodeItems(
             ) { ep ->
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
-                EpisodeRow(
+                YtEpisodeRow(
                     ep = ep,
+                    animeTitle = animeTitle,
                     fallbackImage = fallbackImage,
                     download = epDownload,
                     malWatched = malWatched,
-                    onDownload = { onDownload(ep) },
-                    meta = ep.index
-                        ?.trim()
-                        ?.toIntOrNull()
-                        ?.let { aniZip?.episodes?.get(it) },
+                    meta =
+                        ep.index
+                            ?.trim()
+                            ?.toIntOrNull()
+                            ?.let { aniZip?.episodes?.get(it) },
                     current = ep.id == currentEpId,
-                    showProgress = false,
-                ) { onPick(ep) }
+                    onDownload = { onDownload(ep) },
+                    onClick = { onPick(ep) },
+                )
             }
             if (list.moreError) {
                 item(key = "episodes-more-error") { WatchMessage("Gagal muat episode lainnya", onLoadMore) }
@@ -825,6 +849,135 @@ private fun LazyListScope.watchEpisodeItems(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun YtEpisodeRow(
+    ep: Episode,
+    animeTitle: String,
+    fallbackImage: String?,
+    download: Downloads.Item?,
+    malWatched: Int?,
+    meta: AniZipEpisode?,
+    current: Boolean,
+    onDownload: () -> Unit,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
+        .collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
+    val progress = Progress.fractionOf(watch)
+    val doneInMal =
+        malWatched != null &&
+            (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
+    val done = Progress.isDoneWatch(watch) || doneInMal
+    val epTitle = (meta?.title ?: ep.title)?.takeIf { it.isNotBlank() }
+    val title = if (epTitle == null) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. $epTitle"
+    val metaLine =
+        listOfNotNull(
+            animeTitle.takeIf { it.isNotBlank() },
+            meta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai ${it.replace('.', ',')}" },
+            AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
+        ).joinToString(" • ")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(if (current) cs.surfaceContainerHigh else Color.Transparent)
+            .clickable(onClick = hapticClick(block = onClick))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Box(
+            Modifier
+                .width(160.dp)
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(8.dp)),
+        ) {
+            Poster(
+                meta?.image ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
+                Modifier.matchParentSize(),
+                0.dp,
+                keepPrevious = true,
+            )
+            meta?.runtime?.let { rt ->
+                Text(
+                    "${rt}m",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 4.dp, bottom = if (progress > 0f && !done) 7.dp else 4.dp)
+                            .background(Color(0xCC000000), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
+                )
+            }
+            if (current) {
+                Text(
+                    "Diputar",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .background(Color(0xFFFF0000), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                )
+            } else if (done) {
+                Icon(
+                    Icons.Outlined.CheckCircle,
+                    contentDescription = "Udah kamu tonton",
+                    tint = Color.White,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .size(18.dp),
+                )
+            }
+            if (!done && progress > 0f) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(Color(0x66FFFFFF)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .background(Color(0xFFFF0000)),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (metaLine.isNotEmpty()) {
+                Text(
+                    metaLine,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = cs.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+        DownloadButton(download, onStart = onDownload)
     }
 }
 
@@ -994,79 +1147,73 @@ private fun InlineHotRecCard(
     val cs = MaterialTheme.colorScheme
     val statusLongClick = rememberStatusLongClick(movie)
     val hideStats = rememberHideStats()
+    val viewsText = movie.views?.takeIf { it.isNotBlank() && !hideStats }
+    val starText = movie.score?.takeIf { it.isNotBlank() }
+    val metaLine =
+        listOfNotNull(
+            movie.genre?.takeIf { it.isNotBlank() },
+            viewsText?.let { "${fmtNum(it)} x ditonton" },
+        ).joinToString(" • ")
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(cs.surfaceContainer)
             .hapticClick(
                 onLongClick = statusLongClick,
                 onClick = { movie.id?.let(onOpen) },
-            ).padding(8.dp),
+            ),
     ) {
-        Box(Modifier.clip(RoundedCornerShape(16.dp))) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
             Poster(
                 movie.coverOrPoster(),
-                Modifier.fillMaxWidth().height(118.dp),
-                radius = 16.dp,
+                Modifier.fillMaxSize(),
+                radius = 0.dp,
             )
-            val viewsText = movie.views?.takeIf { it.isNotBlank() && !hideStats }
-            val starText = movie.score?.takeIf { it.isNotBlank() } ?: movie.favorites.takeUnless { hideStats }
-            if (!viewsText.isNullOrBlank() || !starText.isNullOrBlank()) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                            ),
-                        ),
-                )
+            if (!starText.isNullOrBlank()) {
                 Row(
                     Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        .padding(8.dp)
+                        .background(Color(0xCC000000), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (!viewsText.isNullOrBlank()) {
-                        OverlayChip(Icons.Outlined.PlayCircleOutline, fmtNum(viewsText), cs.error)
-                    }
-                    if (!starText.isNullOrBlank()) {
-                        OverlayChip(Icons.Outlined.Star, fmtNum(starText), cs.tertiary)
-                    }
+                    Icon(
+                        Icons.Outlined.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD54F),
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        fmtNum(starText),
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
             }
         }
-        Text(
-            movie.genre?.takeIf { it.isNotBlank() } ?: " ",
-            color = cs.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
-        )
-        Text(
-            movie.title.orEmpty(),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = 18.sp,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
-        )
-        Text(
-            movie.synopsis.orEmpty(),
-            color = cs.onSurfaceVariant,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
-        )
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                movie.title.orEmpty(),
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (metaLine.isNotEmpty()) {
+                Text(
+                    metaLine,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = cs.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
     }
 }
 
@@ -1082,20 +1229,20 @@ private fun CommentsPreviewCard(
             is UiState.Ready -> state.value
             else -> emptyList()
         }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(12.dp)
     val motion = MaterialTheme.motionScheme
     Column(
         modifier
             .fillMaxWidth()
             .animateContentSize(motion.defaultSpatialSpec())
             .clip(shape)
-            .background(cs.surfaceContainer)
+            .background(cs.surfaceContainerHigh)
             .clickable(onClick = hapticClick(block = onClick))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Komentar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("Komentar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
             Icon(
                 Icons.Outlined.UnfoldMore,
