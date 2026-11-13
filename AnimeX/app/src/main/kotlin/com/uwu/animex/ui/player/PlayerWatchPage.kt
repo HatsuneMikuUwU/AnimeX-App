@@ -110,11 +110,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -288,20 +286,21 @@ internal fun PlayerWatchPage(
                         epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
                         epMeta?.runtime?.let { "${it}m" },
                         AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
-                        movie
-                            ?.favorites
-                            ?.takeIf { it.isNotBlank() && !hideStats }
-                            ?.let { "${fmtNum(it)} favorit" },
                     )
                 WatchHeader(
                     title = headerTitle,
-                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
                     details = headerDetails,
                 )
             }
             item(key = "actions") {
                 WatchActionRow(
                     poster = movie?.image_poster ?: movie?.image_cover,
+                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                    favorites =
+                        movie
+                            ?.favorites
+                            ?.takeIf { it.isNotBlank() && !hideStats }
+                            ?.let { "${fmtNum(it)} favorit" },
                     status = synced.status,
                     statusEnabled = movie != null && movieId != null,
                     onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
@@ -457,22 +456,16 @@ private fun Modifier.endFade(
 @Composable
 private fun WatchHeader(
     title: String,
-    animeTitle: String,
     details: List<String>,
 ) {
     val cs = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     var titleOverflow by remember(title) { mutableStateOf(false) }
-    var metaOverflow by remember(animeTitle, details) { mutableStateOf(false) }
+    var metaOverflow by remember(details) { mutableStateOf(false) }
     val metaLine =
-        remember(animeTitle, details, cs.onSurface) {
+        remember(details) {
             buildAnnotatedString {
-                if (animeTitle.isNotBlank()) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = cs.onSurface)) {
-                        append(animeTitle)
-                    }
-                }
                 details.forEach {
                     if (length > 0) append("   ")
                     append(it)
@@ -540,6 +533,8 @@ private fun WatchHeader(
 @Composable
 private fun WatchActionRow(
     poster: String?,
+    animeTitle: String,
+    favorites: String?,
     status: WatchStatus?,
     statusEnabled: Boolean,
     onStatusClick: () -> Unit,
@@ -573,6 +568,25 @@ private fun WatchActionRow(
                     ),
             ) {
                 Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    animeTitle,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (favorites != null) {
+                    Text(
+                        favorites,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             Spacer(Modifier.width(12.dp))
             Button(
