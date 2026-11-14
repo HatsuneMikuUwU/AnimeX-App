@@ -86,7 +86,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -126,7 +125,9 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.barGlass
-import com.uwu.animex.ui.theme.bottomScrim
+import com.uwu.animex.ui.theme.EdgeFade
+import com.uwu.animex.ui.theme.FadeEdge
+import com.uwu.animex.ui.theme.overhang
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import com.uwu.animex.ui.viewmodel.DiscussionScope
@@ -471,147 +472,146 @@ private fun DiscussionInputBar(
     val cs = MaterialTheme.colorScheme
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
-    val brush = remember(cs.background) { bottomScrim(cs.background) }
     val shape = RoundedCornerShape(InputBarHeight / 2)
     val previewShape = CircleShape
     val canSend = loggedIn && !sending && draft.isNotBlank()
 
-    Box(
-        modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val extra = InputBarFade.toPx()
-                drawRect(brush, topLeft = Offset(0f, -extra), size = Size(size.width, size.height + extra))
-            }.navigationBarsPadding()
-            .padding(horizontal = 16.dp)
-            .padding(top = 8.dp, bottom = 8.dp),
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        Column(Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
-            AnimatedContent(
-                targetState = replyTo,
-                transitionSpec = {
-                    (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
-                },
-                label = "reply-preview",
-            ) { target ->
-                if (target != null) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .barGlass(glassStyle, backdrop, previewShape, cs.surfaceContainer)
-                            .clip(previewShape)
-                            .padding(start = 20.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
+    Box(modifier.fillMaxWidth()) {
+        EdgeFade(backdrop, FadeEdge.Bottom, Modifier.matchParentSize().overhang(top = InputBarFade))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp, bottom = 8.dp),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Column(Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
+                AnimatedContent(
+                    targetState = replyTo,
+                    transitionSpec = {
+                        (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
+                    },
+                    label = "reply-preview",
+                ) { target ->
+                    if (target != null) {
+                        Row(
                             Modifier
-                                .width(3.dp)
-                                .height(32.dp)
-                                .clip(CircleShape)
-                                .background(cs.primary),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "Membalas ${target.username}",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = cs.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .barGlass(glassStyle, backdrop, previewShape, cs.surfaceContainer)
+                                .clip(previewShape)
+                                .padding(start = 20.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .height(32.dp)
+                                    .clip(CircleShape)
+                                    .background(cs.primary),
                             )
-                            Text(
-                                target.snippet.replace('\n', ' '),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = cs.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        IconButton(onClick = hapticClick(block = onCancelReply)) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Batal membalas",
-                                tint = cs.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .heightIn(min = InputBarHeight)
-                        .barGlass(glassStyle, backdrop, shape, cs.surfaceContainer, strokeCornerRadius = InputBarHeight / 2)
-                        .clip(shape)
-                        .then(if (loggedIn) Modifier else Modifier.hapticClick(onClick = onNeedLogin))
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    if (loggedIn) {
-                        BasicTextField(
-                            value = draft,
-                            onValueChange = onDraftChange,
-                            enabled = !sending,
-                            maxLines = 4,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = cs.onSurface),
-                            cursorBrush = SolidColor(cs.primary),
-                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                            decorationBox = { inner ->
-                                if (draft.isEmpty()) {
-                                    Text(
-                                        placeholder,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = cs.onSurfaceVariant,
-                                    )
-                                }
-                                inner()
-                            },
-                        )
-                    } else {
-                        Text(
-                            "Login untuk ikut diskusi",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cs.onSurfaceVariant,
-                        )
-                    }
-                }
-                FloatingGlassButton(
-                    contentDescription = if (loggedIn) "Kirim" else "Login",
-                    onClick =
-                        hapticClick {
-                            if (!loggedIn) {
-                                onNeedLogin()
-                            } else if (canSend) {
-                                onSend(draft.trim())
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "Membalas ${target.username}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = cs.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    target.snippet.replace('\n', ' '),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = cs.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
-                        },
-                    backdrop = backdrop,
-                    size = InputBarHeight,
-                ) {
-                    when {
-                        sending -> AppLoadingIndicator(Modifier.size(24.dp))
-                        !loggedIn -> Icon(
-                            Icons.AutoMirrored.Outlined.Login,
-                            contentDescription = null,
-                            tint = cs.onSurface,
-                        )
-                        else ->
-                            Icon(
-                                Icons.AutoMirrored.Outlined.Send,
-                                contentDescription = null,
-                                tint = if (canSend) cs.primary else cs.onSurface.copy(alpha = 0.38f),
-                            )
+                            IconButton(onClick = hapticClick(block = onCancelReply)) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = "Batal membalas",
+                                    tint = cs.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
-            }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = InputBarHeight)
+                            .barGlass(glassStyle, backdrop, shape, cs.surfaceContainer, strokeCornerRadius = InputBarHeight / 2)
+                            .clip(shape)
+                            .then(if (loggedIn) Modifier else Modifier.hapticClick(onClick = onNeedLogin))
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (loggedIn) {
+                            BasicTextField(
+                                value = draft,
+                                onValueChange = onDraftChange,
+                                enabled = !sending,
+                                maxLines = 4,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = cs.onSurface),
+                                cursorBrush = SolidColor(cs.primary),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                                decorationBox = { inner ->
+                                    if (draft.isEmpty()) {
+                                        Text(
+                                            placeholder,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = cs.onSurfaceVariant,
+                                        )
+                                    }
+                                    inner()
+                                },
+                            )
+                        } else {
+                            Text(
+                                "Login untuk ikut diskusi",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = cs.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    FloatingGlassButton(
+                        contentDescription = if (loggedIn) "Kirim" else "Login",
+                        onClick =
+                            hapticClick {
+                                if (!loggedIn) {
+                                    onNeedLogin()
+                                } else if (canSend) {
+                                    onSend(draft.trim())
+                                }
+                            },
+                        backdrop = backdrop,
+                        size = InputBarHeight,
+                    ) {
+                        when {
+                            sending -> AppLoadingIndicator(Modifier.size(24.dp))
+                            !loggedIn -> Icon(
+                                Icons.AutoMirrored.Outlined.Login,
+                                contentDescription = null,
+                                tint = cs.onSurface,
+                            )
+                            else ->
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.Send,
+                                    contentDescription = null,
+                                    tint = if (canSend) cs.primary else cs.onSurface.copy(alpha = 0.38f),
+                                )
+                        }
+                    }
+                }
+        }
         }
     }
 }

@@ -73,9 +73,10 @@ import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.BarEffect
+import com.uwu.animex.ui.theme.EdgeFade
+import com.uwu.animex.ui.theme.FadeEdge
 import com.uwu.animex.ui.theme.GlassStyle
 import com.uwu.animex.ui.theme.barGlass
-import com.uwu.animex.ui.theme.bottomScrim
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -96,15 +97,13 @@ fun floatingTabBarSpace(): Dp =
 fun FloatingTabBarFade(
     modifier: Modifier = Modifier,
     extra: Dp = 24.dp,
+    backdrop: LayerBackdrop? = null,
 ) {
-    val bg = MaterialTheme.colorScheme.background
     val total = floatingTabBarSpace() + extra
-    val brush = remember(bg) { bottomScrim(bg) }
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(total)
-            .background(brush),
+    EdgeFade(
+        backdrop = backdrop,
+        edge = FadeEdge.Bottom,
+        modifier = modifier.fillMaxWidth().height(total),
     )
 }
 
@@ -119,7 +118,7 @@ fun <T> BoxScope.FloatingTabBarOverlay(
     fadeExtra: Dp = 24.dp,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    FloatingTabBarFade(Modifier.align(Alignment.BottomCenter), extra = fadeExtra)
+    FloatingTabBarFade(Modifier.align(Alignment.BottomCenter), extra = fadeExtra, backdrop = backdrop)
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
     val barModifier = Modifier

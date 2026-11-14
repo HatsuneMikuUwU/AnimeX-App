@@ -116,9 +116,10 @@ import com.uwu.animex.ui.search.SearchHistoryList
 import com.uwu.animex.ui.theme.GlassStyle
 import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.ui.theme.barGlass
+import com.uwu.animex.ui.theme.EdgeFade
+import com.uwu.animex.ui.theme.FadeEdge
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.resolveGlassStyle
-import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
 import com.uwu.animex.ui.viewmodel.ExploreViewModel
@@ -470,14 +471,11 @@ fun MainScreen(
                 }
 
                 if (!landscape && barHeightPx > 0f) {
-                    val bg = MaterialTheme.colorScheme.background
                     val fadeHeight = maxOf(floatingTabBarSpace() + MAIN_FADE_EXTRA, topInset + 16.dp)
-                    val fadeBrush = remember(bg) { topScrim(bg) }
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(fadeHeight)
-                            .background(fadeBrush),
+                    EdgeFade(
+                        backdrop = backdrop,
+                        edge = FadeEdge.Top,
+                        modifier = Modifier.fillMaxWidth().height(fadeHeight),
                     )
                 }
 

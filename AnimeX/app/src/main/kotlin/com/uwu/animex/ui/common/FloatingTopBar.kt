@@ -20,20 +20,19 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.ui.theme.EdgeFade
+import com.uwu.animex.ui.theme.FadeEdge
 import com.uwu.animex.ui.theme.barGlass
+import com.uwu.animex.ui.theme.overhang
 import com.uwu.animex.ui.theme.resolveGlassStyle
-import com.uwu.animex.ui.theme.topScrim
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
 private val BarHeight = 56.dp
@@ -58,22 +57,18 @@ fun FloatingTopBar(
     onTrailingClick: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
-    val brush = remember(cs.background) { topScrim(cs.background) }
     val container = cs.surfaceContainer
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
 
-    Box(
-        modifier
-            .fillMaxWidth()
-            .drawBehind {
-                drawRect(brush, size = Size(size.width, size.height + FadeExtra.toPx()))
-            }.statusBarsPadding()
-            .padding(horizontal = BarHorizontalPadding)
-            .padding(top = BarTopPadding),
-    ) {
+    Box(modifier.fillMaxWidth()) {
+        EdgeFade(backdrop, FadeEdge.Top, Modifier.matchParentSize().overhang(bottom = FadeExtra))
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = BarHorizontalPadding)
+                .padding(top = BarTopPadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
