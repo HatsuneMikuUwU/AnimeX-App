@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -32,8 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.ui.theme.barGlass
+import com.uwu.animex.ui.theme.progressiveBlurBand
 import com.uwu.animex.ui.theme.resolveGlassStyle
+import com.uwu.animex.ui.theme.topBlurBandHeight
 import com.uwu.animex.ui.theme.topScrim
+import com.uwu.animex.ui.theme.useProgressiveBlurFade
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
 private val BarHeight = 56.dp
@@ -62,70 +66,82 @@ fun FloatingTopBar(
     val container = cs.surfaceContainer
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
+    val blurFade = useProgressiveBlurFade(backdrop)
 
-    Box(
-        modifier
-            .fillMaxWidth()
-            .drawBehind {
-                drawRect(brush, size = Size(size.width, size.height + FadeExtra.toPx()))
-            }.statusBarsPadding()
-            .padding(horizontal = BarHorizontalPadding)
-            .padding(top = BarTopPadding),
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FloatingGlassButton(
-                contentDescription = "Balik",
-                onClick = hapticClick(block = onBack),
-                backdrop = backdrop,
-                size = BarHeight,
-            ) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, tint = cs.onSurface)
-            }
-            if (title != null) {
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .height(BarHeight)
-                        .barGlass(glassStyle, backdrop, CircleShape, container)
-                        .padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                        CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
-                            ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
+    Box(modifier.fillMaxWidth()) {
+        if (blurFade && backdrop != null) {
+            Box(Modifier.matchParentSize().progressiveBlurBand(backdrop, fromTop = true, bandHeight = topBlurBandHeight()))
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .then(
+                    if (blurFade) {
+                        Modifier
+                    } else {
+                        Modifier.drawBehind {
+                            drawRect(brush, size = Size(size.width, size.height + FadeExtra.toPx()))
                         }
-                    }
-                }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
-            if (trailingIcon != null) {
+                    },
+                ).statusBarsPadding()
+                .padding(horizontal = BarHorizontalPadding)
+                .padding(top = BarTopPadding),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 FloatingGlassButton(
-                    contentDescription = trailingDescription,
-                    onClick = hapticClick(block = onTrailingClick),
+                    contentDescription = "Balik",
+                    onClick = hapticClick(block = onBack),
                     backdrop = backdrop,
                     size = BarHeight,
                 ) {
-                    Icon(
-                        trailingIcon,
-                        contentDescription = null,
-                        tint = if (trailingTint.isSpecified) trailingTint else cs.onSurface,
-                    )
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, tint = cs.onSurface)
                 }
-            }
-            if (actions != null) {
-                Row(
-                    Modifier
-                        .height(BarHeight)
-                        .barGlass(glassStyle, backdrop, CircleShape, container)
-                        .padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CompositionLocalProvider(LocalContentColor provides cs.onSurface) { actions() }
+                if (title != null) {
+                    Row(
+                        Modifier
+                            .weight(1f)
+                            .height(BarHeight)
+                            .barGlass(glassStyle, backdrop, CircleShape, container)
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                            CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
+                                ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
+                            }
+                        }
+                    }
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+                if (trailingIcon != null) {
+                    FloatingGlassButton(
+                        contentDescription = trailingDescription,
+                        onClick = hapticClick(block = onTrailingClick),
+                        backdrop = backdrop,
+                        size = BarHeight,
+                    ) {
+                        Icon(
+                            trailingIcon,
+                            contentDescription = null,
+                            tint = if (trailingTint.isSpecified) trailingTint else cs.onSurface,
+                        )
+                    }
+                }
+                if (actions != null) {
+                    Row(
+                        Modifier
+                            .height(BarHeight)
+                            .barGlass(glassStyle, backdrop, CircleShape, container)
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides cs.onSurface) { actions() }
+                    }
                 }
             }
         }

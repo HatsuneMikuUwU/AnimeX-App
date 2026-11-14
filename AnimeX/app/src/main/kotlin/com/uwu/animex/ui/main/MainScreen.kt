@@ -116,7 +116,10 @@ import com.uwu.animex.ui.search.SearchHistoryList
 import com.uwu.animex.ui.theme.GlassStyle
 import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.ui.theme.barGlass
+import com.uwu.animex.ui.theme.progressiveBlurBand
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.topBlurBandHeight
+import com.uwu.animex.ui.theme.useProgressiveBlurFade
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
@@ -473,12 +476,21 @@ fun MainScreen(
                     val bg = MaterialTheme.colorScheme.background
                     val fadeHeight = maxOf(floatingTabBarSpace() + MAIN_FADE_EXTRA, topInset + 16.dp)
                     val fadeBrush = remember(bg) { topScrim(bg) }
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(fadeHeight)
-                            .background(fadeBrush),
-                    )
+                    if (backdrop != null && useProgressiveBlurFade(backdrop)) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(fadeHeight)
+                                .progressiveBlurBand(backdrop, fromTop = true, bandHeight = topBlurBandHeight()),
+                        )
+                    } else {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(fadeHeight)
+                                .background(fadeBrush),
+                        )
+                    }
                 }
 
                 Box(

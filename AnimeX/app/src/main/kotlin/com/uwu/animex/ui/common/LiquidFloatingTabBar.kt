@@ -62,7 +62,7 @@ import com.uwu.animex.ui.liquid.IosIndicatorSpecular
 import com.uwu.animex.ui.liquid.innerShadow
 import com.uwu.animex.ui.liquid.lens
 import com.uwu.animex.ui.liquid.rememberCombinedBackdrop
-import com.uwu.animex.ui.liquid.rememberGravityRotatedHighlight
+import com.uwu.animex.ui.liquid.rememberGravityRotatedStroke
 import com.uwu.animex.ui.liquid.vibrancy
 import com.uwu.animex.ui.theme.drawGlassStroke
 import kotlinx.coroutines.flow.collectLatest
@@ -72,6 +72,7 @@ import top.yukonga.miuix.kmp.blur.blur
 import top.yukonga.miuix.kmp.blur.drawBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.material.drawEdgeStroke
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -246,7 +247,7 @@ fun <T> LiquidFloatingTabBar(
             null
         }
 
-    val pillHighlight = rememberGravityRotatedHighlight(IosIndicatorSpecular, extraDegrees = 90f)
+    val pillStroke = rememberGravityRotatedStroke(IosIndicatorSpecular, extraDegrees = 90f)
     val combinedBackdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop)
 
     Box(
@@ -360,7 +361,13 @@ fun <T> LiquidFloatingTabBar(
                                 chromaticAberration = 0.5f,
                             )
                         },
-                        highlight = { pillHighlight.copy(alpha = dampedDragAnimation.pressProgress) },
+                        onDrawFront = {
+                            drawEdgeStroke(
+                                shape = pillShape,
+                                stroke = pillStroke.value,
+                                alpha = dampedDragAnimation.pressProgress,
+                            )
+                        },
                         layerBlock = {
                             scaleX = dampedDragAnimation.scaleX
                             scaleY = dampedDragAnimation.scaleY

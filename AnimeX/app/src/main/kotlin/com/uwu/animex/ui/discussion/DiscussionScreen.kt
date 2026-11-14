@@ -20,11 +20,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.matchParentSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -127,8 +131,10 @@ import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.bottomScrim
+import com.uwu.animex.ui.theme.progressiveBlurBand
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.resolveGlassStyle
+import com.uwu.animex.ui.theme.useProgressiveBlurFade
 import com.uwu.animex.ui.viewmodel.DiscussionScope
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import kotlinx.coroutines.launch
@@ -476,139 +482,157 @@ private fun DiscussionInputBar(
     val previewShape = CircleShape
     val canSend = loggedIn && !sending && draft.isNotBlank()
 
-    Box(
-        modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val extra = InputBarFade.toPx()
-                drawRect(brush, topLeft = Offset(0f, -extra), size = Size(size.width, size.height + extra))
-            }.navigationBarsPadding()
-            .padding(horizontal = 16.dp)
-            .padding(top = 8.dp, bottom = 8.dp),
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        Column(Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
-            AnimatedContent(
-                targetState = replyTo,
-                transitionSpec = {
-                    (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
-                },
-                label = "reply-preview",
-            ) { target ->
-                if (target != null) {
-                    Row(
+    val blurFade = useProgressiveBlurFade(backdrop)
+    Box(modifier.fillMaxWidth()) {
+        if (blurFade && backdrop != null) {
+            Box(
+                Modifier.matchParentSize().progressiveBlurBand(
+                    backdrop,
+                    fromTop = false,
+                    bandHeight = (WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + InputBarHeight + 36.dp) * 1.2f,
+                ),
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .then(
+                    if (blurFade) {
                         Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .barGlass(glassStyle, backdrop, previewShape, cs.surfaceContainer)
-                            .clip(previewShape)
-                            .padding(start = 20.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            Modifier
-                                .width(3.dp)
-                                .height(32.dp)
-                                .clip(CircleShape)
-                                .background(cs.primary),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "Membalas ${target.username}",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = cs.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                target.snippet.replace('\n', ' '),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = cs.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        IconButton(onClick = hapticClick(block = onCancelReply)) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Batal membalas",
-                                tint = cs.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .heightIn(min = InputBarHeight)
-                        .barGlass(glassStyle, backdrop, shape, cs.surfaceContainer, strokeCornerRadius = InputBarHeight / 2)
-                        .clip(shape)
-                        .then(if (loggedIn) Modifier else Modifier.hapticClick(onClick = onNeedLogin))
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    if (loggedIn) {
-                        BasicTextField(
-                            value = draft,
-                            onValueChange = onDraftChange,
-                            enabled = !sending,
-                            maxLines = 4,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = cs.onSurface),
-                            cursorBrush = SolidColor(cs.primary),
-                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                            decorationBox = { inner ->
-                                if (draft.isEmpty()) {
-                                    Text(
-                                        placeholder,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = cs.onSurfaceVariant,
-                                    )
-                                }
-                                inner()
-                            },
-                        )
                     } else {
-                        Text(
-                            "Login untuk ikut diskusi",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cs.onSurfaceVariant,
-                        )
+                        Modifier.drawBehind {
+                            val extra = InputBarFade.toPx()
+                            drawRect(brush, topLeft = Offset(0f, -extra), size = Size(size.width, size.height + extra))
+                        }
+                    },
+                ).navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp, bottom = 8.dp),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Column(Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
+                AnimatedContent(
+                    targetState = replyTo,
+                    transitionSpec = {
+                        (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
+                    },
+                    label = "reply-preview",
+                ) { target ->
+                    if (target != null) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .barGlass(glassStyle, backdrop, previewShape, cs.surfaceContainer)
+                                .clip(previewShape)
+                                .padding(start = 20.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .height(32.dp)
+                                    .clip(CircleShape)
+                                    .background(cs.primary),
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "Membalas ${target.username}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = cs.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    target.snippet.replace('\n', ' '),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = cs.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            IconButton(onClick = hapticClick(block = onCancelReply)) {
+                                Icon(
+                                    Icons.Outlined.Close,
+                                    contentDescription = "Batal membalas",
+                                    tint = cs.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
-                FloatingGlassButton(
-                    contentDescription = if (loggedIn) "Kirim" else "Login",
-                    onClick =
-                        hapticClick {
-                            if (!loggedIn) {
-                                onNeedLogin()
-                            } else if (canSend) {
-                                onSend(draft.trim())
-                            }
-                        },
-                    backdrop = backdrop,
-                    size = InputBarHeight,
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Bottom,
                 ) {
-                    when {
-                        sending -> AppLoadingIndicator(Modifier.size(24.dp))
-                        !loggedIn -> Icon(
-                            Icons.AutoMirrored.Outlined.Login,
-                            contentDescription = null,
-                            tint = cs.onSurface,
-                        )
-                        else ->
-                            Icon(
-                                Icons.AutoMirrored.Outlined.Send,
-                                contentDescription = null,
-                                tint = if (canSend) cs.primary else cs.onSurface.copy(alpha = 0.38f),
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = InputBarHeight)
+                            .barGlass(glassStyle, backdrop, shape, cs.surfaceContainer, strokeCornerRadius = InputBarHeight / 2)
+                            .clip(shape)
+                            .then(if (loggedIn) Modifier else Modifier.hapticClick(onClick = onNeedLogin))
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (loggedIn) {
+                            BasicTextField(
+                                value = draft,
+                                onValueChange = onDraftChange,
+                                enabled = !sending,
+                                maxLines = 4,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = cs.onSurface),
+                                cursorBrush = SolidColor(cs.primary),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                                decorationBox = { inner ->
+                                    if (draft.isEmpty()) {
+                                        Text(
+                                            placeholder,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = cs.onSurfaceVariant,
+                                        )
+                                    }
+                                    inner()
+                                },
                             )
+                        } else {
+                            Text(
+                                "Login untuk ikut diskusi",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = cs.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    FloatingGlassButton(
+                        contentDescription = if (loggedIn) "Kirim" else "Login",
+                        onClick =
+                            hapticClick {
+                                if (!loggedIn) {
+                                    onNeedLogin()
+                                } else if (canSend) {
+                                    onSend(draft.trim())
+                                }
+                            },
+                        backdrop = backdrop,
+                        size = InputBarHeight,
+                    ) {
+                        when {
+                            sending -> AppLoadingIndicator(Modifier.size(24.dp))
+                            !loggedIn -> Icon(
+                                Icons.AutoMirrored.Outlined.Login,
+                                contentDescription = null,
+                                tint = cs.onSurface,
+                            )
+                            else ->
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.Send,
+                                    contentDescription = null,
+                                    tint = if (canSend) cs.primary else cs.onSurface.copy(alpha = 0.38f),
+                                )
+                        }
                     }
                 }
             }
