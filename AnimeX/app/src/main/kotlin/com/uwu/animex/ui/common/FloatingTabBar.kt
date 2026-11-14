@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -77,8 +76,6 @@ import com.uwu.animex.data.local.BarEffect
 import com.uwu.animex.ui.theme.GlassStyle
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.bottomScrim
-import com.uwu.animex.ui.theme.progressiveBlurBand
-import com.uwu.animex.ui.theme.useProgressiveBlurFade
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -99,26 +96,16 @@ fun floatingTabBarSpace(): Dp =
 fun FloatingTabBarFade(
     modifier: Modifier = Modifier,
     extra: Dp = 24.dp,
-    backdrop: LayerBackdrop? = null,
 ) {
     val bg = MaterialTheme.colorScheme.background
     val total = floatingTabBarSpace() + extra
     val brush = remember(bg) { bottomScrim(bg) }
-    if (backdrop != null && useProgressiveBlurFade(backdrop)) {
-        Box(
-            modifier
-                .fillMaxWidth()
-                .height(total)
-                .progressiveBlurBand(backdrop, fromTop = false, bandHeight = (floatingTabBarSpace() + 20.dp) * 1.2f),
-        )
-    } else {
-        Box(
-            modifier
-                .fillMaxWidth()
-                .height(total)
-                .background(brush),
-        )
-    }
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(total)
+            .background(brush),
+    )
 }
 
 @Composable
@@ -132,7 +119,7 @@ fun <T> BoxScope.FloatingTabBarOverlay(
     fadeExtra: Dp = 24.dp,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    FloatingTabBarFade(Modifier.align(Alignment.BottomCenter), extra = fadeExtra, backdrop = backdrop)
+    FloatingTabBarFade(Modifier.align(Alignment.BottomCenter), extra = fadeExtra)
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
     val barModifier = Modifier
