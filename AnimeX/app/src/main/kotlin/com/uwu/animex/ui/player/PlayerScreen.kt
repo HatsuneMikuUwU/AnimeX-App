@@ -237,6 +237,8 @@ fun PlayerScreen(
             }
         }
         History.stage(Movie(id = movieId), ep.index, id)
+        nextEp = null
+        prevEp = null
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
         curIndex = ep.index
         curEpId = id
@@ -283,7 +285,6 @@ fun PlayerScreen(
     }
     val rawState by viewModel.servers.collectAsStateWithLifecycle()
     val serversEpId by viewModel.serversEpId.collectAsStateWithLifecycle()
-    // Abaikan daftar server milik episode sebelumnya sampai server episode ini selesai dimuat.
     val state: UiState<List<Server>> = if (serversEpId == epId) rawState else UiState.Loading
     val servers: List<Server> =
         when (val s = state) {

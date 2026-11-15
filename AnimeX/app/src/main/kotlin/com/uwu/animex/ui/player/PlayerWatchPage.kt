@@ -794,13 +794,10 @@ private fun LazyListScope.watchEpisodeItems(
             val pinned =
                 list.episodes.firstOrNull { it.id == currentEpId }
                     ?: list.pinned?.takeIf { it.id == currentEpId }
-            val ordered =
-                if (pinned == null) list.episodes else listOf(pinned) + list.episodes.filter { it.id != pinned.id }
-            items(
-                ordered,
-                key = { it.id ?: "${it.index}-${it.title}" },
-                contentType = { "episode" },
-            ) { ep ->
+            val rest = if (pinned == null) list.episodes else list.episodes.filter { it.id != pinned.id }
+
+            @Composable
+            fun WatchEpisodeRow(ep: Episode) {
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
                 EpisodeRow(
@@ -817,6 +814,15 @@ private fun LazyListScope.watchEpisodeItems(
                     showProgress = false,
                 ) { onPick(ep) }
             }
+
+            if (pinned != null) {
+                item(key = "episode-current", contentType = "episode") { WatchEpisodeRow(pinned) }
+            }
+            items(
+                rest,
+                key = { it.id ?: "${it.index}-${it.title}" },
+                contentType = { "episode" },
+            ) { ep -> WatchEpisodeRow(ep) }
             if (list.moreError) {
                 item(key = "episodes-more-error") { WatchMessage("Gagal muat episode lainnya", onLoadMore) }
             } else if (list.loadingMore) {
