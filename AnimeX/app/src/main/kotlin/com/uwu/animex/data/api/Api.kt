@@ -41,6 +41,7 @@ import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
+import com.uwu.animex.data.model.toEpisodeIndex
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -83,6 +84,7 @@ object Api {
         )
 
     private const val MAX_EPISODE_PAGES = 100
+    private const val MAX_NEIGHBOR_PAGES = 6
     private const val GATE_RETRY_MS = 60 * 1000L
     private const val GATE_TTL_MS = 6 * 60 * 60 * 1000L
     private const val RESTORE_MAX_MS = 10 * 60 * 1000L
@@ -1113,38 +1115,89 @@ object Api {
         data object Unknown : NextEpisodeLookup()
     }
 
+    private fun Episode.number(): Double? = index.toEpisodeIndex()?.toDoubleOrNull()
+
+    private fun Episode.matches(target: String): Boolean {
+        val own = index?.trim()?.takeIf { it.isNotEmpty() } ?: return false
+        if (own == target) return true
+        val ownNum = own.toDoubleOrNull() ?: return false
+        return ownNum == target.toDoubleOrNull()
+    }
+
+    private suspend fun neighborEpisode(
+        movieId: String,
+        current: Double,
+        forward: Boolean,
+        newest: List<Episode>,
+    ): Episode? {
+        val newestMax = newest.mapNotNull { it.number() }.maxOrNull() ?: return null
+        val start = ((newestMax - current) / API_LIMIT).toInt().coerceAtLeast(0)
+        val pool = LinkedHashMap<String, Episode>()
+
+        suspend fun load(page: Int): Boolean {
+            val batch = if (page == 0) newest else episodesPage(movieId, page)
+            if (batch.isEmpty()) return false
+            for (ep in batch) {
+                val key = ep.id ?: continue
+                pool.putIfAbsent(key, ep)
+            }
+            return true
+        }
+
+        var low = start
+        var high = start
+        if (!load(start)) return null
+        var attempts = 0
+        while (attempts < MAX_NEIGHBOR_PAGES) {
+            attempts++
+            val numbers = pool.values.mapNotNull { it.number() }
+            val needOlder =
+                if (forward) numbers.none { it <= current } else numbers.none { it < current }
+            val needNewer =
+                if (forward) numbers.none { it > current } else numbers.none { it >= current }
+            when {
+                needOlder -> if (load(high + 1)) high++ else break
+                needNewer -> if (low > 0 && load(low - 1)) low-- else break
+                else -> break
+            }
+        }
+        val numbered = pool.values.mapNotNull { ep -> ep.number()?.let { ep to it } }
+        return if (forward) {
+            numbered.filter { it.second > current }.minByOrNull { it.second }?.first
+        } else {
+            numbered.filter { it.second < current }.maxByOrNull { it.second }?.first
+        }
+    }
+
     suspend fun lookupNextEpisode(
         movieId: String,
         index: String?,
         requireServers: Boolean = false,
     ): NextEpisodeLookup {
-        val nextIdx =
-            index?.toIntOrNull()?.plus(1)?.toString()
-                ?: return NextEpisodeLookup.Unknown
-        val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
+        val current = index.toEpisodeIndex()?.toDoubleOrNull() ?: return NextEpisodeLookup.Unknown
+        val key = "$movieId:$current:${if (requireServers) "s" else "c"}"
         nextCache.get(key)?.let { hit ->
-            return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
+            if (hit.episode != null) return NextEpisodeLookup.Exists(hit.episode)
         }
 
-        val newest =
+        var newest =
             runSuspendCatching { episodes(movieId) }.getOrElse {
                 return NextEpisodeLookup.Unknown
             }
-        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
-        if (newestNum == null) {
-            return NextEpisodeLookup.Unknown
+        var newestNum = newest.mapNotNull { it.number() }.maxOrNull() ?: return NextEpisodeLookup.Unknown
+        if (current >= newestNum) {
+            val fresh = runSuspendCatching { episodes(movieId, force = true) }.getOrNull().orEmpty()
+            val freshNum = fresh.mapNotNull { it.number() }.maxOrNull()
+            if (freshNum != null) {
+                newest = fresh
+                newestNum = freshNum
+            }
         }
-        if (nextIdx.toInt() > newestNum) {
-            nextCache.put(key, NextHit(null))
-            return NextEpisodeLookup.NoNext
-        }
+        if (current >= newestNum) return NextEpisodeLookup.NoNext
 
         val found =
-            newest.firstOrNull { it.index == nextIdx }
-                ?: runSuspendCatching { findEpisode(movieId, nextIdx) }.getOrNull()
-        if (found == null) {
-            return NextEpisodeLookup.Unknown
-        }
+            runSuspendCatching { neighborEpisode(movieId, current, forward = true, newest = newest) }.getOrNull()
+                ?: return NextEpisodeLookup.Unknown
         if (requireServers && !hasServers(found.id)) {
             return NextEpisodeLookup.Unknown
         }
@@ -1162,6 +1215,15 @@ object Api {
             else -> null
         }
 
+    suspend fun previousEpisode(
+        movieId: String,
+        index: String?,
+    ): Episode? {
+        val current = index.toEpisodeIndex()?.toDoubleOrNull() ?: return null
+        val newest = runSuspendCatching { episodes(movieId) }.getOrNull() ?: return null
+        return runSuspendCatching { neighborEpisode(movieId, current, forward = false, newest = newest) }.getOrNull()
+    }
+
     suspend fun findEpisode(
         movieId: String,
         index: String,
@@ -1169,15 +1231,15 @@ object Api {
         val target = index.trim()
         if (target.isBlank()) return null
 
-        fun inList(list: List<Episode>) = list.firstOrNull { it.index == target }
+        fun inList(list: List<Episode>) = list.firstOrNull { it.matches(target) }
 
         val newest = episodes(movieId)
         inList(newest)?.let { return it }
 
-        val targetNum = target.toIntOrNull()
-        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+        val targetNum = target.toDoubleOrNull()
+        val newestNum = newest.mapNotNull { it.number() }.maxOrNull()
         if (targetNum != null && newestNum != null && newestNum > 0) {
-            val approxPage = ((newestNum - targetNum) / 30).coerceAtLeast(1)
+            val approxPage = ((newestNum - targetNum) / API_LIMIT).toInt().coerceAtLeast(1)
             for (delta in listOf(0, -1, 1, -2, 2, -3, 3)) {
                 val page = (approxPage + delta).coerceAtLeast(1)
                 val batch = episodes(movieId, page = page)

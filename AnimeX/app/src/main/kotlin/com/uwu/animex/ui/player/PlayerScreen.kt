@@ -207,13 +207,8 @@ fun PlayerScreen(
     }
     LaunchedEffect(curEpId, movieId, curIndex) {
         prevEp = null
-        val prevIdx = curIndex
-            ?.trim()
-            ?.toIntOrNull()
-            ?.minus(1)
-            ?.takeIf { it >= 1 }
-        if (movieId != null && prevIdx != null) {
-            prevEp = runCatching { Api.findEpisode(movieId, prevIdx.toString()) }.getOrNull()
+        if (movieId != null && curIndex != null) {
+            prevEp = runCatching { Api.previousEpisode(movieId, curIndex) }.getOrNull()
         }
         showPrev = prevEp != null
     }
@@ -239,6 +234,8 @@ fun PlayerScreen(
         History.stage(Movie(id = movieId), ep.index, id)
         nextEp = null
         prevEp = null
+        showNext = false
+        showPrev = false
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
         curIndex = ep.index
         curEpId = id
