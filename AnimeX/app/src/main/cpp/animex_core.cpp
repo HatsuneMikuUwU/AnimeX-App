@@ -192,6 +192,9 @@ std::string buildEndpointPath(int operation, const std::string &argument) {
   case FOR_YOU_PAGE_COMMENT_REPORT:
     return OBFUSCATED_TEXT("data/fyp/comment_report");
 
+  case USER_AUTH_DEVICE:
+    return OBFUSCATED_TEXT("3/2/user/auth/device");
+
   default:
     return "";
   }

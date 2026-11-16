@@ -187,6 +187,23 @@ object UserApi {
         return sessionFrom(root, "Kredensial login tidak valid")
     }
 
+    suspend fun registerDeviceToken(token: String): Boolean {
+        if (token.isBlank() || !UserSession.isLoggedIn()) return false
+        return runCatching {
+            request(
+                "POST",
+                NativeCore.path(NativeCore.USER_AUTH_DEVICE),
+                form = mapOf(
+                    "token" to token,
+                    "device_token" to token,
+                    "type" to "android",
+                ),
+                authed = true,
+            )
+            true
+        }.getOrDefault(false)
+    }
+
     data class Discussion(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
         @com.google.gson.annotations.SerializedName(

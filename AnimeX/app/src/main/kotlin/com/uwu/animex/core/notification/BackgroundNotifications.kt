@@ -15,5 +15,6 @@ object BackgroundNotifications {
     fun sync(context: Context) {
         val app = context.applicationContext
         FcmTopicManager.sync(app)
+        DeviceTokenSync.sync(app)
     }
 }

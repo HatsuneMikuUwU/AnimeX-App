@@ -98,6 +98,22 @@ fun App() {
         nav.navigate("detail/$id")
     }
 
+    val pendingDiscussion by NotificationRouter.pendingDiscussion.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingDiscussion) {
+        val link = pendingDiscussion ?: return@LaunchedEffect
+        NotificationRouter.pendingDiscussion.value = null
+        showSettings = false
+        val title = Uri.encode(link.title.orEmpty())
+        when {
+            !link.episodeId.isNullOrBlank() -> {
+                nav.navigate("episode-comment/${Uri.encode(link.episodeId)}?title=$title")
+            }
+            !link.movieId.isNullOrBlank() -> {
+                nav.navigate("discussion/${Uri.encode(link.movieId)}?title=$title")
+            }
+        }
+    }
+
     val pendingEpisode by NotificationRouter.pendingEpisode.collectAsStateWithLifecycle()
     LaunchedEffect(pendingEpisode) {
         val link = pendingEpisode ?: return@LaunchedEffect
