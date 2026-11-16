@@ -155,8 +155,8 @@ class DiscussionViewModel private constructor(
 
     fun send(
         text: String,
-        onSent: () -> Unit,
         imagePath: String? = null,
+        onSent: () -> Unit,
     ) {
         if (_sending.value || _actionBusy.value) return
         if (text.isBlank() && imagePath.isNullOrBlank()) return
@@ -259,8 +259,8 @@ class DiscussionViewModel private constructor(
     fun reply(
         discussion: UserApi.Discussion,
         text: String,
-        onSuccess: () -> Unit,
         imagePath: String? = null,
+        onSuccess: () -> Unit,
     ) {
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
         when (scope) {
