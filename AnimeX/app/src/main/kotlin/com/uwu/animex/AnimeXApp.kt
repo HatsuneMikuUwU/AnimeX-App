@@ -11,8 +11,6 @@ import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
-import com.uwu.animex.core.notification.DeviceTokenSync
-import com.uwu.animex.notifications.discussion.DiscussionWatchStore
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
@@ -43,8 +41,6 @@ class AnimeXApp :
         AppNotifier.createChannels(this)
         EpisodeAlerts.init(this)
         TrackerOutbox.init(this)
-        DiscussionWatchStore.init(this)
-        DeviceTokenSync.sync(this)
         BackgroundNotifications.sync(this)
         EpisodeNotificationService.init(this)
 

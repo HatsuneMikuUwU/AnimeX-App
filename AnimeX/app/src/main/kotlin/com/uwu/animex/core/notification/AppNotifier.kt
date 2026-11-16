@@ -23,7 +23,6 @@ object AppNotifier {
     const val CHANNEL_EPISODES_WATCHING = "episode_watching"
     const val CHANNEL_EPISODES_PLAN_TO_WATCH = "episode_plan_to_watch"
     private const val LEGACY_CHANNEL_EPISODE_CHECK = "episode_check"
-    const val CHANNEL_COMMENTS = "comment_alerts"
 
     private const val TAG_EPISODES = "episode_alerts_tag"
     private const val GROUP_EPISODES = "com.uwu.animex.EPISODES"
@@ -31,9 +30,6 @@ object AppNotifier {
     private const val REQUEST_OPEN_CENTER = 7103
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
     const val EXTRA_OPEN_NOTIFICATIONS = "open_notification_center"
-    const val EXTRA_OPEN_DISCUSSION_MOVIE = "open_discussion_movie_id"
-    const val EXTRA_OPEN_DISCUSSION_EPISODE = "open_discussion_episode_id"
-    const val EXTRA_OPEN_DISCUSSION_ID = "open_discussion_id"
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
@@ -90,14 +86,6 @@ object AppNotifier {
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
                     description = context.getString(R.string.update_channel_description)
-                    enableVibration(true)
-                },
-                NotificationChannel(
-                    CHANNEL_COMMENTS,
-                    context.getString(R.string.comment_channel_name),
-                    NotificationManager.IMPORTANCE_HIGH,
-                ).apply {
-                    description = context.getString(R.string.comment_channel_description)
                     enableVibration(true)
                 },
             ),
@@ -235,67 +223,6 @@ object AppNotifier {
                 ),
             ).setAutoCancel(true)
             .build()
-
-
-    fun showComment(
-        context: Context,
-        title: String,
-        message: String,
-        imageUrl: String? = null,
-        movieId: String? = null,
-        episodeId: String? = null,
-        discussionId: String? = null,
-    ): Boolean {
-        val s = NotificationPrefs.state.value
-        if (!s.enabled || !s.comments || !canPost(context)) return false
-        createChannels(context)
-
-        val openIntent =
-            Intent(context, MainActivity::class.java)
-                .addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP,
-                )
-        if (!movieId.isNullOrBlank()) {
-            openIntent.putExtra(EXTRA_OPEN_DETAIL, movieId)
-            openIntent.putExtra(EXTRA_OPEN_DISCUSSION_MOVIE, movieId)
-        }
-        if (!episodeId.isNullOrBlank()) {
-            openIntent.putExtra(EXTRA_OPEN_DISCUSSION_EPISODE, episodeId)
-        }
-        if (!discussionId.isNullOrBlank()) {
-            openIntent.putExtra(EXTRA_OPEN_DISCUSSION_ID, discussionId)
-        }
-
-        val open =
-            PendingIntent.getActivity(
-                context,
-                (movieId ?: discussionId ?: title).hashCode(),
-                openIntent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-
-        val text = message.ifBlank { "Ada aktivitas baru di diskusi" }
-        val notif =
-            NotificationCompat
-                .Builder(context, CHANNEL_COMMENTS)
-                .setSmallIcon(R.drawable.ic_stat_episode)
-                .setContentTitle(title.ifBlank { "Komentar baru" })
-                .setContentText(text)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_SOCIAL)
-                .setWhen(System.currentTimeMillis())
-                .setShowWhen(true)
-                .setContentIntent(open)
-                .setAutoCancel(true)
-                .build()
-
-        val id = (discussionId ?: movieId ?: title).hashCode()
-        NotificationManagerCompat.from(context).notify("comment_alerts", id, notif)
-        return true
-    }
 
     private fun openUpdateIntent(
         context: Context,

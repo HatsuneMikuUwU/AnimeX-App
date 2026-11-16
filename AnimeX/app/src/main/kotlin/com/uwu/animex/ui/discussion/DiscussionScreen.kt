@@ -2,24 +2,6 @@
 
 package com.uwu.animex.ui.discussion
 
-import androidx.compose.ui.layout.ContentScale
-
-import androidx.compose.foundation.layout.aspectRatio
-
-import coil3.compose.AsyncImage
-
-import java.io.File
-
-import android.net.Uri
-
-import androidx.compose.material.icons.outlined.Image
-
-import androidx.compose.ui.platform.LocalContext
-
-import androidx.activity.result.contract.ActivityResultContracts
-
-import androidx.activity.compose.rememberLauncherForActivityResult
-
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
@@ -219,25 +201,9 @@ fun DiscussionScreen(
     val shouldLoadOlder by remember { derivedStateOf { listState.firstVisibleItemIndex <= 2 } }
     val backdrop = rememberBlurBackdrop()
     val isEpisode = scope == DiscussionScope.Episode
-    val isGlobal = scope == DiscussionScope.Global
-    val headerTitle =
-        when {
-            isGlobal -> "Chat Global"
-            isEpisode -> "Komentar"
-            else -> "Diskusi"
-        }
-    val emptyTitle =
-        when {
-            isGlobal -> "Belum ada chat"
-            isEpisode -> "Belum ada komentar"
-            else -> "Belum ada diskusi"
-        }
-    val inputHint =
-        when {
-            isGlobal -> "Tulis pesan..."
-            isEpisode -> "Tulis komentar..."
-            else -> "Tulis diskusi..."
-        }
+    val headerTitle = if (isEpisode) "Komentar" else "Diskusi"
+    val emptyTitle = if (isEpisode) "Belum ada komentar" else "Belum ada diskusi"
+    val inputHint = if (isEpisode) "Tulis komentar..." else "Tulis diskusi..."
     val items =
         when (val s = state) {
             is UiState.Ready -> s.value
@@ -443,23 +409,20 @@ fun DiscussionScreen(
                 replyTo = replyTarget,
                 onCancelReply = ::cancelReply,
                 focusRequester = focusRequester,
-                allowImage = isGlobal,
-                onSend = { text, imagePath ->
+                onSend = { text ->
                     val target = replyTarget
                     if (target == null) {
-                        viewModel.send(text, imagePath = imagePath) {
+                        viewModel.send(text) {
                             draft = ""
                             scrollOnUpdate = true
                         }
                     } else {
-                        viewModel.reply(target.parent, text, imagePath = imagePath) {
+                        viewModel.reply(target.parent, text) {
                             draft = ""
                             replyTarget = null
                             snackbar.show(snackScope, "Balasan terkirim")
-                            if (isEpisode) {
-                                target.parent.id?.takeIf(String::isNotBlank)?.let { id ->
-                                    loadThread(target.parent, threadOf(id))
-                                }
+                            target.parent.id?.takeIf(String::isNotBlank)?.let { id ->
+                                loadThread(target.parent, threadOf(id))
                             }
                         }
                     }
@@ -497,37 +460,21 @@ private fun DiscussionInputBar(
     loggedIn: Boolean,
     sending: Boolean,
     backdrop: LayerBackdrop?,
-    onSend: (String, String?) -> Unit,
+    onSend: (String) -> Unit,
     onNeedLogin: () -> Unit,
     replyTo: ReplyTarget?,
     onCancelReply: () -> Unit,
     focusRequester: FocusRequester,
     placeholder: String = "Tulis diskusi...",
-    allowImage: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    val context = LocalContext.current
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
     val brush = remember(cs.background) { bottomScrim(cs.background) }
     val shape = RoundedCornerShape(InputBarHeight / 2)
     val previewShape = CircleShape
-    var pendingImagePath by remember { mutableStateOf<String?>(null) }
-    var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
-    val pickImage =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            if (uri == null) return@rememberLauncherForActivityResult
-            val cache = File(context.cacheDir, "chat_${System.currentTimeMillis()}.jpg")
-            runCatching {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    cache.outputStream().use { output -> input.copyTo(output) }
-                }
-                pendingImagePath = cache.absolutePath
-                pendingImageUri = uri
-            }
-        }
-    val canSend = loggedIn && !sending && (draft.isNotBlank() || pendingImagePath != null)
+    val canSend = loggedIn && !sending && draft.isNotBlank()
 
     Box(
         modifier
@@ -593,46 +540,11 @@ private fun DiscussionInputBar(
                     }
                 }
             }
-            if (allowImage && pendingImageUri != null) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AsyncImage(
-                        model = pendingImageUri,
-                        contentDescription = null,
-                        modifier =
-                            Modifier
-                                .size(72.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    IconButton(
-                        onClick = hapticClick {
-                            pendingImagePath = null
-                            pendingImageUri = null
-                        },
-                    ) {
-                        Icon(Icons.Outlined.Close, contentDescription = "Hapus gambar")
-                    }
-                }
-            }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                if (allowImage && loggedIn) {
-                    IconButton(
-                        onClick = hapticClick { pickImage.launch("image/*") },
-                        enabled = !sending,
-                    ) {
-                        Icon(Icons.Outlined.Image, contentDescription = "Lampirkan gambar")
-                    }
-                }
                 Box(
                     Modifier
                         .weight(1f)
@@ -678,9 +590,7 @@ private fun DiscussionInputBar(
                             if (!loggedIn) {
                                 onNeedLogin()
                             } else if (canSend) {
-                                onSend(draft.trim(), pendingImagePath)
-                                pendingImagePath = null
-                                pendingImageUri = null
+                                onSend(draft.trim())
                             }
                         },
                     backdrop = backdrop,
@@ -892,7 +802,6 @@ internal fun DiscussionRow(
     currentUserId: String?,
     loggedIn: Boolean,
     isEpisode: Boolean,
-    allowReply: Boolean = isEpisode,
     actionBusy: Boolean,
     thread: ThreadState?,
     onToggleReplies: () -> Unit,
@@ -904,7 +813,6 @@ internal fun DiscussionRow(
     modifier: Modifier = Modifier,
     readOnly: Boolean = false,
     socialActions: Boolean = isEpisode,
-    // allowReply covers global chat swipe-to-reply
 ) {
     val cs = MaterialTheme.colorScheme
     val isMine = !currentUserId.isNullOrBlank() && discussion.userId == currentUserId
@@ -915,7 +823,7 @@ internal fun DiscussionRow(
     var reportDialog by remember(discussion.id) { mutableStateOf(false) }
     var editText by remember(discussion.id, discussion.body()) { mutableStateOf(discussion.body()) }
     val canOpenActions = !readOnly && loggedIn && hasId && !actionBusy
-    val canReply = !readOnly && (socialActions || allowReply) && loggedIn && hasId && !actionBusy
+    val canReply = !readOnly && socialActions && loggedIn && hasId && !actionBusy
     val replyCount = discussion.replyCount?.toIntOrNull() ?: 0
     val expanded = thread?.expanded == true
     val showThreadLine =
@@ -1001,47 +909,6 @@ internal fun DiscussionRow(
                                             color = cs.secondary,
                                         )
                                     }
-                                }
-                                if (!discussion.replyToUsername.isNullOrBlank() || !discussion.replyToText.isNullOrBlank()) {
-                                    Column(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(bottom = 6.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(cs.surface.copy(alpha = 0.35f))
-                                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    ) {
-                                        Text(
-                                            discussion.replyToUsername ?: "User",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = cs.primary,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        if (!discussion.replyToText.isNullOrBlank()) {
-                                            Text(
-                                                discussion.replyToText.replace('\n', ' '),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = cs.onSurfaceVariant,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        }
-                                    }
-                                }
-                                if (!discussion.imageUrl.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = discussion.imageUrl,
-                                        contentDescription = null,
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .heightIn(max = 220.dp)
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .padding(bottom = 6.dp),
-                                        contentScale = ContentScale.Crop,
-                                    )
                                 }
                                 if (discussion.body().isNotBlank()) {
                                     Text(discussion.body(), style = MaterialTheme.typography.bodyMedium)

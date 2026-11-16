@@ -13,7 +13,6 @@ data class NotificationSettings(
     val episodes: Boolean = true,
     val appUpdates: Boolean = true,
     val prereleases: Boolean = BuildConfig.VERSION_NAME.contains('-'),
-    val comments: Boolean = true,
 )
 
 object NotificationPrefs {
@@ -33,7 +32,6 @@ object NotificationPrefs {
                 episodes = prefs.getBoolean(PrefKeys.Notification.EPISODES, d.episodes),
                 appUpdates = prefs.getBoolean(PrefKeys.Notification.APP_UPDATES, d.appUpdates),
                 prereleases = prefs.getBoolean(PrefKeys.Notification.PRERELEASES, d.prereleases),
-                comments = prefs.getBoolean(PrefKeys.Notification.COMMENTS, d.comments),
             )
     }
 
@@ -47,7 +45,6 @@ object NotificationPrefs {
             ?.putBoolean(PrefKeys.Notification.EPISODES, next.episodes)
             ?.putBoolean(PrefKeys.Notification.APP_UPDATES, next.appUpdates)
             ?.putBoolean(PrefKeys.Notification.PRERELEASES, next.prereleases)
-            ?.putBoolean(PrefKeys.Notification.COMMENTS, next.comments)
             ?.apply()
     }
 }

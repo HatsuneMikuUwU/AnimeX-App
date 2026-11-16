@@ -37,7 +37,6 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
-import com.uwu.animex.ui.navigation.DiscussionLink
 import com.uwu.animex.ui.navigation.EpisodeLink
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.player.PipHelper
@@ -142,24 +141,6 @@ class MainActivity : ComponentActivity() {
             NotificationRouter.pendingOpenCenter.value = true
             return
         }
-
-        val discussionMovie = intent.getStringExtra(AppNotifier.EXTRA_OPEN_DISCUSSION_MOVIE)
-        val discussionEpisode = intent.getStringExtra(AppNotifier.EXTRA_OPEN_DISCUSSION_EPISODE)
-        val discussionId = intent.getStringExtra(AppNotifier.EXTRA_OPEN_DISCUSSION_ID)
-        if (!discussionMovie.isNullOrBlank() || !discussionEpisode.isNullOrBlank()) {
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_DISCUSSION_MOVIE)
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_DISCUSSION_EPISODE)
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_DISCUSSION_ID)
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_DETAIL)
-            NotificationRouter.pendingDiscussion.value =
-                DiscussionLink(
-                    movieId = discussionMovie,
-                    episodeId = discussionEpisode,
-                    discussionId = discussionId,
-                )
-            return
-        }
-
         val id = intent.getStringExtra(AppNotifier.EXTRA_OPEN_DETAIL) ?: return
         intent.removeExtra(AppNotifier.EXTRA_OPEN_DETAIL)
         NotificationRouter.pendingDetail.value = id

@@ -17,7 +17,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.File
 import java.io.IOException
 
 object UserApi {
@@ -188,131 +187,6 @@ object UserApi {
         return sessionFrom(root, "Kredensial login tidak valid")
     }
 
-    suspend fun registerDeviceToken(token: String): Boolean {
-        if (token.isBlank() || !UserSession.isLoggedIn()) return false
-        return runCatching {
-            request(
-                "POST",
-                NativeCore.path(NativeCore.USER_AUTH_DEVICE),
-                form = mapOf(
-                    "token" to token,
-                    "device_token" to token,
-                    "type" to "android",
-                ),
-                authed = true,
-            )
-            true
-        }.getOrDefault(false)
-    }
-
-    suspend fun chatList(lowestId: String? = null): List<Discussion> {
-        val query = if (lowestId.isNullOrBlank()) emptyMap() else mapOf("lowest_id" to lowestId)
-        val root =
-            request(
-                "GET",
-                NativeCore.path(NativeCore.CHAT_LIST),
-                query = query,
-                authed = true,
-            )
-        return parseList(root, Discussion::class.java)
-    }
-
-    suspend fun chatPost(
-        text: String,
-        replyToId: String? = null,
-        imageFile: File? = null,
-    ): Discussion =
-        withContext(Dispatchers.IO) {
-            val creds = authParams()
-            if (creds.isEmpty()) throw ApiException.Config("Login dulu untuk chat")
-            val multipart =
-                MultipartBody
-                    .Builder()
-                    .setType(MultipartBody.FORM)
-                    .apply {
-                        addFormDataPart("text", text)
-                        replyToId?.takeIf { it.isNotBlank() }?.let {
-                            addFormDataPart("id_chat_replay", it)
-                        }
-                        creds.forEach { (k, v) -> addFormDataPart(k, v) }
-                        imageFile?.takeIf { it.exists() && it.isFile }?.let { file ->
-                            val media =
-                                when {
-                                    file.name.endsWith(".png", true) -> "image/png"
-                                    file.name.endsWith(".webp", true) -> "image/webp"
-                                    file.name.endsWith(".gif", true) -> "image/gif"
-                                    else -> "image/jpeg"
-                                }.toMediaType()
-                            addFormDataPart(
-                                "image",
-                                file.name,
-                                file.readBytes().toRequestBody(media),
-                            )
-                        }
-                    }.build()
-
-            fun build(domain: String): Request {
-                val url =
-                    (domain.trimEnd('/') + "/" + NativeCore.path(NativeCore.CHAT_POST).trimStart('/'))
-                        .toHttpUrl()
-                        .newBuilder()
-                        .build()
-                return Request.Builder().url(url).post(multipart).build()
-            }
-
-            val domain = domain()
-            val root =
-                try {
-                    http.newCall(build(domain)).execute().use { r ->
-                        val textBody = r.body.string()
-                        val obj =
-                            runCatching {
-                                JsonParser.parseString(textBody).takeIf { it.isJsonObject }?.asJsonObject
-                            }.getOrNull()
-                        val flagged = runCatching { obj?.get("error")?.asBoolean }.getOrNull() == true
-                        val message = messageOf(obj)
-                        when {
-                            !r.isSuccessful && message == null -> throw ApiException.Http(r.code)
-                            !r.isSuccessful || flagged -> throw ApiException.Remote(message ?: "API error")
-                        }
-                        obj ?: throw ApiException.Parse()
-                    }
-                } catch (e: ApiException) {
-                    throw e
-                } catch (e: IOException) {
-                    throw e.toApiException()
-                }
-            val data = dataOf(root) ?: root
-            gson.fromJson(data, Discussion::class.java)
-        }
-
-    suspend fun chatDelete(id: String) {
-        request(
-            "POST",
-            NativeCore.path(NativeCore.CHAT_DELETE),
-            form = mapOf("id_chat" to id),
-            authed = true,
-        )
-    }
-
-    suspend fun chatEdit(id: String, text: String) {
-        request(
-            "POST",
-            NativeCore.path(NativeCore.CHAT_EDIT),
-            form = mapOf("id_chat" to id, "text" to text),
-            authed = true,
-        )
-    }
-
-    suspend fun chatReport(id: String) {
-        request(
-            "POST",
-            NativeCore.path(NativeCore.CHAT_REPORT),
-            form = mapOf("id_chat" to id),
-            authed = true,
-        )
-    }
-
     data class Discussion(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
         @com.google.gson.annotations.SerializedName(
@@ -325,22 +199,6 @@ object UserApi {
         ) val username: String? =
             null,
         @com.google.gson.annotations.SerializedName("image") val image: String? = null,
-        @com.google.gson.annotations.SerializedName(
-            value = "image_url",
-            alternate = ["gambar", "image_url_chat"],
-        ) val imageUrl: String? = null,
-        @com.google.gson.annotations.SerializedName(
-            value = "id_chat_replay",
-            alternate = ["id_reply", "reply_id"],
-        ) val replyToId: String? = null,
-        @com.google.gson.annotations.SerializedName(
-            value = "user_name_replay",
-            alternate = ["username_replay", "reply_username"],
-        ) val replyToUsername: String? = null,
-        @com.google.gson.annotations.SerializedName(
-            value = "text_replay",
-            alternate = ["reply_text"],
-        ) val replyToText: String? = null,
         @com.google.gson.annotations.SerializedName("text") val text: String? = null,
         @com.google.gson.annotations.SerializedName("message") val message: String? = null,
         @com.google.gson.annotations.SerializedName("content") val content: String? = null,

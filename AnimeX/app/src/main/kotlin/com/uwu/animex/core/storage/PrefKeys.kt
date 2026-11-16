@@ -144,7 +144,6 @@ object PrefKeys {
         const val EPISODES = "episodes"
         const val APP_UPDATES = "app_updates"
         const val PRERELEASES = "prereleases"
-        const val COMMENTS = "comments"
     }
 
     object NotificationHistory {

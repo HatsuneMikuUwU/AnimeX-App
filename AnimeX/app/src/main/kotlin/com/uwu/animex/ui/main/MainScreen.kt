@@ -39,14 +39,12 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -208,7 +206,6 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onOpenUpdate: () -> Unit = {},
-    onOpenGlobalChat: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var previousTab by rememberSaveable { mutableIntStateOf(0) }
@@ -424,19 +421,6 @@ fun MainScreen(
                                 }
                             }
                         }
-
-                        if (tab == 0 && query.isBlank()) {
-                            ExtendedFloatingActionButton(
-                                onClick = hapticClick(block = onOpenGlobalChat),
-                                icon = { Icon(Icons.Outlined.Forum, contentDescription = null) },
-                                text = { Text("Chat Global") },
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(end = 16.dp, bottom = bottomInset + 8.dp),
-                            )
-                        }
-
                         var shownQuery by remember { mutableStateOf(query) }
                         if (query.isNotBlank()) shownQuery = query
                         androidx.compose.animation.AnimatedVisibility(

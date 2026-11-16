@@ -37,7 +37,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.user.DefaultAccount
 import com.uwu.animex.data.user.UserApi
-import com.uwu.animex.core.notification.DeviceTokenSync
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppLoadingIndicator
@@ -91,7 +89,6 @@ fun LoginScreen(
     var showPass by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val cs = MaterialTheme.colorScheme
     val backdrop = rememberBlurBackdrop()
@@ -107,7 +104,6 @@ fun LoginScreen(
             try {
                 val profile = UserApi.login(identity.trim(), password)
                 UserSession.save(profile)
-                DeviceTokenSync.pushIfLoggedIn(context)
                 onLoggedIn()
             } catch (e: Exception) {
                 error = e.toUserMessage()
@@ -123,7 +119,6 @@ fun LoginScreen(
         scope.launch {
             try {
                 UserSession.save(DefaultAccount.signIn())
-                DeviceTokenSync.pushIfLoggedIn(context)
                 onLoggedIn()
             } catch (e: Exception) {
                 error = e.toUserMessage()
