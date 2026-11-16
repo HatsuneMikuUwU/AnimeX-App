@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.user.UserApi
+import com.uwu.animex.notifications.discussion.DiscussionWatchStore
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -49,6 +50,10 @@ private class DiscussionPager(
         return loadPage(initialPage).also { items ->
             lowestId = items.lastOrNull()?.id
             onFirstPage?.invoke(items.size)
+            DiscussionWatchStore.markSeen(targetId, scope, items.mapNotNull { it.id })
+            if (items.isNotEmpty()) {
+                DiscussionWatchStore.watch(targetId, scope, knownIds = items.mapNotNull { it.id })
+            }
         }
     }
 
@@ -168,6 +173,7 @@ class DiscussionViewModel private constructor(
                             imageFile = imagePath?.let { java.io.File(it) },
                         )
                 }
+                DiscussionWatchStore.watch(targetId, scope)
                 onSent()
                 reloadLoadedPages()
             } catch (e: CancellationException) {
@@ -260,12 +266,14 @@ class DiscussionViewModel private constructor(
         when (scope) {
             DiscussionScope.Episode -> {
                 if (text.isBlank()) return
+                DiscussionWatchStore.watch(targetId, scope)
                 performAction(refreshAfter = true, onSuccess = onSuccess) {
                     UserApi.episodeCommentReply(id, text.trim())
                 }
             }
             DiscussionScope.Global -> {
                 if (text.isBlank() && imagePath.isNullOrBlank()) return
+                DiscussionWatchStore.watch(targetId, scope)
                 performAction(refreshAfter = true, onSuccess = onSuccess) {
                     UserApi.chatPost(
                         text = text.trim().ifBlank { " " },

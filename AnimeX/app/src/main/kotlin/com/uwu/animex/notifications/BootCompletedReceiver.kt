@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.notification.NotificationPrefs
+import com.uwu.animex.notifications.discussion.DiscussionNotificationService
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import kotlinx.coroutines.launch
 
@@ -41,6 +42,7 @@ private fun BroadcastReceiver.restore(context: Context) {
         try {
             NotificationPrefs.init(app)
             EpisodeNotificationService.restore(app)
+            DiscussionNotificationService.restore(app)
         } finally {
             pending.finish()
         }
