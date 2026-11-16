@@ -53,6 +53,11 @@ enum EndpointOperation {
   FOR_YOU_PAGE_COMMENT_EDIT = 38,
   FOR_YOU_PAGE_COMMENT_REPORT = 39,
   USER_AUTH_DEVICE = 40,
+  CHAT_LIST = 41,
+  CHAT_POST = 42,
+  CHAT_DELETE = 43,
+  CHAT_EDIT = 44,
+  CHAT_REPORT = 45,
 };
 
 std::string decodeSecret(const char *maskedHexText);

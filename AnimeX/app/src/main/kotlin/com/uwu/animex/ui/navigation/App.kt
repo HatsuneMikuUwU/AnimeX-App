@@ -241,6 +241,7 @@ fun App() {
                         },
                         onOpenProfile = { showSettings = true },
                         onOpenNotifications = { nav.navigate("notifications") },
+                    onOpenGlobalChat = { nav.navigate("chat-global") },
                     )
                 }
                 composable("mal") {
@@ -388,6 +389,15 @@ fun App() {
                         movieId = e.arguments?.getString("id").orEmpty(),
                         movieTitle = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null },
                         scope = com.uwu.animex.ui.viewmodel.DiscussionScope.Episode,
+                        onBack = { nav.popBackStack() },
+                        onNeedLogin = { nav.navigate("login") },
+                    )
+                }
+                composable("chat-global") {
+                    DiscussionScreen(
+                        movieId = "global",
+                        movieTitle = "Chat Global",
+                        scope = com.uwu.animex.ui.viewmodel.DiscussionScope.Global,
                         onBack = { nav.popBackStack() },
                         onNeedLogin = { nav.navigate("login") },
                     )

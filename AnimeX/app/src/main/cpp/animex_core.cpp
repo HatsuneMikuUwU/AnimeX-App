@@ -195,6 +195,17 @@ std::string buildEndpointPath(int operation, const std::string &argument) {
   case USER_AUTH_DEVICE:
     return OBFUSCATED_TEXT("3/2/user/auth/device");
 
+  case CHAT_LIST:
+    return OBFUSCATED_TEXT("3/2/chat/data");
+  case CHAT_POST:
+    return OBFUSCATED_TEXT("3/2/chat/do");
+  case CHAT_DELETE:
+    return OBFUSCATED_TEXT("3/2/chat/delete");
+  case CHAT_EDIT:
+    return OBFUSCATED_TEXT("3/2/chat/edit_do");
+  case CHAT_REPORT:
+    return OBFUSCATED_TEXT("3/2/chat/report");
+
   default:
     return "";
   }

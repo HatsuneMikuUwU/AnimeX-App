@@ -22,6 +22,7 @@ enum class DiscussionScope {
     Movie,
     Episode,
     Cuplix,
+    Global,
 }
 
 private class DiscussionPager(
@@ -30,6 +31,7 @@ private class DiscussionPager(
 ) {
     val initialPage: Int = if (scope == DiscussionScope.Movie) 1 else 0
     var nextPage: Int = initialPage + 1
+    var lowestId: String? = null
     var onReset: (() -> Unit)? = null
     var onFirstPage: ((Int) -> Unit)? = null
 
@@ -39,14 +41,22 @@ private class DiscussionPager(
             DiscussionScope.Episode -> UserApi.episodeCommentList(targetId, page)
             DiscussionScope.Cuplix ->
                 if (page == initialPage) UserApi.cuplixCommentList(targetId) else emptyList()
+            DiscussionScope.Global -> UserApi.chatList(if (page == initialPage) null else lowestId)
         }
 
     suspend fun loadFirst(force: Boolean): List<UserApi.Discussion> {
         if (force) reset()
-        return loadPage(initialPage).also { onFirstPage?.invoke(it.size) }
+        return loadPage(initialPage).also { items ->
+            lowestId = items.lastOrNull()?.id
+            onFirstPage?.invoke(items.size)
+        }
     }
 
     suspend fun reloadLoadedPages(): List<UserApi.Discussion> {
+        if (scope == DiscussionScope.Global) {
+            lowestId = null
+            return loadFirst(force = false)
+        }
         val pageCount = (nextPage - initialPage).coerceAtLeast(1)
         val seen = HashSet<String>()
         val merged = ArrayList<UserApi.Discussion>()
@@ -60,6 +70,7 @@ private class DiscussionPager(
 
     fun reset() {
         nextPage = initialPage + 1
+        lowestId = null
         onReset?.invoke()
     }
 }
@@ -121,6 +132,9 @@ class DiscussionViewModel private constructor(
                 val knownIds = current.mapNotNull { it.id }.toHashSet()
                 val newItems = result.filter { it.id == null || knownIds.add(it.id) }
                 pager.nextPage = page + 1
+                if (scope == DiscussionScope.Global) {
+                    pager.lowestId = newItems.lastOrNull()?.id ?: result.lastOrNull()?.id ?: pager.lowestId
+                }
                 _hasMore.value = result.size >= DISCUSSION_PAGE_SIZE && newItems.isNotEmpty()
                 updateReadyValue(current + newItems)
             } catch (e: CancellationException) {
@@ -137,8 +151,10 @@ class DiscussionViewModel private constructor(
     fun send(
         text: String,
         onSent: () -> Unit,
+        imagePath: String? = null,
     ) {
         if (_sending.value || _actionBusy.value) return
+        if (text.isBlank() && imagePath.isNullOrBlank()) return
         _sending.value = true
         viewModelScope.launch {
             try {
@@ -146,6 +162,11 @@ class DiscussionViewModel private constructor(
                     DiscussionScope.Movie -> UserApi.discussionPost(targetId, text)
                     DiscussionScope.Episode -> UserApi.episodeCommentPost(targetId, text)
                     DiscussionScope.Cuplix -> UserApi.cuplixCommentPost(targetId, text)
+                    DiscussionScope.Global ->
+                        UserApi.chatPost(
+                            text = text.ifBlank { " " },
+                            imageFile = imagePath?.let { java.io.File(it) },
+                        )
                 }
                 onSent()
                 reloadLoadedPages()
@@ -233,11 +254,27 @@ class DiscussionViewModel private constructor(
         discussion: UserApi.Discussion,
         text: String,
         onSuccess: () -> Unit,
+        imagePath: String? = null,
     ) {
-        if (scope != DiscussionScope.Episode || text.isBlank()) return
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
-        performAction(refreshAfter = true, onSuccess = onSuccess) {
-            UserApi.episodeCommentReply(id, text.trim())
+        when (scope) {
+            DiscussionScope.Episode -> {
+                if (text.isBlank()) return
+                performAction(refreshAfter = true, onSuccess = onSuccess) {
+                    UserApi.episodeCommentReply(id, text.trim())
+                }
+            }
+            DiscussionScope.Global -> {
+                if (text.isBlank() && imagePath.isNullOrBlank()) return
+                performAction(refreshAfter = true, onSuccess = onSuccess) {
+                    UserApi.chatPost(
+                        text = text.trim().ifBlank { " " },
+                        replyToId = id,
+                        imageFile = imagePath?.let { java.io.File(it) },
+                    )
+                }
+            }
+            else -> return
         }
     }
 
@@ -253,6 +290,7 @@ class DiscussionViewModel private constructor(
                 DiscussionScope.Movie -> UserApi.discussionEdit(targetId, id, text)
                 DiscussionScope.Episode -> UserApi.episodeCommentEdit(targetId, id, text)
                 DiscussionScope.Cuplix -> UserApi.cuplixCommentEdit(targetId, id, text)
+                DiscussionScope.Global -> UserApi.chatEdit(id, text)
             }
         }
     }
@@ -267,6 +305,7 @@ class DiscussionViewModel private constructor(
                 DiscussionScope.Movie -> UserApi.discussionDelete(id)
                 DiscussionScope.Episode -> UserApi.episodeCommentDelete(id)
                 DiscussionScope.Cuplix -> UserApi.cuplixCommentDelete(id)
+                DiscussionScope.Global -> UserApi.chatDelete(id)
             }
         }
     }
@@ -281,6 +320,7 @@ class DiscussionViewModel private constructor(
                 DiscussionScope.Movie -> UserApi.discussionReport(id)
                 DiscussionScope.Episode -> UserApi.episodeCommentReport(id)
                 DiscussionScope.Cuplix -> UserApi.cuplixCommentReport(id)
+                DiscussionScope.Global -> UserApi.chatReport(id)
             }
         }
     }

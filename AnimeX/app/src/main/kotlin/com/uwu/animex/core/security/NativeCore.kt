@@ -46,6 +46,11 @@ object NativeCore {
     const val FYP_COMMENT_EDIT = 38
     const val FYP_COMMENT_REPORT = 39
     const val USER_AUTH_DEVICE = 40
+    const val CHAT_LIST = 41
+    const val CHAT_POST = 42
+    const val CHAT_DELETE = 43
+    const val CHAT_EDIT = 44
+    const val CHAT_REPORT = 45
 
     init {
         System.loadLibrary("animexcore")
