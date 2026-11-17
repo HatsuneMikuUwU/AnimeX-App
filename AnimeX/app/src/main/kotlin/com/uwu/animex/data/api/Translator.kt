@@ -58,11 +58,16 @@ object Translator {
 
     private var file: File? = null
     private var saving: Job? = null
+    private var cacheGeneration = 0L
 
     fun init(context: Context) {
-        if (file != null) return
-        val f = File(context.applicationContext.cacheDir, CACHE_FILE)
-        file = f
+        val (f, generation) =
+            synchronized(cache) {
+                if (file != null) return
+                val newFile = File(context.applicationContext.cacheDir, CACHE_FILE)
+                file = newFile
+                newFile to cacheGeneration
+            }
         AppScope.io.launch {
             val saved =
                 runCatching {
@@ -71,15 +76,20 @@ object Translator {
                         object : TypeToken<Map<String, String>>() {}.type,
                     )
                 }.getOrNull() ?: return@launch
-            synchronized(cache) { saved.forEach { (k, v) -> cache.putIfAbsent(k, v) } }
+            synchronized(cache) {
+                if (generation == cacheGeneration) saved.forEach { (k, v) -> cache.putIfAbsent(k, v) }
+            }
         }
     }
 
     fun clearCache() {
         saving?.cancel()
         saving = null
-        synchronized(cache) { cache.clear() }
-        file?.parentFile?.deleteRecursively()
+        synchronized(cache) {
+            cacheGeneration++
+            cache.clear()
+            file?.parentFile?.deleteRecursively()
+        }
     }
 
     fun cached(text: String): String? = synchronized(cache) { cache[text] }
@@ -249,16 +259,24 @@ object Translator {
 
     private fun scheduleSave() {
         val f = file ?: return
+        val generation = synchronized(cache) { cacheGeneration }
         saving?.cancel()
         saving =
             AppScope.io.launch {
                 delay(SAVE_DELAY_MS)
-                val snapshot = synchronized(cache) { cache.toMap() }
+                val snapshot =
+                    synchronized(cache) {
+                        if (generation == cacheGeneration) cache.toMap() else null
+                    } ?: return@launch
                 runCatching {
-                    f.parentFile?.mkdirs()
-                    val tmp = File(f.path + ".tmp")
-                    tmp.writeText(gson.toJson(snapshot))
-                    if (!tmp.renameTo(f)) throw IOException("Could not replace $f")
+                    synchronized(cache) {
+                        if (generation == cacheGeneration) {
+                            f.parentFile?.mkdirs()
+                            val tmp = File(f.path + ".tmp")
+                            tmp.writeText(gson.toJson(snapshot))
+                            if (!tmp.renameTo(f)) throw IOException("Could not replace $f")
+                        }
+                    }
                 }.onFailure { Log.w("Translator", "Failed to save translations", it) }
             }
     }

@@ -493,7 +493,7 @@ object TitleMatcher {
     ): Result<Movie> =
         match(
             titles = titles,
-            fetch = { q -> runCatching { Api.search(q) }.getOrNull().orEmpty() },
+            fetch = { q -> runSuspendCatching { Api.search(q) }.getOrNull().orEmpty() },
             idOf = { it.id },
             titlesOf = { listOf(it.title.orEmpty()) + it.synonyms.orEmpty().split(',') },
             typeOf = { it.type },

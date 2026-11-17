@@ -78,6 +78,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.api.SimilarRepo
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerOrientation
 import com.uwu.animex.data.local.PlayerPrefs
@@ -185,18 +186,18 @@ fun PlayerScreen(
         nextLookup = Api.NextEpisodeLookup.Unknown
         if (movieId != null && curIndex != null) {
             nextLookup =
-                runCatching {
+                runSuspendCatching {
                     Api.lookupNextEpisode(movieId, curIndex, requireServers = false)
                 }.getOrDefault(Api.NextEpisodeLookup.Unknown)
 
-            nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
+            nextEp = runSuspendCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
                 ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
         }
         showNext = nextEp != null
 
         if (movieId != null && curUploadDate.isNullOrBlank()) {
             curUploadDate =
-                runCatching {
+                runSuspendCatching {
                     Api
                         .episodes(movieId)
                         .firstOrNull { it.id == curEpId }
@@ -208,7 +209,7 @@ fun PlayerScreen(
     LaunchedEffect(curEpId, movieId, curIndex) {
         prevEp = null
         if (movieId != null && curIndex != null) {
-            prevEp = runCatching { Api.previousEpisode(movieId, curIndex) }.getOrNull()
+            prevEp = runSuspendCatching { Api.previousEpisode(movieId, curIndex) }.getOrNull()
         }
         showPrev = prevEp != null
     }
@@ -876,7 +877,8 @@ fun PlayerScreen(
             if (movieId != null) {
                 EpisodePanel(
                     movieId = movieId,
-                    currentEpId = epId,
+                    currentEpId = curEpId,
+                    currentIndex = curIndex,
                     viewModel = viewModel,
                     onPick = {
                         showEpisodes = false

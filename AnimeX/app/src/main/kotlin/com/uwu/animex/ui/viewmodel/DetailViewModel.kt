@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.AniZipInfo
 import com.uwu.animex.data.api.AnimeCharacter
@@ -222,7 +223,7 @@ class DetailViewModel(
                     while (page < 8) {
                         val batch =
                             if (page == 0) {
-                                runCatching { Api.episodes(animeId, page = 0, force = true) }
+                                runSuspendCatching { Api.episodes(animeId, page = 0, force = true) }
                                     .getOrNull()
                                     .orEmpty()
                                     .ifEmpty { initialEpisodes }

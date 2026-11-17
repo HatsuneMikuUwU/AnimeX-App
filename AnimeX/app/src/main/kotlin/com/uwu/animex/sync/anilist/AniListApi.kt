@@ -709,12 +709,6 @@ class AniListApi : SyncAPI() {
             scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
         }
 
-        val status =
-            if (newStatus.isRewatching == true && newStatus.status == SyncWatchType.WATCHING) {
-                "REPEATING"
-            } else {
-                listStatus(newStatus.status) ?: "CURRENT"
-            }
         val mutation = "mutation(\$mediaId: Int, \$status: MediaListStatus, \$progress: Int, \$score: Float, " +
             "\$repeat: Int, \$notes: String, \$startedAt: FuzzyDateInput, \$completedAt: FuzzyDateInput) { " +
             "SaveMediaListEntry(mediaId: \$mediaId, status: \$status, progress: \$progress, score: \$score, " +
@@ -722,8 +716,17 @@ class AniListApi : SyncAPI() {
             "progress score } }"
         val vars = JsonObject().apply {
             addProperty("mediaId", id.toInt())
-            addProperty("status", status)
-            addProperty("progress", newStatus.watchedEpisodes ?: 0)
+            newStatus.status?.let { status ->
+                addProperty(
+                    "status",
+                    if (newStatus.isRewatching == true && status == SyncWatchType.WATCHING) {
+                        "REPEATING"
+                    } else {
+                        listStatus(status)
+                    },
+                )
+            }
+            newStatus.watchedEpisodes?.let { addProperty("progress", it) }
             newStatus.score?.let { addProperty("score", scoreToAniList(it)) }
             newStatus.rewatchCount?.let { addProperty("repeat", it) }
             newStatus.comments?.let { addProperty("notes", it) }

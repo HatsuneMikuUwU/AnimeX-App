@@ -17,8 +17,8 @@ class EpisodeCheckWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        runSuspendCatching { EpisodeNotificationService.checkAll(applicationContext) }
-        return Result.success()
+        return runSuspendCatching { EpisodeNotificationService.checkAll(applicationContext) }
+            .fold({ Result.success() }, { Result.retry() })
     }
 
     companion object {

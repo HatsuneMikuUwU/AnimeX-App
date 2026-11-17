@@ -7,6 +7,7 @@ import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -145,7 +146,7 @@ object MalIdLookup {
     suspend fun findIds(movieId: String?): Ids? {
         movieId ?: return null
         idsCache.get(movieId)?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }
-        val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
+        val movie = runSuspendCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val media =
             try {
                 lookupMedia(movie)
@@ -162,7 +163,7 @@ object MalIdLookup {
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null
         cache.get(movieId)?.let { return it.takeIf { id -> id != NOT_FOUND } }
-        val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
+        val movie = runSuspendCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val id =
             try {
                 lookup(movie)

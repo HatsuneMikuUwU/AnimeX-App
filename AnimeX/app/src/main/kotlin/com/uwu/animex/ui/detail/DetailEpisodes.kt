@@ -49,6 +49,7 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniListTracker
@@ -426,7 +427,7 @@ internal fun EpisodeListContent(
     fun loadServers(ep: Episode) {
         val epId = ep.id ?: return
         scope.launch {
-            runCatching { Api.servers(epId) }
+            runSuspendCatching { Api.servers(epId) }
                 .onSuccess { all ->
                     val direct =
                         all
@@ -506,7 +507,7 @@ internal fun EpisodeListContent(
     fun openInBrowser(ep: Episode) {
         val epId = ep.id ?: return
         scope.launch {
-            runCatching { Api.servers(epId) }
+            runSuspendCatching { Api.servers(epId) }
                 .onSuccess { all ->
                     val link = all.browserLink()
                     if (link == null) {
@@ -527,7 +528,7 @@ internal fun EpisodeListContent(
     fun openInExternal(ep: Episode) {
         val epId = ep.id ?: return
         scope.launch {
-            runCatching { Api.servers(epId) }
+            runSuspendCatching { Api.servers(epId) }
                 .onSuccess { all ->
                     val link = all.bestDirect()?.link
                     if (link == null) {
@@ -590,7 +591,7 @@ internal fun EpisodeListContent(
     fun markWatchedUpTo(ep: Episode) {
         val target = ep.index?.trim()?.toDoubleOrNull() ?: return
         scope.launch {
-            val fetched = runCatching { Api.allEpisodes(id) }.getOrDefault(emptyList())
+            val fetched = runSuspendCatching { Api.allEpisodes(id) }.getOrDefault(emptyList())
             val pool =
                 (fetched + episodes + oldestEps + initialEpisodes + ep)
                     .distinctBy { it.id ?: "${it.index}-${it.title}" }

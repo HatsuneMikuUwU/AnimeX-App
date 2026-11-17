@@ -82,7 +82,7 @@ private suspend fun fetchTotalEpisodes(movieId: String): Int {
     ) {
         return cached.total
     }
-    val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
+    val eps = runSuspendCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
     val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
     if (max > 0) {
         val ids = eps.orEmpty().mapNotNull { it.id }

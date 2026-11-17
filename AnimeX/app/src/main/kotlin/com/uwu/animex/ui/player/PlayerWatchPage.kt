@@ -124,6 +124,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.api.AniZip
@@ -222,7 +223,7 @@ internal fun PlayerWatchPage(
         if (movieId == null) return@LaunchedEffect
         playerViewModel.openEpisodeList(movieId, currentIndex)
         playerViewModel.loadAniZip(movieId)
-        movie = runCatching { Api.detail(movieId) }.getOrNull()
+        movie = runSuspendCatching { Api.detail(movieId) }.getOrNull()
     }
     LaunchedEffect(movieId, currentIndex) {
         if (movieId == null) return@LaunchedEffect
@@ -231,7 +232,7 @@ internal fun PlayerWatchPage(
     LaunchedEffect(movieId) {
         if (movieId == null) return@LaunchedEffect
         similarLoading = true
-        similar = runCatching {
+        similar = runSuspendCatching {
             com.uwu.animex.data.api.SimilarRepo
                 .loadById(movieId)
         }.getOrDefault(emptyList())
@@ -900,7 +901,7 @@ private fun rememberEpisodeDownload(
     fun loadServers(ep: Episode) {
         val epId = ep.id ?: return
         scope.launch {
-            runCatching { Api.servers(epId) }
+            runSuspendCatching { Api.servers(epId) }
                 .onSuccess { all ->
                     val direct =
                         all

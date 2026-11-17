@@ -174,14 +174,31 @@ internal fun EmbedTopBar(
 internal fun EpisodePanel(
     movieId: String,
     currentEpId: String,
+    currentIndex: String?,
     viewModel: PlayerViewModel,
     onPick: (Episode) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    LaunchedEffect(movieId) {
-        viewModel.openEpisodeList(movieId, null)
+    LaunchedEffect(movieId, currentIndex) {
+        viewModel.openEpisodeList(movieId, currentIndex)
+        viewModel.pinEpisode(movieId, currentIndex)
     }
     val state by viewModel.episodeList.collectAsStateWithLifecycle()
+    val episodes =
+        remember(state.episodes, state.pinned, state.newestFirst, currentEpId) {
+            val pinned = state.pinned?.takeIf { it.id == currentEpId }
+            val combined =
+                if (pinned != null && state.episodes.none { it.id == currentEpId }) {
+                    state.episodes + pinned
+                } else {
+                    state.episodes
+                }
+            if (state.newestFirst) {
+                combined.sortedByDescending { it.index?.trim()?.toDoubleOrNull() ?: -1.0 }
+            } else {
+                combined.sortedBy { it.index?.trim()?.toDoubleOrNull() ?: -1.0 }
+            }
+        }
     val listState = rememberLazyListState()
     val nearEnd by remember {
         derivedStateOf {
@@ -196,9 +213,9 @@ internal fun EpisodePanel(
         }
     }
     var scrolledToCurrent by remember(currentEpId) { mutableStateOf(false) }
-    LaunchedEffect(state.episodes.size, currentEpId) {
+    LaunchedEffect(episodes.size, currentEpId) {
         if (scrolledToCurrent) return@LaunchedEffect
-        val i = state.episodes.indexOfFirst { it.id == currentEpId }
+        val i = episodes.indexOfFirst { it.id == currentEpId }
         if (i >= 0) {
             scrolledToCurrent = true
             if (i > 0) listState.scrollToItem(i)
@@ -234,15 +251,15 @@ internal fun EpisodePanel(
             }
             val error = state.error
             when {
-                state.loading && state.episodes.isEmpty() ->
+                state.loading && episodes.isEmpty() ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         AppLoadingIndicator(color = Color.White)
                     }
-                error != null && state.episodes.isEmpty() ->
-                    ErrorState(error, { viewModel.openEpisodeList(movieId, null, force = true) }, Color.White)
+                error != null && episodes.isEmpty() ->
+                    ErrorState(error, { viewModel.openEpisodeList(movieId, currentIndex, force = true) }, Color.White)
                 else ->
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                        itemsIndexed(state.episodes, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
+                        itemsIndexed(episodes, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
                             val current = ep.id == currentEpId
                             Row(
                                 Modifier
