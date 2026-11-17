@@ -9,7 +9,6 @@ class HttpException(
 
 fun unixTime(): Long = System.currentTimeMillis() / 1000L
 
-/** True hanya jika [url] berskema `animex` dan berhost tepat [host] (bukan sekadar mengandung teksnya). */
 fun isAnimexRedirect(
     url: String,
     host: String,

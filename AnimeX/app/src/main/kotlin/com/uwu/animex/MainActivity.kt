@@ -152,8 +152,6 @@ class MainActivity : ComponentActivity() {
         val isMal = Mal.isRedirect(uri)
         val isAniList = AniList.isRedirect(uri)
         if (!isMal && !isAniList) return
-        // Code/token OAuth hanya boleh dipakai sekali; hapus dari intent agar tidak
-        // diproses ulang saat Activity dibuat ulang (rotasi, process death, dll).
         intent.data = null
         if (isMal) Mal.handleRedirect(uri)
         if (isAniList) AniList.handleRedirect(uri)

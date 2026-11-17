@@ -463,16 +463,6 @@ object Downloads {
         }
     }
 
-    private fun attr(
-        line: String,
-        name: String,
-    ): String? =
-        Regex("$name=(\"[^\"]*\"|[^,]*)")
-            .find(line)
-            ?.groupValues
-            ?.get(1)
-            ?.trim('"')
-
     private fun resolve(
         base: String,
         ref: String,
@@ -521,7 +511,7 @@ object Downloads {
             var bestUrl: String? = null
             lines.forEachIndexed { i, l ->
                 if (l.startsWith("#EXT-X-STREAM-INF")) {
-                    val bw = attr(l, "BANDWIDTH")?.toLongOrNull() ?: 0L
+                    val bw = hlsAttribute(l, "BANDWIDTH")?.toLongOrNull() ?: 0L
                     val u = lines.drop(i + 1).firstOrNull { it.isNotEmpty() && !it.startsWith("#") }
                     if (u != null && bw > bestBw) {
                         bestBw = bw
@@ -545,20 +535,20 @@ object Downloads {
                 line.startsWith("#EXT-X-MEDIA-SEQUENCE:") ->
                     seq = line.substringAfter(':').trim().toLongOrNull() ?: 0L
                 line.startsWith("#EXT-X-KEY:") -> {
-                    when (val method = attr(line, "METHOD")) {
+                    when (val method = hlsAttribute(line, "METHOD")) {
                         "NONE", null -> {
                             keyUri = null
                             keyIv = null
                         }
                         "AES-128" -> {
-                            keyUri = attr(line, "URI")?.let { resolve(playlistUrl, it) }
-                            keyIv = attr(line, "IV")
+                            keyUri = hlsAttribute(line, "URI")?.let { resolve(playlistUrl, it) }
+                            keyIv = hlsAttribute(line, "IV")
                         }
                         else -> error("Enkripsi $method belum didukung")
                     }
                 }
                 line.startsWith("#EXT-X-MAP:") ->
-                    mapUri = attr(line, "URI")?.let { resolve(playlistUrl, it) }
+                    mapUri = hlsAttribute(line, "URI")?.let { resolve(playlistUrl, it) }
                 line.startsWith("#EXT-X-BYTERANGE") -> error("Playlist byte-range belum didukung")
                 line.startsWith("#EXT-X-ENDLIST") -> ended = true
                 line.isNotEmpty() && !line.startsWith("#") ->

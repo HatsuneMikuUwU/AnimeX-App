@@ -322,15 +322,7 @@ object AppUpdate {
         )
     }
 
-    private fun preferredAbi(): String {
-        val abis = Build.SUPPORTED_ABIS
-        return when {
-            abis.any { it.contains("arm64") } -> "arm64-v8a"
-            abis.any { it.contains("armeabi") } -> "armeabi-v7a"
-            abis.any { it.contains("x86_64") } -> "x86_64"
-            else -> "universal"
-        }
-    }
+    private fun preferredAbi(): String = pickPreferredAbi(Build.SUPPORTED_ABIS)
 
     suspend fun download(
         context: Context,

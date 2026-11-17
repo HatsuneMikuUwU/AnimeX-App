@@ -174,6 +174,7 @@ internal fun ImageSearchResults(
     resolvingTitle: String?,
     onPick: (TraceMoe.Result) -> Unit,
 ) {
+    if (results.isEmpty()) return
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         LazyColumn(
             Modifier.fillMaxSize(),
