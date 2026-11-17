@@ -9,12 +9,9 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -24,6 +21,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -48,7 +46,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -56,20 +53,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.Sort
-import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.UnfoldMore
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -95,15 +82,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -111,29 +92,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.api.AniZip
-import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
-import com.uwu.animex.data.local.WatchStatus
-import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
@@ -143,31 +115,21 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
-import com.uwu.animex.ui.common.EpisodeRowPlaceholder
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
-import com.uwu.animex.ui.common.OverlayChip
-import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
-import com.uwu.animex.ui.common.WaitingCardPlaceholder
 import com.uwu.animex.ui.common.animateItemExpressive
-import com.uwu.animex.ui.common.coverOrPoster
-import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.rememberHideStats
-import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
-import com.uwu.animex.ui.detail.EpisodeRow
 import com.uwu.animex.ui.detail.shareAnime
 import com.uwu.animex.ui.detail.shareEpisode
 import com.uwu.animex.ui.discussion.DiscussionRow
@@ -193,6 +155,7 @@ internal fun PlayerWatchPage(
     currentEpId: String,
     currentIndex: String?,
     uploadDate: String? = null,
+    player: Player?,
     playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
     commentsOpen: Boolean,
@@ -210,10 +173,10 @@ internal fun PlayerWatchPage(
     var section by rememberSaveable { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
     val snackbar = remember { SnackbarHostState() }
-    val bottomPad = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val peekHeight = QUEUE_PEEK_HEIGHT + navBottom
     val episodeList by playerViewModel.episodeList.collectAsStateWithLifecycle()
     val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
-    val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val synced = rememberSyncedWatched(movieId)
     val hideStats = rememberHideStats()
     val ctx = LocalContext.current
@@ -221,24 +184,17 @@ internal fun PlayerWatchPage(
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
     var similarLoading by remember(movieId) { mutableStateOf(false) }
+    val playback = rememberWatchPlayback(player)
+    val sheet = rememberQueueSheetState()
+    val sheetOpen by remember(sheet) { derivedStateOf { sheet.progress > 0.5f } }
+
+    BackHandler(enabled = sheetOpen && !commentsOpen) { sheet.settle(0f) }
 
     LaunchedEffect(movieId) {
         if (movieId == null) return@LaunchedEffect
         playerViewModel.openEpisodeList(movieId, currentIndex)
         playerViewModel.loadAniZip(movieId)
         movie = runSuspendCatching { Api.detail(movieId) }.getOrNull()
-    }
-    LaunchedEffect(movie?.id, movieId, synced.source) {
-        val m = movie ?: return@LaunchedEffect
-        if (movieId == null) return@LaunchedEffect
-        val withId = m.copy(id = movieId)
-        runCatching {
-            when (synced.source) {
-                SyncSource.ANILIST -> AniList.preload(withId)
-                SyncSource.MAL -> Mal.preload(withId)
-                else -> Unit
-            }
-        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
     }
     LaunchedEffect(movieId, currentIndex) {
         if (movieId == null) return@LaunchedEffect
@@ -253,6 +209,7 @@ internal fun PlayerWatchPage(
         }.getOrDefault(emptyList())
         similarLoading = false
     }
+    LaunchedEffect(section) { listState.scrollToItem(0) }
 
     val download = rememberEpisodeDownload(animeTitle, movieId, movie, snackbar)
     val nearEnd by remember {
@@ -284,109 +241,96 @@ internal fun PlayerWatchPage(
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
 
+    val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
+    val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
+    val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() }
+    val headerTitle =
+        when {
+            epNumber == null -> epTitle ?: animeTitle
+            epTitle != null -> epTitle
+            else -> "Episode $epNumber"
+        }
+    val headerDetails =
+        listOfNotNull(
+            epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
+            epMeta?.runtime?.let { "${it}m" },
+            AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
+            movie
+                ?.favorites
+                ?.takeIf { it.isNotBlank() && !hideStats }
+                ?.let { "${fmtNum(it)} favorit" },
+        )
+    val shownAnimeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle
+
     Box(modifier.background(screenContainerColor())) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = bottomPad),
-        ) {
-            item(key = "header") {
-                val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
-                val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
-                val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() }
-                val headerTitle =
-                    when {
-                        epNumber == null -> epTitle ?: animeTitle
-                        epTitle != null -> epTitle
-                        else -> "Episode $epNumber"
+        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
+            val rangePx = with(LocalDensity.current) { (maxHeight - peekHeight).toPx() }.coerceAtLeast(1f)
+            WatchNowPlaying(
+                title = headerTitle,
+                animeTitle = shownAnimeTitle,
+                details = headerDetails,
+                poster = movie?.image_poster ?: movie?.image_cover,
+                status = synced.status,
+                statusEnabled = movie != null && movieId != null,
+                onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
+                onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
+                onShare = {
+                    if (movieId != null) {
+                        shareEpisode(ctx, shownAnimeTitle, movieId, currentEpId, currentIndex)
+                    } else {
+                        shareAnime(ctx, Movie(id = movieId, title = animeTitle))
                     }
-                val headerDetails =
-                    listOfNotNull(
-                        epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
-                        epMeta?.runtime?.let { "${it}m" },
-                        AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
-                        movie
-                            ?.favorites
-                            ?.takeIf { it.isNotBlank() && !hideStats }
-                            ?.let { "${fmtNum(it)} favorit" },
-                    )
-                WatchHeader(
-                    title = headerTitle,
-                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                    details = headerDetails,
-                )
-            }
-            item(key = "actions") {
-                WatchActionRow(
-                    poster = movie?.image_poster ?: movie?.image_cover,
-                    status = synced.status,
-                    statusEnabled = movie != null && movieId != null,
-                    onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
-                    onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
-                    onShare = {
-                        if (movieId != null) {
-                            shareEpisode(
-                                ctx,
-                                movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                                movieId,
-                                currentEpId,
-                                currentIndex,
-                            )
-                        } else {
-                            shareAnime(ctx, Movie(id = movieId, title = animeTitle))
-                        }
-                    },
-                    chips = chips,
-                )
-            }
-            item(key = "comments-preview") {
-                CommentsPreviewCard(
-                    state = commentsState,
-                    onClick = onOpenComments,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-            item(key = "sections") {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    WatchSectionToggleGroup(
-                        labels = WATCH_SECTIONS,
-                        selected = section,
-                        onSelect = { section = it },
-                    )
-                    Spacer(Modifier.weight(1f))
-                    if (section == 0 && movieId != null) {
-                        WatchSortButton(
-                            newestFirst = episodeList.newestFirst,
-                            onClick = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
+                },
+                onOpenComments = onOpenComments,
+                chips = chips,
+                playback = playback,
+                player = player,
+                onPrev = onPrev,
+                onNext = onNext,
+                modifier = Modifier.fillMaxSize().padding(bottom = peekHeight),
+            )
+            WatchQueueSheet(
+                sheet = sheet,
+                rangePx = rangePx,
+                bottomInset = navBottom,
+                queueTitle = shownAnimeTitle,
+                nowTitle = headerTitle,
+                nowSubtitle = shownAnimeTitle,
+                nowImage = epMeta?.image ?: fallbackImage,
+                section = section,
+                onSection = { section = it },
+                newestFirst = if (section == 0 && movieId != null) episodeList.newestFirst else null,
+                onToggleOrder = {
+                    if (movieId != null) playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst)
+                },
+                playback = playback,
+                player = player,
+                onPrev = onPrev,
+                onNext = onNext,
+                listState = listState,
+                listContent = {
+                    if (section == 0) {
+                        watchEpisodeItems(
+                            movieId = movieId,
+                            list = episodeList,
+                            currentEpId = currentEpId,
+                            fallbackImage = fallbackImage,
+                            malWatched = synced.watched,
+                            aniZip = aniZip,
+                            onRetry = { movieId?.let { playerViewModel.openEpisodeList(it, currentIndex, force = true) } },
+                            onLoadMore = playerViewModel::loadMoreEpisodes,
+                            onDownload = download,
+                            onPick = onPickEpisode,
                         )
+                    } else {
+                        watchSimilarItems(similar, similarLoading, onOpenAnime)
                     }
-                }
-            }
-            if (section == 0) {
-                watchEpisodeItems(
-                    movieId = movieId,
-                    list = episodeList,
-                    currentEpId = currentEpId,
-                    fallbackImage = fallbackImage,
-                    malWatched = synced.watched,
-                    aniZip = aniZip,
-                    onRetry = { movieId?.let { playerViewModel.openEpisodeList(it, currentIndex, force = true) } },
-                    onLoadMore = playerViewModel::loadMoreEpisodes,
-                    onDownload = download,
-                    onPick = onPickEpisode,
-                )
-            } else {
-                watchSimilarItems(similar, similarLoading, onOpenAnime)
-            }
+                },
+            )
         }
         SnackbarHost(
             hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPad),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = peekHeight + 8.dp),
         )
         AnimatedVisibility(
             visible = commentsOpen,
@@ -442,219 +386,10 @@ internal fun PlayerWatchPage(
     }
 }
 
-private val WATCH_SECTIONS = listOf("Episode", "Mirip")
-
-private fun Modifier.endFade(
-    enabled: Boolean,
-    width: Dp = 40.dp,
-): Modifier =
-    if (!enabled) {
-        this
-    } else {
-        this
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .drawWithContent {
-                drawContent()
-                val w = width.toPx().coerceAtMost(size.width)
-                drawRect(
-                    brush =
-                        Brush.horizontalGradient(
-                            colors = listOf(Color.Black, Color.Transparent),
-                            startX = size.width - w,
-                            endX = size.width,
-                        ),
-                    topLeft = Offset(size.width - w, 0f),
-                    size = Size(w, size.height),
-                    blendMode = BlendMode.DstIn,
-                )
-            }
-    }
+internal val WATCH_SECTIONS = listOf("Episode", "Mirip")
 
 @Composable
-private fun WatchHeader(
-    title: String,
-    animeTitle: String,
-    details: List<String>,
-) {
-    val cs = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
-    var expanded by rememberSaveable(title) { mutableStateOf(false) }
-    var titleOverflow by remember(title) { mutableStateOf(false) }
-    var metaOverflow by remember(animeTitle, details) { mutableStateOf(false) }
-    val metaLine =
-        remember(animeTitle, details, cs.onSurface) {
-            buildAnnotatedString {
-                if (animeTitle.isNotBlank()) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = cs.onSurface)) {
-                        append(animeTitle)
-                    }
-                }
-                details.forEach {
-                    if (length > 0) append("   ")
-                    append(it)
-                }
-            }
-        }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = hapticClick(block = { expanded = !expanded }))
-            .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 4.dp)
-            .animateContentSize(motion.defaultSpatialSpec()),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = if (expanded) Int.MAX_VALUE else 1,
-            softWrap = expanded,
-            overflow = TextOverflow.Clip,
-            onTextLayout = { if (!expanded) titleOverflow = it.hasVisualOverflow },
-            modifier = Modifier.endFade(!expanded && titleOverflow),
-        )
-        if (expanded) {
-            if (metaLine.isNotEmpty()) {
-                Text(
-                    metaLine,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
-                )
-            }
-            Text(
-                "lebih sedikit",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-            )
-        } else if (metaLine.isNotEmpty() || titleOverflow) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    metaLine,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                    onTextLayout = { metaOverflow = it.hasVisualOverflow },
-                    modifier = Modifier.weight(1f, fill = false).endFade(metaOverflow),
-                )
-                if (titleOverflow || metaOverflow) {
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "selengkapnya",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WatchActionRow(
-    poster: String?,
-    status: WatchStatus?,
-    statusEnabled: Boolean,
-    onStatusClick: () -> Unit,
-    onOpenAnime: (() -> Unit)?,
-    onShare: () -> Unit,
-    chips: List<WatchChip>,
-) {
-    val cs = MaterialTheme.colorScheme
-    val maxSlots = 3
-    val direct = if (chips.size <= maxSlots) chips else chips.take(maxSlots - 1)
-    val overflow = chips.drop(direct.size)
-    var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(cs.surfaceContainerHigh)
-                .then(
-                    if (onOpenAnime != null) {
-                        Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
-                    } else {
-                        Modifier
-                    },
-                ),
-        ) {
-            Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Button(
-            onClick = hapticClick(block = onStatusClick),
-            enabled = statusEnabled,
-            shapes = ButtonDefaults.shapes(),
-            colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
-            contentPadding = PaddingValues(horizontal = 12.dp),
-        ) {
-            Icon(
-                status?.icon ?: Icons.Outlined.BookmarkBorder,
-                contentDescription = status?.label ?: "Atur status",
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(4.dp))
-            Icon(
-                Icons.Outlined.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        direct.forEach { chip ->
-            IconButton(onClick = hapticClick(block = chip.onClick)) {
-                Icon(
-                    chip.icon,
-                    contentDescription = chip.label,
-                    tint = if (chip.highlighted) cs.primary else cs.onSurface,
-                )
-            }
-        }
-        IconButton(onClick = hapticClick(block = onShare)) {
-            Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = cs.onSurface)
-        }
-        if (overflow.isNotEmpty()) {
-            Box {
-                IconButton(onClick = hapticClick(block = { menuOpen = true })) {
-                    Icon(Icons.Outlined.MoreVert, contentDescription = "Lainnya")
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    overflow.forEach { chip ->
-                        DropdownMenuItem(
-                            text = { Text(chip.label) },
-                            leadingIcon = {
-                                Icon(
-                                    chip.icon,
-                                    contentDescription = null,
-                                    tint = if (chip.highlighted) cs.primary else cs.onSurfaceVariant,
-                                )
-                            },
-                            onClick =
-                                hapticClick(
-                                    block = {
-                                        menuOpen = false
-                                        chip.onClick()
-                                    },
-                                ),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WatchSortButton(
+internal fun WatchSortButton(
     newestFirst: Boolean,
     onClick: () -> Unit,
 ) {
@@ -688,68 +423,6 @@ private fun WatchSortButton(
     }
 }
 
-@Composable
-private fun WatchSectionToggleGroup(
-    labels: List<String>,
-    selected: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
-    val full = 20.dp
-    val inner = 8.dp
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        labels.forEachIndexed { i, label ->
-            val isSelected = i == selected
-            val corner by animateDpAsState(
-                targetValue = if (isSelected) full else inner,
-                animationSpec = motion.fastSpatialSpec(),
-                label = "sectionCorner",
-            )
-            val startCorner = if (i == 0) full else corner.coerceAtLeast(0.dp)
-            val endCorner = if (i == labels.lastIndex) full else corner.coerceAtLeast(0.dp)
-            val container by animateColorAsState(
-                targetValue = if (isSelected) cs.primaryContainer else cs.surfaceContainerHigh,
-                animationSpec = motion.fastEffectsSpec(),
-                label = "sectionContainer",
-            )
-            val content by animateColorAsState(
-                targetValue = if (isSelected) cs.onPrimaryContainer else cs.onSurface,
-                animationSpec = motion.fastEffectsSpec(),
-                label = "sectionContent",
-            )
-            Box(
-                modifier =
-                    Modifier
-                        .height(40.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = startCorner,
-                                bottomStart = startCorner,
-                                topEnd = endCorner,
-                                bottomEnd = endCorner,
-                            ),
-                        ).background(container)
-                        .selectable(
-                            selected = isSelected,
-                            role = Role.Tab,
-                            onClick = hapticClick(block = { onSelect(i) }),
-                        ).padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = content,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
 private fun LazyListScope.watchSimilarItems(
     similar: List<com.uwu.animex.data.api.SimilarMovie>,
     loading: Boolean,
@@ -757,9 +430,7 @@ private fun LazyListScope.watchSimilarItems(
 ) {
     when {
         loading && similar.isEmpty() ->
-            item(key = "recs-loading") {
-                WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp))
-            }
+            items(3, key = { "recs-placeholder-$it" }) { WatchQueueRowPlaceholder() }
         similar.isEmpty() ->
             item(key = "recs-empty") {
                 Text(
@@ -775,11 +446,7 @@ private fun LazyListScope.watchSimilarItems(
                 key = { it.movie.id ?: it.movie.title.orEmpty() },
                 contentType = { "rec" },
             ) { sm ->
-                InlineHotRecCard(
-                    movie = sm.movie,
-                    onOpen = onOpenAnime,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
+                WatchSimilarRow(movie = sm.movie, onOpen = onOpenAnime)
             }
     }
 }
@@ -805,7 +472,7 @@ private fun LazyListScope.watchEpisodeItems(
         error != null && list.episodes.isEmpty() ->
             item(key = "episodes-error") { WatchMessage(error, onRetry) }
         list.loading && list.episodes.isEmpty() ->
-            items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
+            items(8, key = { "episode-placeholder-$it" }) { WatchQueueRowPlaceholder() }
         else -> {
             val pinned =
                 list.episodes.firstOrNull { it.id == currentEpId }
@@ -816,19 +483,19 @@ private fun LazyListScope.watchEpisodeItems(
             fun WatchEpisodeRow(ep: Episode) {
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
-                EpisodeRow(
+                WatchQueueRow(
                     ep = ep,
                     fallbackImage = fallbackImage,
                     download = epDownload,
                     malWatched = malWatched,
-                    onDownload = { onDownload(ep) },
                     meta = ep.index
                         ?.trim()
                         ?.toIntOrNull()
                         ?.let { aniZip?.episodes?.get(it) },
                     current = ep.id == currentEpId,
-                    showProgress = false,
-                ) { onPick(ep) }
+                    onDownload = { onDownload(ep) },
+                    onClick = { onPick(ep) },
+                )
             }
 
             if (pinned != null) {
@@ -843,7 +510,7 @@ private fun LazyListScope.watchEpisodeItems(
                 item(key = "episodes-more-error") { WatchMessage("Gagal muat episode lainnya", onLoadMore) }
             } else if (list.loadingMore) {
                 items(3, key = { "episode-more-placeholder-$it" }, contentType = { "episodePlaceholder" }) {
-                    EpisodeRowPlaceholder()
+                    WatchQueueRowPlaceholder()
                 }
             }
         }
@@ -1005,181 +672,6 @@ private fun rememberEpisodeDownload(
     }
 
     return download
-}
-
-@Composable
-private fun InlineHotRecCard(
-    movie: Movie,
-    onOpen: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    val statusLongClick = rememberStatusLongClick(movie)
-    val hideStats = rememberHideStats()
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(cs.surfaceContainer)
-            .hapticClick(
-                onLongClick = statusLongClick,
-                onClick = { movie.id?.let(onOpen) },
-            ).padding(8.dp),
-    ) {
-        Box(Modifier.clip(RoundedCornerShape(16.dp))) {
-            Poster(
-                movie.coverOrPoster(),
-                Modifier.fillMaxWidth().height(118.dp),
-                radius = 16.dp,
-            )
-            val viewsText = movie.views?.takeIf { it.isNotBlank() && !hideStats }
-            val starText = movie.score?.takeIf { it.isNotBlank() } ?: movie.favorites.takeUnless { hideStats }
-            if (!viewsText.isNullOrBlank() || !starText.isNullOrBlank()) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                            ),
-                        ),
-                )
-                Row(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (!viewsText.isNullOrBlank()) {
-                        OverlayChip(Icons.Outlined.PlayCircleOutline, fmtNum(viewsText), cs.error)
-                    }
-                    if (!starText.isNullOrBlank()) {
-                        OverlayChip(Icons.Outlined.Star, fmtNum(starText), cs.tertiary)
-                    }
-                }
-            }
-        }
-        Text(
-            movie.genre?.takeIf { it.isNotBlank() } ?: " ",
-            color = cs.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
-        )
-        Text(
-            movie.title.orEmpty(),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = 18.sp,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
-        )
-        Text(
-            movie.synopsis.orEmpty(),
-            color = cs.onSurfaceVariant,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
-        )
-    }
-}
-
-@Composable
-private fun CommentsPreviewCard(
-    state: UiState<List<UserApi.Discussion>>,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    val items =
-        when (state) {
-            is UiState.Ready -> state.value
-            else -> emptyList()
-        }
-    val shape = RoundedCornerShape(16.dp)
-    val motion = MaterialTheme.motionScheme
-    Column(
-        modifier
-            .fillMaxWidth()
-            .animateContentSize(motion.defaultSpatialSpec())
-            .clip(shape)
-            .background(cs.surfaceContainer)
-            .clickable(onClick = hapticClick(block = onClick))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Komentar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            Icon(
-                Icons.Outlined.UnfoldMore,
-                contentDescription = "Buka komentar",
-                tint = cs.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        val phase =
-            when {
-                state is UiState.Loading -> 0
-                state is UiState.Error -> 1
-                items.isEmpty() -> 2
-                else -> 3
-            }
-        AnimatedContent(
-            targetState = phase,
-            transitionSpec = { AppMotion.crossfade(motion) },
-            label = "comments-preview",
-        ) { p ->
-            when (p) {
-                0 ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(28.dp).clip(CircleShape).defaultPlaceholder())
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "Placeholder",
-                            modifier = Modifier.weight(1f).defaultPlaceholder(),
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                        )
-                    }
-                1 ->
-                    Text(
-                        "Gagal memuat komentar. Ketuk buat coba lagi.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = cs.onSurfaceVariant,
-                    )
-                2 ->
-                    Text(
-                        "Belum ada komentar. Jadilah yang pertama!",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = cs.onSurfaceVariant,
-                    )
-                else -> {
-                    val top = items.firstOrNull()
-                    if (top != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            UserAvatar(top.username, size = 28.dp)
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                top.body(),
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
