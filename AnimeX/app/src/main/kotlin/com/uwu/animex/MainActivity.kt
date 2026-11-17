@@ -108,6 +108,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
         handleAnimeLink(intent)
@@ -148,8 +149,14 @@ class MainActivity : ComponentActivity() {
 
     private fun handleMalRedirect(intent: Intent?) {
         val uri = intent?.data ?: return
-        if (Mal.isRedirect(uri)) Mal.handleRedirect(uri)
-        if (AniList.isRedirect(uri)) AniList.handleRedirect(uri)
+        val isMal = Mal.isRedirect(uri)
+        val isAniList = AniList.isRedirect(uri)
+        if (!isMal && !isAniList) return
+        // Code/token OAuth hanya boleh dipakai sekali; hapus dari intent agar tidak
+        // diproses ulang saat Activity dibuat ulang (rotasi, process death, dll).
+        intent.data = null
+        if (isMal) Mal.handleRedirect(uri)
+        if (isAniList) AniList.handleRedirect(uri)
     }
 
     override fun onUserLeaveHint() {

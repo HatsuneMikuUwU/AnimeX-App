@@ -28,7 +28,9 @@ jobs:
           sudo apt-get install -y clang-format
 
       - name: Format Kotlin
-        run: ktlint --format "AnimeX/**/*.kt" "AnimeX/**/*.kts" || true
+        run: |
+          ktlint --format "AnimeX/**/*.kt" "AnimeX/**/*.kts" \
+            || echo "::warning::ktlint masih menemukan pelanggaran yang tidak bisa diperbaiki otomatis"
 
       - name: Format C++
         working-directory: AnimeX/app/src/main/cpp

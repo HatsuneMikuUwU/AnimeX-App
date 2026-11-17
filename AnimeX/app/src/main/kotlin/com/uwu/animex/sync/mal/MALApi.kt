@@ -20,6 +20,7 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncSearchResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
+import com.uwu.animex.sync.isAnimexRedirect
 import com.uwu.animex.sync.unixTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,6 +38,8 @@ class MALApi : SyncAPI() {
     override val idPrefix = "mal"
     override val redirectUrlIdentifier: String? = "mal-auth"
     override val mainUrl = "https://myanimelist.net"
+
+    override fun isValidRedirectUrl(url: String): Boolean = isAnimexRedirect(url, "mal-auth")
 
     override val supportedWatchTypes =
         setOf(

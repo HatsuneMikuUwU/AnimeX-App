@@ -33,6 +33,7 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncSearchResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
+import com.uwu.animex.sync.isAnimexRedirect
 import com.uwu.animex.sync.unixTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -349,10 +350,7 @@ class AniListApi : SyncAPI() {
         return AuthLoginPage(url, gson.toJson(OAuthPayload(state)))
     }
 
-    override fun isValidRedirectUrl(url: String): Boolean {
-        val uri = Uri.parse(url)
-        return uri.scheme == "animex" && uri.host == "anilist-auth"
-    }
+    override fun isValidRedirectUrl(url: String): Boolean = isAnimexRedirect(url, "anilist-auth")
 
     override suspend fun login(
         redirectUrl: String,

@@ -12,9 +12,14 @@ on:
         required: false
         type: string
 
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     permissions:
       contents: read
     env:
