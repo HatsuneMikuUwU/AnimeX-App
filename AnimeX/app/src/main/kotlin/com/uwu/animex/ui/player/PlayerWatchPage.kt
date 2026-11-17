@@ -128,9 +128,12 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.api.AniZip
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.WatchStatus
+import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
@@ -224,6 +227,18 @@ internal fun PlayerWatchPage(
         playerViewModel.openEpisodeList(movieId, currentIndex)
         playerViewModel.loadAniZip(movieId)
         movie = runSuspendCatching { Api.detail(movieId) }.getOrNull()
+    }
+    LaunchedEffect(movie?.id, movieId, synced.source) {
+        val m = movie ?: return@LaunchedEffect
+        if (movieId == null) return@LaunchedEffect
+        val withId = m.copy(id = movieId)
+        runCatching {
+            when (synced.source) {
+                SyncSource.ANILIST -> AniList.preload(withId)
+                SyncSource.MAL -> Mal.preload(withId)
+                else -> Unit
+            }
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
     }
     LaunchedEffect(movieId, currentIndex) {
         if (movieId == null) return@LaunchedEffect
