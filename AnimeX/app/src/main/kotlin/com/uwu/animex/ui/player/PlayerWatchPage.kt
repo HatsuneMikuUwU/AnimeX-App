@@ -147,6 +147,7 @@ import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
@@ -157,7 +158,9 @@ import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
-import com.uwu.animex.ui.background.screenContainerColor
+import com.uwu.animex.ui.background.AnimatedBackground
+import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
+import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppDropdownMenu
@@ -370,7 +373,16 @@ internal fun PlayerWatchPage(
     val commentItems = (commentsState as? UiState.Ready)?.value.orEmpty()
     val alertActive = movieId != null && alerts.containsKey(movieId)
 
-    Box(modifier.background(screenContainerColor())) {
+    val animatedBgActive = LocalAnimatedBackgroundActive.current
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
+
+    Box(modifier.background(cs.background)) {
+        if (animatedBgActive) {
+            AnimatedBackground(
+                type = rememberActiveBackground(),
+                enableParallax = appearance.backgroundParallax,
+            )
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),

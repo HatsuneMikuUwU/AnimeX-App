@@ -122,7 +122,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.model.toEpisodeIndex
 import com.uwu.animex.service.PlaybackSessions
-import com.uwu.animex.ui.background.screenContainerColor
+import androidx.compose.ui.graphics.lerp as lerpColor
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.Poster
@@ -1059,7 +1059,7 @@ fun PlayerScreen(
 
         val shape = RoundedCornerShape(containerCorner)
         Surface(
-            color = if (fullscreen) Color.Black else if (expandFrac > 0.5f) screenContainerColor() else cs.surfaceContainerHigh,
+            color = if (fullscreen) Color.Black else lerpColor(cs.surfaceContainerHigh, cs.background, expandFrac),
             shape = shape,
             shadowElevation = containerElevation,
             modifier =
