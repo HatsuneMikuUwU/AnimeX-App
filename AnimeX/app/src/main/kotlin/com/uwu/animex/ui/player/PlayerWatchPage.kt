@@ -737,7 +737,7 @@ private fun YouTubeChannelBar(
                 Modifier
                     .height(36.dp)
                     .clip(CircleShape)
-                    .background(if (alertActive) cs.primaryContainer else cs.surfaceContainerHigh)
+                    .background(if (alertActive) cs.primaryContainer else cs.surfaceContainer)
                     .clickable(onClick = hapticClick(block = onToggleAlert))
                     .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -791,7 +791,7 @@ private fun YouTubeActionPillsRow(
                 Modifier
                     .height(36.dp)
                     .clip(CircleShape)
-                    .background(cs.surfaceContainerHigh),
+                    .background(cs.surfaceContainer),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
@@ -849,7 +849,7 @@ private fun YouTubeActionPillsRow(
             Modifier
                 .height(36.dp)
                 .clip(CircleShape)
-                .background(cs.surfaceContainerHigh.copy(alpha = if (statusEnabled) 1f else 0.5f))
+                .background(cs.surfaceContainer.copy(alpha = if (statusEnabled) 1f else 0.5f))
                 .then(
                     if (statusEnabled) {
                         Modifier.clickable(onClick = hapticClick(block = onStatusClick))
@@ -901,7 +901,7 @@ private fun YouTubeActionPillsRow(
                 Modifier
                     .height(36.dp)
                     .clip(CircleShape)
-                    .background(if (dlHighlighted) cs.secondaryContainer else cs.surfaceContainerHigh)
+                    .background(if (dlHighlighted) cs.secondaryContainer else cs.surfaceContainer)
                     .clickable(
                         onClick = hapticClick {
                             if (currentDownload == null) onStartDownload() else dlMenu = true
@@ -1025,7 +1025,7 @@ private fun YouTubePillActionChip(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val bg = if (highlighted) cs.secondaryContainer else cs.surfaceContainerHigh
+    val bg = if (highlighted) cs.secondaryContainer else cs.surfaceContainer
     val fg = if (highlighted) cs.onSecondaryContainer else cs.onSurface
     Row(
         Modifier
@@ -1065,7 +1065,7 @@ private fun YouTubeFilterChipsRow(
         labels.forEachIndexed { index, label ->
             val isSelected = index == selected
             val bg by animateColorAsState(
-                targetValue = if (isSelected) cs.primary else cs.surfaceContainerHigh,
+                targetValue = if (isSelected) cs.primary else cs.surfaceContainer,
                 label = "ytFilterBg",
             )
             val fg by animateColorAsState(
@@ -1435,13 +1435,20 @@ private fun YouTubeDescriptionSheetPanel(
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "Ringkasan Episode",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f),
-                            )
+                        Text(
+                            "Ringkasan Episode",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            if (showTranslated) translatedOverview ?: overview else overview,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = cs.onSurfaceVariant,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
                             TextButton(
                                 onClick = hapticClick { if (!translating) showTranslated = !showTranslated },
                                 shapes = ButtonDefaults.shapes(),
@@ -1459,11 +1466,6 @@ private fun YouTubeDescriptionSheetPanel(
                                 )
                             }
                         }
-                        Text(
-                            if (showTranslated) translatedOverview ?: overview else overview,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = cs.onSurfaceVariant,
-                        )
                     }
                 }
 
@@ -1511,7 +1513,7 @@ private fun YouTubeDescriptionSheetPanel(
                                 modifier =
                                     Modifier
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(cs.surfaceContainerHigh)
+                                        .background(cs.surfaceContainer)
                                         .padding(horizontal = 10.dp, vertical = 6.dp),
                             )
                         }
@@ -1590,7 +1592,7 @@ private fun WatchSortButton(
         label = "sortFlip",
     )
     val container by animateColorAsState(
-        targetValue = if (newestFirst) cs.surfaceContainerHigh else cs.secondaryContainer,
+        targetValue = if (newestFirst) cs.surfaceContainer else cs.secondaryContainer,
         animationSpec = motion.fastEffectsSpec(),
         label = "sortContainer",
     )
