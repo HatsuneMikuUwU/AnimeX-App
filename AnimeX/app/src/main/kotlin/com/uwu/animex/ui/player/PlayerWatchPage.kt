@@ -1479,7 +1479,7 @@ private fun YouTubeRecommendationCard(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(top = 10.dp),
+                .padding(start = 6.dp, top = 10.dp, bottom = 4.dp),
             verticalAlignment = Alignment.Top,
         ) {
             Box(
