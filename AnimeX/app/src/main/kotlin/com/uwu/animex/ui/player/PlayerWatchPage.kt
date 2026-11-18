@@ -354,7 +354,7 @@ internal fun PlayerWatchPage(
         } else {
             curEpisodeObj.views?.takeIf { it.isNotBlank() } ?: movie?.views?.takeIf { it.isNotBlank() }
         }
-    val viewsDisplay = rawViews?.let { "${fmtNum(it)} x ditonton" }
+    val viewsDisplay = rawViews?.let { "${fmtNum(it)} ditonton" }
     val dateDisplay = AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() }
     val genreTags =
         remember(movie?.genre) {
@@ -1415,7 +1415,7 @@ private fun YouTubeDescriptionSheetPanel(
                     if (hideStats) {
                         "—"
                     } else {
-                        viewsText?.substringBefore(" x")
+                        viewsText?.removeSuffix(" ditonton")
                             ?: movie?.favorites?.takeIf { it.isNotBlank() }?.let { fmtNum(it) }
                             ?: "—"
                     }
@@ -1747,7 +1747,7 @@ private fun YouTubeRecommendationCard(
                     listOfNotNull(
                         movie.studio?.takeIf { it.isNotBlank() }
                             ?: movie.genre?.split(',')?.firstOrNull()?.trim()?.takeIf { it.isNotBlank() },
-                        movie.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} x ditonton" },
+                        movie.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} ditonton" },
                         movie.year?.takeIf { it.isNotBlank() },
                     )
                 if (metaParts.isNotEmpty()) {
@@ -2001,7 +2001,7 @@ private fun YouTubeEpisodeListItem(
             val subInfo =
                 listOfNotNull(
                     if (rawTitle != null) ep.index?.takeIf { it.isNotBlank() }?.let { "Ep $it" } else null,
-                    ep.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} x ditonton" },
+                    ep.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} ditonton" },
                     meta?.rating?.takeIf { it.isNotBlank() }?.let { "★ ${it.replace('.', ',')}" },
                     AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
                 )
