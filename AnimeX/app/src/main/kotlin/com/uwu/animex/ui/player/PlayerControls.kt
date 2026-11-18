@@ -8,8 +8,6 @@ import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -26,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -53,7 +50,8 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.PauseCircleOutline
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Speed
@@ -153,42 +151,22 @@ internal fun formatTime(ms: Long): String {
 private fun clockNow(): String = SimpleDateFormat("HH:mm", Locale.US).format(Date())
 
 @Composable
-private fun YouTubeAutoplayToggle(
+private fun YouTubeAutoplayButton(
     checked: Boolean,
     onToggle: () -> Unit,
 ) {
-    val trackColor by animateColorAsState(
-        targetValue = if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.85f) else Color(0x66FFFFFF),
-        label = "ytAutoplayTrack",
-    )
-    val thumbOffset by animateDpAsState(
-        targetValue = if (checked) 16.dp else 2.dp,
-        label = "ytAutoplayThumb",
-    )
-    Box(
-        Modifier
-            .width(36.dp)
-            .height(22.dp)
-            .clip(CircleShape)
-            .background(trackColor)
-            .clickable(onClick = hapticClick(block = onToggle)),
-        contentAlignment = Alignment.CenterStart,
+    FilledIconButton(
+        onClick = hapticClick(block = onToggle),
+        modifier = Modifier.size(40.dp),
+        shapes = IconButtonDefaults.shapes(),
+        colors = overlayButtonColors(),
     ) {
-        Box(
-            Modifier
-                .offset(x = thumbOffset)
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(Color.White),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (checked) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
-                contentDescription = if (checked) "Autoplay aktif" else "Autoplay mati",
-                tint = Color.Black,
-                modifier = Modifier.size(12.dp),
-            )
-        }
+        Icon(
+            if (checked) Icons.Outlined.PlayCircleOutline else Icons.Outlined.PauseCircleOutline,
+            contentDescription = if (checked) "Autoplay aktif" else "Autoplay mati",
+            tint = Color.White,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }
 
@@ -219,7 +197,6 @@ fun PlayerChrome(
     epId: String,
     onOpenSpeed: () -> Unit = {},
     onOpenSleep: () -> Unit = {},
-    onOpenSettings: () -> Unit = {},
     compact: Boolean = false,
     minimized: Boolean = false,
     onToggleFullscreen: () -> Unit = {},
@@ -826,7 +803,7 @@ fun PlayerChrome(
                             PillButton(Icons.Outlined.FastForward, "Lewati OP") { skipOp() }
                             Spacer(Modifier.width(8.dp))
                         }
-                        YouTubeAutoplayToggle(
+                        YouTubeAutoplayButton(
                             checked = autoplayEnabled,
                             onToggle = {
                                 val next = !autoplayEnabled
@@ -835,23 +812,6 @@ fun PlayerChrome(
                                 poke++
                             },
                         )
-                        Spacer(Modifier.width(4.dp))
-                        FilledIconButton(
-                            onClick = hapticClick {
-                                visible = false
-                                onOpenSettings()
-                            },
-                            modifier = Modifier.size(40.dp),
-                            shapes = IconButtonDefaults.shapes(),
-                            colors = overlayButtonColors(),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Settings,
-                                contentDescription = "Setelan pemutar",
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
                     } else {
                         OverlayButton(onBack) {
                             Icon(

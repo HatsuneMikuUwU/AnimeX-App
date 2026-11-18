@@ -2,21 +2,14 @@
 
 package com.uwu.animex.ui.player
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Public
@@ -24,13 +17,9 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TimerOff
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -139,90 +128,4 @@ internal fun QualitySheet(
         onDismiss = onDismiss,
         onSelect = onSelect,
     )
-}
-
-private data class HubRow(
-    val icon: ImageVector,
-    val label: String,
-    val value: String,
-    val onClick: () -> Unit,
-)
-
-@Composable
-internal fun YouTubePlayerSettingsSheet(
-    qualityValue: String,
-    speedValue: String,
-    sleepValue: String,
-    resizeValue: String,
-    canOpenExternal: Boolean,
-    onDismiss: () -> Unit,
-    onOpenQuality: () -> Unit,
-    onOpenSpeed: () -> Unit,
-    onOpenSleep: () -> Unit,
-    onCycleResize: () -> Unit,
-    onOpenExternal: () -> Unit,
-) {
-    val rows =
-        buildList {
-            add(HubRow(Icons.Outlined.HighQuality, "Kualitas video", qualityValue, onOpenQuality))
-            add(HubRow(Icons.Outlined.Speed, "Kecepatan pemutaran", speedValue, onOpenSpeed))
-            add(HubRow(Icons.Outlined.Bedtime, "Timer tidur", sleepValue, onOpenSleep))
-            add(HubRow(Icons.Outlined.AspectRatio, "Rasio tampilan", resizeValue, onCycleResize))
-            if (canOpenExternal) {
-                add(HubRow(Icons.AutoMirrored.Outlined.OpenInNew, "Putar di aplikasi eksternal", "", onOpenExternal))
-            }
-        }
-
-    val sheetState =
-        rememberBottomSheetState(
-            initialValue = SheetValue.Hidden,
-            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-        )
-    val cs = MaterialTheme.colorScheme
-
-    AppModalBottomSheet(
-        modifier = Modifier.statusBarsPadding(),
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-    ) {
-        WindowBlurEffect()
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
-        ) {
-            rows.forEachIndexed { index, row ->
-                SheetOptionItem(
-                    index = index,
-                    count = rows.size,
-                    icon = row.icon,
-                    label = row.label,
-                    selected = false,
-                    onClick = row.onClick,
-                    trailing = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.End,
-                        ) {
-                            if (row.value.isNotBlank()) {
-                                Text(
-                                    row.value,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = cs.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.width(4.dp))
-                            }
-                            Icon(
-                                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = cs.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    },
-                )
-            }
-        }
-    }
 }

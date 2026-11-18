@@ -526,7 +526,6 @@ fun PlayerScreen(
     var failedSel by remember(requestNonce, activeEpId) { mutableStateOf(setOf<Int>()) }
     var streamError by remember(requestNonce, activeEpId) { mutableStateOf<String?>(null) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
-    var showSettingsHub by rememberSaveable { mutableStateOf(false) }
     var showEpisodes by rememberSaveable { mutableStateOf(false) }
     var showSpeed by rememberSaveable { mutableStateOf(false) }
     var showSleep by rememberSaveable { mutableStateOf(false) }
@@ -552,8 +551,8 @@ fun PlayerScreen(
     var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
     var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
-    LaunchedEffect(showSleep, showSettingsHub, sleepDeadlineMs) {
-        while (showSleep || showSettingsHub || sleepDeadlineMs > 0L) {
+    LaunchedEffect(showSleep, sleepDeadlineMs) {
+        while (showSleep || sleepDeadlineMs > 0L) {
             sleepNow = SystemClock.elapsedRealtime()
             delay(SLEEP_TICK_MS)
         }
@@ -567,7 +566,6 @@ fun PlayerScreen(
         if (!expanded) {
             showComments = false
             showDescription = false
-            showSettingsHub = false
             showDialog = false
             showSpeed = false
             showSleep = false
@@ -712,7 +710,6 @@ fun PlayerScreen(
             showSpeed -> showSpeed = false
             showSleep -> showSleep = false
             showDialog -> showDialog = false
-            showSettingsHub -> showSettingsHub = false
             showEpisodes -> showEpisodes = false
             showComments -> showComments = false
             showDescription -> showDescription = false
@@ -886,7 +883,6 @@ fun PlayerScreen(
                 onComment = openComment,
                 onOpenSpeed = { showSpeed = true },
                 onOpenSleep = { showSleep = true },
-                onOpenSettings = { showSettingsHub = true },
                 compact = !fullscreen,
                 minimized = isMinimizedVisual,
                 onToggleFullscreen = { toggleFullscreen() },
@@ -1739,37 +1735,6 @@ fun PlayerScreen(
         }
 
         if (!fullscreen && expanded) {
-            if (showSettingsHub) {
-                YouTubePlayerSettingsSheet(
-                    qualityValue = qualityChipLabel,
-                    speedValue = speedLabel(speed),
-                    sleepValue = if (sleepActive) sleepChipLabel else "Mati",
-                    resizeValue = resize.label,
-                    canOpenExternal = currentServer?.isDirect == true && !currentServer.link.isNullOrBlank(),
-                    onDismiss = { showSettingsHub = false },
-                    onOpenQuality = {
-                        showSettingsHub = false
-                        if (servers.size > 1) showDialog = true else showMessage("Kualitas lain belum tersedia")
-                    },
-                    onOpenSpeed = {
-                        showSettingsHub = false
-                        showSpeed = true
-                    },
-                    onOpenSleep = {
-                        showSettingsHub = false
-                        showSleep = true
-                    },
-                    onCycleResize = {
-                        val n = resize.next()
-                        resize = n
-                        showMessage("Rasio tampilan: ${n.label}")
-                    },
-                    onOpenExternal = {
-                        showSettingsHub = false
-                        openExternalCurrent()
-                    },
-                )
-            }
             if (showSpeed) {
                 SpeedSheet(
                     speed = speed,
