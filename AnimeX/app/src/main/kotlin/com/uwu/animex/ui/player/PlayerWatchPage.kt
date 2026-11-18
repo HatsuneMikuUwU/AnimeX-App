@@ -23,7 +23,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -58,7 +57,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -87,19 +85,26 @@ import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -116,7 +121,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
@@ -126,6 +130,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -184,6 +190,7 @@ import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.hapticToggle
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStatusLongClick
@@ -370,7 +377,6 @@ internal fun PlayerWatchPage(
                 .orEmpty()
         }
 
-    val commentItems = (commentsState as? UiState.Ready)?.value.orEmpty()
     val alertActive = movieId != null && alerts.containsKey(movieId)
 
     val animatedBgActive = LocalAnimatedBackgroundActive.current
@@ -453,8 +459,6 @@ internal fun PlayerWatchPage(
                     },
                     currentDownload = currentDownload,
                     onStartDownload = { download(curEpisodeObj) },
-                    commentCount = commentItems.size.takeIf { commentsState is UiState.Ready && it > 0 },
-                    onOpenComments = onOpenComments,
                     chips = chips,
                 )
             }
@@ -493,7 +497,7 @@ internal fun PlayerWatchPage(
                         .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    YouTubeFilterChipsRow(
+                    WatchSectionButtonGroup(
                         labels = WATCH_SECTIONS,
                         selected = section,
                         onSelect = { section = it },
@@ -691,6 +695,7 @@ private fun YouTubeChannelBar(
     onOpenAnime: (() -> Unit)?,
 ) {
     val cs = MaterialTheme.colorScheme
+    val alertToggle = hapticToggle(checked = alertActive, block = onToggleAlert)
     Row(
         Modifier
             .fillMaxWidth()
@@ -743,19 +748,22 @@ private fun YouTubeChannelBar(
         Spacer(Modifier.width(8.dp))
 
         if (alertEnabled) {
-            Box(
-                Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(if (alertActive) cs.primaryContainer else cs.surfaceContainerHigh)
-                    .clickable(onClick = hapticClick(block = onToggleAlert)),
-                contentAlignment = Alignment.Center,
+            FilledIconToggleButton(
+                checked = alertActive,
+                onCheckedChange = { alertToggle() },
+                shapes = IconButtonDefaults.toggleableShapes(),
+                colors =
+                    IconButtonDefaults.filledIconToggleButtonColors(
+                        containerColor = cs.secondaryContainer,
+                        contentColor = cs.onSecondaryContainer,
+                        checkedContainerColor = cs.primary,
+                        checkedContentColor = cs.onPrimary,
+                    ),
             ) {
                 Icon(
                     if (alertActive) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
                     contentDescription = if (alertActive) "Matikan notifikasi" else "Aktifkan notifikasi",
-                    tint = if (alertActive) cs.onPrimaryContainer else cs.onSurface,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
             }
             Spacer(Modifier.width(6.dp))
@@ -763,51 +771,89 @@ private fun YouTubeChannelBar(
 
         val saved = status != null
         val pillBg by animateColorAsState(
-            targetValue = if (saved) cs.surfaceContainerHigh else cs.onSurface,
+            targetValue = if (saved) cs.secondaryContainer else cs.primary,
             label = "ytSubBg",
         )
         val pillFg by animateColorAsState(
-            targetValue = if (saved) cs.onSurface else cs.surface,
+            targetValue = if (saved) cs.onSecondaryContainer else cs.onPrimary,
             label = "ytSubFg",
         )
-        Row(
-            Modifier
-                .height(36.dp)
-                .clip(CircleShape)
-                .background(pillBg.copy(alpha = if (statusEnabled) 1f else 0.5f))
-                .then(
-                    if (statusEnabled) {
-                        Modifier.clickable(onClick = hapticClick(block = onStatusClick))
-                    } else {
-                        Modifier
-                    },
-                ).padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        Button(
+            onClick = hapticClick(block = onStatusClick),
+            enabled = statusEnabled,
+            shapes = ButtonDefaults.shapes(),
+            colors = ButtonDefaults.buttonColors(containerColor = pillBg, contentColor = pillFg),
         ) {
             if (saved) {
                 Icon(
                     status?.icon ?: Icons.Outlined.BookmarkBorder,
                     contentDescription = null,
-                    tint = pillFg,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             }
             Text(
                 status?.label ?: "Simpan",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = pillFg,
                 maxLines = 1,
             )
             if (saved) {
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Icon(
                     Icons.Outlined.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = pillFg,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun watchToggleColors() =
+    ToggleButtonDefaults.colors(
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        checkedContainerColor = MaterialTheme.colorScheme.primary,
+        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+    )
+
+@Composable
+private fun WatchStepButton(
+    forward: Boolean,
+    onClick: (() -> Unit)?,
+) {
+    val action = hapticClick(block = onClick ?: {})
+    ToggleButton(
+        checked = false,
+        onCheckedChange = { action() },
+        enabled = onClick != null,
+        modifier = Modifier.semantics { role = Role.Button },
+        shapes =
+            if (forward) {
+                ButtonGroupDefaults.connectedTrailingButtonShapes()
+            } else {
+                ButtonGroupDefaults.connectedLeadingButtonShapes()
+            },
+        colors = watchToggleColors(),
+    ) {
+        if (!forward) {
+            Icon(
+                Icons.Outlined.SkipPrevious,
+                contentDescription = "Episode sebelumnya",
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        }
+        Text(if (forward) "Lanjut" else "Sblm", fontWeight = FontWeight.Medium, maxLines = 1)
+        if (forward) {
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Icon(
+                Icons.Outlined.SkipNext,
+                contentDescription = "Episode selanjutnya",
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
         }
     }
 }
@@ -819,8 +865,6 @@ private fun YouTubeActionPillsRow(
     onShare: () -> Unit,
     currentDownload: Downloads.Item?,
     onStartDownload: () -> Unit,
-    commentCount: Int?,
-    onOpenComments: () -> Unit,
     chips: List<WatchChip>,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -837,65 +881,13 @@ private fun YouTubeActionPillsRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onPrev != null || onNext != null) {
-            Row(
-                Modifier
-                    .height(36.dp)
-                    .clip(CircleShape)
-                    .background(cs.surfaceContainerHigh),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxHeight()
-                        .then(if (onPrev != null) Modifier.clickable(onClick = hapticClick(block = onPrev)) else Modifier)
-                        .padding(start = 12.dp, end = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.SkipPrevious,
-                        contentDescription = "Episode sebelumnya",
-                        tint = cs.onSurface.copy(alpha = if (onPrev != null) 1f else 0.38f),
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        "Sblm",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = cs.onSurface.copy(alpha = if (onPrev != null) 1f else 0.38f),
-                    )
-                }
-                Box(
-                    Modifier
-                        .width(1.dp)
-                        .height(18.dp)
-                        .background(cs.outlineVariant),
-                )
-                Row(
-                    Modifier
-                        .fillMaxHeight()
-                        .then(if (onNext != null) Modifier.clickable(onClick = hapticClick(block = onNext)) else Modifier)
-                        .padding(start = 10.dp, end = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        "Lanjut",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = cs.onSurface.copy(alpha = if (onNext != null) 1f else 0.38f),
-                    )
-                    Icon(
-                        Icons.Outlined.SkipNext,
-                        contentDescription = "Episode selanjutnya",
-                        tint = cs.onSurface.copy(alpha = if (onNext != null) 1f else 0.38f),
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+                WatchStepButton(forward = false, onClick = onPrev)
+                WatchStepButton(forward = true, onClick = onNext)
             }
         }
 
-        YouTubePillActionChip(
+        WatchActionButton(
             icon = Icons.Outlined.Share,
             label = "Bagikan",
             onClick = onShare,
@@ -917,50 +909,44 @@ private fun YouTubeActionPillsRow(
                     Downloads.Status.FAILED -> "Gagal unduh"
                 }
             val dlHighlighted = currentDownload?.status == Downloads.Status.COMPLETED
-            Row(
-                Modifier
-                    .height(36.dp)
-                    .clip(CircleShape)
-                    .background(if (dlHighlighted) cs.secondaryContainer else cs.surfaceContainerHigh)
-                    .clickable(
-                        onClick = hapticClick {
-                            if (currentDownload == null) onStartDownload() else dlMenu = true
-                        },
-                    ).padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            FilledTonalButton(
+                onClick =
+                    hapticClick {
+                        if (currentDownload == null) onStartDownload() else dlMenu = true
+                    },
+                shapes = ButtonDefaults.shapes(),
+                colors =
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (dlHighlighted) cs.primaryContainer else cs.secondaryContainer,
+                        contentColor = if (dlHighlighted) cs.onPrimaryContainer else cs.onSecondaryContainer,
+                    ),
             ) {
                 when (currentDownload?.status) {
-                    null -> Icon(Icons.Outlined.Download, null, tint = cs.onSurface, modifier = Modifier.size(18.dp))
-                    Downloads.Status.QUEUED -> AppLoadingIndicator(Modifier.size(16.dp))
+                    null -> Icon(Icons.Outlined.Download, null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Downloads.Status.QUEUED -> AppLoadingIndicator(Modifier.size(ButtonDefaults.IconSize))
                     Downloads.Status.DOWNLOADING ->
                         if (currentDownload.percent >= 0f) {
                             SmallWavyProgress(
                                 progress = { (currentDownload.percent / 100f).coerceIn(0f, 1f) },
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
                             )
                         } else {
-                            AppLoadingIndicator(Modifier.size(16.dp))
+                            AppLoadingIndicator(Modifier.size(ButtonDefaults.IconSize))
                         }
                     Downloads.Status.PAUSED ->
-                        Icon(Icons.Outlined.Pause, null, tint = cs.onSurface, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.Pause, null, modifier = Modifier.size(ButtonDefaults.IconSize))
                     Downloads.Status.COMPLETED ->
-                        Icon(
-                            Icons.Outlined.CheckCircle,
-                            null,
-                            tint = cs.onSecondaryContainer,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(ButtonDefaults.IconSize))
                     Downloads.Status.FAILED ->
-                        Icon(Icons.Outlined.Error, null, tint = cs.error, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Outlined.Error,
+                            null,
+                            tint = cs.error,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
                 }
-                Text(
-                    dlLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = if (dlHighlighted) cs.onSecondaryContainer else cs.onSurface,
-                    maxLines = 1,
-                )
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(dlLabel, fontWeight = FontWeight.Medium, maxLines = 1)
             }
             AppDropdownMenu(expanded = dlMenu, onDismissRequest = { dlMenu = false }) {
                 val item = currentDownload ?: return@AppDropdownMenu
@@ -1026,14 +1012,8 @@ private fun YouTubeActionPillsRow(
             }
         }
 
-        YouTubePillActionChip(
-            icon = Icons.Outlined.Forum,
-            label = if (commentCount != null) "Komentar (${fmtNum(commentCount.toString())})" else "Komentar",
-            onClick = onOpenComments,
-        )
-
         chips.forEach { chip ->
-            YouTubePillActionChip(
+            WatchActionButton(
                 icon = chip.icon,
                 label = chip.label,
                 highlighted = chip.highlighted,
@@ -1044,77 +1024,58 @@ private fun YouTubeActionPillsRow(
 }
 
 @Composable
-private fun YouTubePillActionChip(
+private fun WatchActionButton(
     icon: ImageVector,
     label: String,
     highlighted: Boolean = false,
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val bg = if (highlighted) cs.secondaryContainer else cs.surfaceContainerHigh
-    val fg = if (highlighted) cs.onSecondaryContainer else cs.onSurface
-    Row(
-        Modifier
-            .height(36.dp)
-            .clip(CircleShape)
-            .background(bg)
-            .clickable(onClick = hapticClick(block = onClick))
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    FilledTonalButton(
+        onClick = hapticClick(block = onClick),
+        shapes = ButtonDefaults.shapes(),
+        colors =
+            ButtonDefaults.filledTonalButtonColors(
+                containerColor = if (highlighted) cs.primaryContainer else cs.secondaryContainer,
+                contentColor = if (highlighted) cs.onPrimaryContainer else cs.onSecondaryContainer,
+            ),
     ) {
-        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-            color = fg,
-            maxLines = 1,
-        )
+        Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text(label, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
 @Composable
-private fun YouTubeFilterChipsRow(
+private fun WatchSectionButtonGroup(
     labels: List<String>,
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cs = MaterialTheme.colorScheme
-    val scroll = rememberScrollState()
     Row(
-        modifier.horizontalScroll(scroll),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         labels.forEachIndexed { index, label ->
-            val isSelected = index == selected
-            val bg by animateColorAsState(
-                targetValue = if (isSelected) cs.onSurface else cs.surfaceContainerHigh,
-                label = "ytFilterBg",
-            )
-            val fg by animateColorAsState(
-                targetValue = if (isSelected) cs.surface else cs.onSurface,
-                label = "ytFilterFg",
-            )
-            Box(
-                Modifier
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(bg)
-                    .selectable(
-                        selected = isSelected,
-                        role = Role.Tab,
-                        onClick = hapticClick { onSelect(index) },
-                    ).padding(horizontal = 14.dp),
-                contentAlignment = Alignment.Center,
+            val checked = index == selected
+            val toggle = hapticToggle(checked = checked) { onSelect(index) }
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = { toggle() },
+                modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                shapes =
+                    when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        labels.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                colors = watchToggleColors(),
             ) {
                 Text(
                     label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                    color = fg,
+                    fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                 )
             }
@@ -1175,13 +1136,11 @@ private fun YouTubeEpisodePlaylistCard(
             .fillMaxWidth()
             .animateContentSize(motion.defaultSpatialSpec())
             .clip(RoundedCornerShape(14.dp))
-            .background(cs.surfaceContainer)
-            .border(1.dp, cs.outlineVariant.copy(alpha = 0.45f), RoundedCornerShape(14.dp)),
+            .background(cs.surfaceContainer),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(cs.surfaceContainerHigh.copy(alpha = 0.7f))
                 .clickable(onClick = hapticClick(block = onToggleExpanded))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1223,12 +1182,16 @@ private fun YouTubeEpisodePlaylistCard(
             ) {
                 Text("Semua", style = MaterialTheme.typography.labelLarge)
             }
-            Icon(
-                if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
-                contentDescription = if (expanded) "Tutup daftar" else "Buka daftar",
-                tint = cs.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
+            IconButton(
+                onClick = hapticClick(block = onToggleExpanded),
+                shapes = IconButtonDefaults.shapes(),
+            ) {
+                Icon(
+                    if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Tutup daftar" else "Buka daftar",
+                    tint = cs.onSurfaceVariant,
+                )
+            }
         }
 
         if (expanded) {
@@ -1247,20 +1210,33 @@ private fun YouTubeEpisodePlaylistCard(
                             Row(
                                 Modifier
                                     .fillMaxWidth()
+                                    .padding(horizontal = 6.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(
                                         if (isCurrent) cs.primaryContainer.copy(alpha = 0.45f) else Color.Transparent,
                                     ).clickable(onClick = hapticClick { onPickEpisode(ep) })
-                                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                                    .padding(horizontal = 6.dp, vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(
-                                    if (isCurrent) "▶" else ep.index.orEmpty(),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isCurrent) cs.primary else cs.onSurfaceVariant,
-                                    modifier = Modifier.width(24.dp),
-                                    textAlign = TextAlign.Center,
-                                )
+                                if (isCurrent) {
+                                    Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Outlined.PlayArrow,
+                                            contentDescription = null,
+                                            tint = cs.primary,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        ep.index.orEmpty(),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = cs.onSurfaceVariant,
+                                        modifier = Modifier.width(24.dp),
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
                                 Spacer(Modifier.width(8.dp))
                                 Box(
                                     Modifier
@@ -1276,7 +1252,7 @@ private fun YouTubeEpisodePlaylistCard(
                                     meta?.runtime?.let { rt ->
                                         Text(
                                             "${rt}:00",
-                                            color = Color.White,
+                                            color = cs.onSurface,
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             modifier =
@@ -1284,7 +1260,7 @@ private fun YouTubeEpisodePlaylistCard(
                                                     .align(Alignment.BottomEnd)
                                                     .padding(4.dp)
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(Color(0xCC000000))
+                                                    .background(cs.surfaceContainerHighest.copy(alpha = 0.9f))
                                                     .padding(horizontal = 4.dp, vertical = 1.dp),
                                         )
                                     }
@@ -1605,41 +1581,25 @@ private fun WatchSortButton(
     newestFirst: Boolean,
     onClick: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
     val flip by animateFloatAsState(
         targetValue = if (newestFirst) 1f else -1f,
         animationSpec = motion.defaultSpatialSpec(),
         label = "sortFlip",
     )
-    val container by animateColorAsState(
-        targetValue = if (newestFirst) cs.surfaceContainerHigh else cs.secondaryContainer,
-        animationSpec = motion.fastEffectsSpec(),
-        label = "sortContainer",
-    )
-    Row(
-        modifier =
-            Modifier
-                .height(34.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(container)
-                .clickable(onClick = hapticClick(block = onClick))
-                .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    val toggle = hapticToggle(checked = !newestFirst, block = onClick)
+    ToggleButton(
+        checked = !newestFirst,
+        onCheckedChange = { toggle() },
+        colors = watchToggleColors(),
     ) {
         Icon(
             Icons.AutoMirrored.Outlined.Sort,
             contentDescription = if (newestFirst) "Urutan: terbaru dulu" else "Urutan: terlama dulu",
-            tint = if (newestFirst) cs.onSurface else cs.onSecondaryContainer,
-            modifier = Modifier.size(18.dp).graphicsLayer { scaleY = flip },
+            modifier = Modifier.size(ButtonDefaults.IconSize).graphicsLayer { scaleY = flip },
         )
-        Text(
-            if (newestFirst) "Terbaru" else "Ep 1→",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            color = if (newestFirst) cs.onSurface else cs.onSecondaryContainer,
-        )
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text(if (newestFirst) "Terbaru" else "Ep 1→", fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -1709,17 +1669,6 @@ private fun YouTubeRecommendationCard(
                 Modifier.fillMaxSize(),
                 radius = 12.dp,
             )
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
-                        ),
-                    ),
-            )
             val badgeParts =
                 listOfNotNull(
                     movie.type?.takeIf { it.isNotBlank() },
@@ -1729,7 +1678,7 @@ private fun YouTubeRecommendationCard(
             if (badgeParts.isNotEmpty()) {
                 Text(
                     badgeParts.joinToString(" • "),
-                    color = Color.White,
+                    color = cs.onSurface,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier =
@@ -1737,7 +1686,7 @@ private fun YouTubeRecommendationCard(
                             .align(Alignment.BottomEnd)
                             .padding(8.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xCC000000))
+                            .background(cs.surfaceContainerHighest.copy(alpha = 0.9f))
                             .padding(horizontal = 7.dp, vertical = 3.dp),
                 )
             }
@@ -1907,14 +1856,7 @@ private fun YouTubeEpisodeListItem(
             Modifier
                 .size(160.dp, 90.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(cs.surfaceContainerHighest)
-                .then(
-                    if (current) {
-                        Modifier.border(2.dp, cs.primary, RoundedCornerShape(10.dp))
-                    } else {
-                        Modifier
-                    },
-                ),
+                .background(cs.surfaceContainerHighest),
         ) {
             Poster(
                 meta?.image ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
@@ -1927,7 +1869,7 @@ private fun YouTubeEpisodeListItem(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(Color(0x88000000)),
+                        .background(cs.scrim.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
@@ -1960,7 +1902,7 @@ private fun YouTubeEpisodeListItem(
                 if (badgeText != null) {
                     Text(
                         badgeText,
-                        color = Color.White,
+                        color = cs.onSurface,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier =
@@ -1968,7 +1910,7 @@ private fun YouTubeEpisodeListItem(
                                 .align(Alignment.BottomEnd)
                                 .padding(6.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xCC000000))
+                                .background(cs.surfaceContainerHighest.copy(alpha = 0.9f))
                                 .padding(horizontal = 5.dp, vertical = 2.dp),
                     )
                 }
@@ -1978,13 +1920,18 @@ private fun YouTubeEpisodeListItem(
                             .align(Alignment.TopStart)
                             .padding(6.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xB3000000))
+                            .background(cs.primaryContainer)
                             .padding(horizontal = 5.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(11.dp))
-                        Text("Ditonton", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        Icon(Icons.Outlined.Check, null, tint = cs.onPrimaryContainer, modifier = Modifier.size(11.dp))
+                        Text(
+                            "Ditonton",
+                            color = cs.onPrimaryContainer,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
                 }
             }
@@ -1995,7 +1942,7 @@ private fun YouTubeEpisodeListItem(
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .height(3.dp)
-                        .background(Color(0x55FFFFFF)),
+                        .background(cs.surfaceVariant.copy(alpha = 0.7f)),
                 ) {
                     Box(
                         Modifier
@@ -2238,13 +2185,6 @@ private fun CommentsPreviewCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Komentar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            if (state is UiState.Ready && items.isNotEmpty()) {
-                Text(
-                    fmtNum(items.size.toString()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                )
-            }
             Spacer(Modifier.weight(1f))
             Icon(
                 Icons.Outlined.UnfoldMore,
