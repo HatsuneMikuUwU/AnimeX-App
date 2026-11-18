@@ -808,7 +808,12 @@ fun PlayerChrome(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (compact) {
-                        IconButton(onClick = hapticClick(block = onBack)) {
+                        FilledIconButton(
+                            onClick = hapticClick(block = onBack),
+                            modifier = Modifier.size(40.dp),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
+                        ) {
                             Icon(
                                 Icons.Outlined.KeyboardArrowDown,
                                 contentDescription = "Kecilkan ke mini player",
@@ -831,11 +836,14 @@ fun PlayerChrome(
                             },
                         )
                         Spacer(Modifier.width(4.dp))
-                        IconButton(
+                        FilledIconButton(
                             onClick = hapticClick {
                                 visible = false
                                 onOpenSettings()
                             },
+                            modifier = Modifier.size(40.dp),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
                         ) {
                             Icon(
                                 Icons.Outlined.Settings,
@@ -1027,14 +1035,21 @@ fun PlayerChrome(
                                     }
                                 },
                                 style = MaterialTheme.typography.labelMedium,
+                                modifier =
+                                    Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(Color(0x66000000))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
                             )
                             Spacer(Modifier.weight(1f))
-                            IconButton(
+                            FilledIconButton(
                                 onClick = hapticClick {
                                     onToggleFullscreen()
                                     poke++
                                 },
                                 modifier = Modifier.size(40.dp),
+                                shapes = IconButtonDefaults.shapes(),
+                                colors = overlayButtonColors(),
                             ) {
                                 Icon(
                                     Icons.Outlined.Fullscreen,
