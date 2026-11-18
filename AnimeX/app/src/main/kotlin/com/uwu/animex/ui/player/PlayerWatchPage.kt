@@ -187,7 +187,6 @@ import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
-import com.uwu.animex.ui.detail.DownloadButton
 import com.uwu.animex.ui.detail.shareAnime
 import com.uwu.animex.ui.detail.shareEpisode
 import com.uwu.animex.ui.discussion.DiscussionRow
@@ -1653,7 +1652,7 @@ private fun LazyListScope.watchSimilarFeedItems(
                 YouTubeRecommendationCard(
                     movie = sm.movie,
                     onOpen = onOpenAnime,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier = Modifier.padding(vertical = 4.dp),
                 )
             }
     }
@@ -1673,15 +1672,17 @@ private fun YouTubeRecommendationCard(
     Column(
         modifier
             .fillMaxWidth()
+            .padding(horizontal = 6.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(cs.surfaceContainer)
             .hapticClick(
                 onLongClick = statusLongClick,
                 onClick = { movie.id?.let(onOpen) },
-            ),
+            ).padding(6.dp),
     ) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(cs.surfaceContainerHigh),
@@ -1717,7 +1718,7 @@ private fun YouTubeRecommendationCard(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 4.dp, top = 10.dp),
+                .padding(top = 10.dp),
             verticalAlignment = Alignment.Top,
         ) {
             Box(
@@ -1864,9 +1865,11 @@ private fun YouTubeEpisodeListItem(
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (current) cs.primaryContainer.copy(alpha = 0.35f) else Color.Transparent)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (current) cs.primaryContainer else cs.surfaceContainer)
             .clickable(onClick = hapticClick(block = onClick))
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 6.dp, vertical = 7.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
@@ -1977,7 +1980,7 @@ private fun YouTubeEpisodeListItem(
             Modifier
                 .weight(1f)
                 .heightIn(min = 90.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
         ) {
             Text(
                 displayTitle,
@@ -2011,11 +2014,6 @@ private fun YouTubeEpisodeListItem(
                 )
             }
         }
-
-        DownloadButton(
-            item = download,
-            onStart = onDownload,
-        )
     }
 }
 
