@@ -38,14 +38,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Pause
@@ -1452,7 +1450,7 @@ fun PlayerScreen(
                                     Icon(
                                         Icons.Outlined.Tab,
                                         contentDescription = "Mode mengambang",
-                                        tint = cs.onSurfaceVariant,
+                                        tint = cs.onSurface,
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
@@ -1498,7 +1496,7 @@ fun PlayerScreen(
                                     Icon(
                                         Icons.Outlined.Close,
                                         contentDescription = "Tutup mini player",
-                                        tint = cs.onSurfaceVariant,
+                                        tint = cs.onSurface,
                                         modifier = Modifier.size(20.dp),
                                     )
                                 }
@@ -1571,24 +1569,7 @@ fun PlayerScreen(
                                     .fillMaxWidth()
                                     .height(FloatingMiniVideoHeight)
                                     .clickable(onClick = hapticClick { onExpand?.invoke() }),
-                            ) {
-                                Box(
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(6.dp)
-                                        .size(26.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0x88000000)),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Fullscreen,
-                                        contentDescription = "Perbesar",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            }
+                            )
 
                             Row(
                                 Modifier
@@ -1619,7 +1600,7 @@ fun PlayerScreen(
                                     Icon(
                                         Icons.Outlined.ViewAgenda,
                                         contentDescription = "Mode bar bawah",
-                                        tint = cs.onSurfaceVariant,
+                                        tint = cs.onSurface,
                                         modifier = Modifier.size(16.dp),
                                     )
                                 }
@@ -1647,7 +1628,7 @@ fun PlayerScreen(
                                     Icon(
                                         Icons.Outlined.Close,
                                         contentDescription = "Tutup",
-                                        tint = cs.onSurfaceVariant,
+                                        tint = cs.onSurface,
                                         modifier = Modifier.size(17.dp),
                                     )
                                 }
