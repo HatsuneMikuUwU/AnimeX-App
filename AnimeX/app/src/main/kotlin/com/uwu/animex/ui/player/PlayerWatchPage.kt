@@ -1525,7 +1525,7 @@ private fun YouTubeDescriptionSheetPanel(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(cs.surfaceContainerHigh)
+                            .background(cs.surfaceContainer)
                             .clickable(
                                 onClick = hapticClick {
                                     onClose()
