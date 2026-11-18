@@ -75,8 +75,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -85,7 +83,6 @@ import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.UnfoldMore
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -115,7 +112,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -127,7 +123,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
@@ -207,7 +202,7 @@ internal data class WatchChip(
     val onClick: () -> Unit,
 )
 
-private val WATCH_SECTIONS = listOf("Semua", "Episode", "Saran")
+private val WATCH_SECTIONS = listOf("Episode", "Saran")
 
 @Composable
 internal fun PlayerWatchPage(
@@ -235,7 +230,6 @@ internal fun PlayerWatchPage(
 ) {
     val cs = MaterialTheme.colorScheme
     var section by rememberSaveable { mutableIntStateOf(0) }
-    var playlistExpanded by rememberSaveable { mutableStateOf(true) }
     val listState = rememberLazyListState()
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
@@ -301,7 +295,7 @@ internal fun PlayerWatchPage(
         episodeList.loading,
         episodeList.moreError,
     ) {
-        if (section == 1 &&
+        if (section == 0 &&
             nearEnd &&
             episodeList.hasMore &&
             !episodeList.loadingMore &&
@@ -460,24 +454,6 @@ internal fun PlayerWatchPage(
                 )
             }
 
-            if (section == 0 && movieId != null) {
-                item(key = "yt-playlist-card") {
-                    YouTubeEpisodePlaylistCard(
-                        animeTitle = resolvedAnimeTitle,
-                        currentEpId = currentEpId,
-                        currentIndex = currentIndex,
-                        list = episodeList,
-                        fallbackImage = fallbackImage,
-                        aniZip = aniZip,
-                        expanded = playlistExpanded,
-                        onToggleExpanded = { playlistExpanded = !playlistExpanded },
-                        onSortToggle = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
-                        onPickEpisode = onPickEpisode,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-            }
-
             item(key = "yt-filter-chips") {
                 Row(
                     Modifier
@@ -491,7 +467,7 @@ internal fun PlayerWatchPage(
                         onSelect = { section = it },
                         modifier = Modifier.weight(1f),
                     )
-                    if (section == 1 && movieId != null) {
+                    if (section == 0 && movieId != null) {
                         Spacer(Modifier.width(8.dp))
                         WatchSortButton(
                             newestFirst = episodeList.newestFirst,
@@ -503,13 +479,6 @@ internal fun PlayerWatchPage(
 
             when (section) {
                 0 -> {
-                    watchSimilarFeedItems(
-                        similar = similar,
-                        loading = similarLoading,
-                        onOpenAnime = onOpenAnime,
-                    )
-                }
-                1 -> {
                     watchEpisodeItems(
                         movieId = movieId,
                         animeTitle = resolvedAnimeTitle,
@@ -1090,213 +1059,6 @@ private fun YouTubeFilterChipsRow(
                     color = fg,
                     maxLines = 1,
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun YouTubeEpisodePlaylistCard(
-    animeTitle: String,
-    currentEpId: String,
-    currentIndex: String?,
-    list: PlayerEpisodeList,
-    fallbackImage: String?,
-    aniZip: com.uwu.animex.data.api.AniZipInfo?,
-    expanded: Boolean,
-    onToggleExpanded: () -> Unit,
-    onSortToggle: () -> Unit,
-    onPickEpisode: (Episode) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
-    val orderedAsc =
-        remember(list.episodes, list.pinned, currentEpId) {
-            val pinnedEp = list.pinned
-            val base =
-                if (pinnedEp != null && list.episodes.none { it.id == pinnedEp.id }) {
-                    list.episodes + pinnedEp
-                } else {
-                    list.episodes
-                }
-            base.sortedBy { it.index?.trim()?.toDoubleOrNull() ?: Double.MAX_VALUE }
-        }
-    val curPos = orderedAsc.indexOfFirst { it.id == currentEpId }
-    val previewWindow =
-        remember(orderedAsc, curPos) {
-            if (orderedAsc.isEmpty()) {
-                emptyList()
-            } else {
-                val start = (if (curPos >= 0) curPos else 0).coerceAtLeast(0)
-                orderedAsc.drop(start).take(5).ifEmpty { orderedAsc.take(5) }
-            }
-        }
-    val nextUpLabel =
-        remember(orderedAsc, curPos, currentIndex) {
-            val next = if (curPos >= 0) orderedAsc.getOrNull(curPos + 1) else null
-            when {
-                next != null -> "Berikutnya: Episode ${next.index.orEmpty()}"
-                !currentIndex.isNullOrBlank() -> "Sedang diputar: Episode $currentIndex"
-                else -> "Daftar episode"
-            }
-        }
-
-    Column(
-        modifier
-            .fillMaxWidth()
-            .animateContentSize(motion.defaultSpatialSpec())
-            .clip(RoundedCornerShape(14.dp))
-            .background(cs.surfaceContainer),
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = hapticClick(block = onToggleExpanded))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.Outlined.VideoLibrary,
-                contentDescription = null,
-                tint = cs.primary,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    nextUpLabel,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = cs.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    buildString {
-                        append(animeTitle)
-                        if (orderedAsc.isNotEmpty()) {
-                            val idxText = if (curPos >= 0) "${curPos + 1}/${orderedAsc.size}" else "${orderedAsc.size} ep"
-                            append(" • $idxText")
-                        }
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = cs.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Icon(
-                if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
-                contentDescription = if (expanded) "Tutup daftar" else "Buka daftar",
-                tint = cs.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-
-        if (expanded) {
-            when {
-                list.loading && previewWindow.isEmpty() -> {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        AppLoadingIndicator(Modifier.size(24.dp))
-                    }
-                }
-                previewWindow.isNotEmpty() -> {
-                    Column(
-                        Modifier.padding(vertical = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        previewWindow.forEach { ep ->
-                            val isCurrent = ep.id == currentEpId
-                            val meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
-                            val epTitle = meta?.title?.takeIf { it.isNotBlank() } ?: ep.title?.takeIf { it.isNotBlank() }
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 6.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(
-                                        if (isCurrent) cs.primaryContainer.copy(alpha = 0.45f) else cs.surfaceContainerHighest,
-                                    ).clickable(onClick = hapticClick { onPickEpisode(ep) })
-                                    .padding(horizontal = 6.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                if (isCurrent) {
-                                    Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            Icons.Outlined.PlayArrow,
-                                            contentDescription = null,
-                                            tint = cs.primary,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
-                                } else {
-                                    Text(
-                                        ep.index.orEmpty(),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = cs.onSurfaceVariant,
-                                        modifier = Modifier.width(24.dp),
-                                        textAlign = TextAlign.Center,
-                                    )
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                Box(
-                                    Modifier
-                                        .size(96.dp, 54.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(cs.surfaceContainerHighest),
-                                ) {
-                                    Poster(
-                                        meta?.image ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
-                                        Modifier.fillMaxSize(),
-                                        radius = 8.dp,
-                                    )
-                                    meta?.runtime?.let { rt ->
-                                        Text(
-                                            "${rt}:00",
-                                            color = cs.onSurface,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            modifier =
-                                                Modifier
-                                                    .align(Alignment.BottomEnd)
-                                                    .padding(4.dp)
-                                                    .clip(RoundedCornerShape(4.dp))
-                                                    .background(cs.surfaceContainerHighest.copy(alpha = 0.9f))
-                                                    .padding(horizontal = 4.dp, vertical = 1.dp),
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.width(10.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        epTitle ?: "Episode ${ep.index.orEmpty()}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
-                                        color = if (isCurrent) cs.primary else cs.onSurface,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    val sub =
-                                        listOfNotNull(
-                                            if (isCurrent) "Sedang diputar" else null,
-                                            AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
-                                        ).joinToString(" • ")
-                                    if (sub.isNotBlank()) {
-                                        Text(
-                                            sub,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = cs.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
