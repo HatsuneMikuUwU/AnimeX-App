@@ -262,7 +262,7 @@ internal fun SeekBar(
             },
     ) {
         val activeTrackH = (if (drag != null) 5.dp else if (edgeToEdge) 3.dp else 4.dp).toPx()
-        val cy = if (edgeToEdge) size.height - activeTrackH / 2f else size.height / 2f
+        val cy = if (edgeToEdge) size.height - 8.5.dp.toPx() else size.height / 2f
         val top = cy - activeTrackH / 2f
         val radius = if (edgeToEdge) CornerRadius.Zero else CornerRadius(activeTrackH / 2f)
         drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, activeTrackH), radius)
@@ -288,11 +288,10 @@ internal fun SeekBar(
                 else -> 7.dp.toPx()
             }
         val thumbX = (size.width * frac).coerceIn(thumbRadius, (size.width - thumbRadius).coerceAtLeast(thumbRadius))
-        val thumbY = if (edgeToEdge) (size.height - thumbRadius).coerceAtMost(cy) else cy
         drawCircle(
             color = played,
             radius = thumbRadius,
-            center = Offset(thumbX, thumbY),
+            center = Offset(thumbX, cy),
         )
     }
 }
