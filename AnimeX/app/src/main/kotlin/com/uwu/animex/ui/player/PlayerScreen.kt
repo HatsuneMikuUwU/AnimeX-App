@@ -1772,7 +1772,6 @@ fun PlayerScreen(
                     speedValue = speedLabel(speed),
                     sleepValue = if (sleepActive) sleepChipLabel else "Mati",
                     resizeValue = resize.label,
-                    floatingMiniPlayer = miniFloating,
                     canOpenExternal = currentServer?.isDirect == true && !currentServer.link.isNullOrBlank(),
                     onDismiss = { showSettingsHub = false },
                     onOpenQuality = {
@@ -1791,17 +1790,6 @@ fun PlayerScreen(
                         val n = resize.next()
                         resize = n
                         showMessage("Rasio tampilan: ${n.label}")
-                    },
-                    onToggleMiniStyle = {
-                        val nextStyle = !miniFloating
-                        PlayerPrefs.setMiniPlayerFloating(nextStyle)
-                        showMessage(
-                            if (nextStyle) {
-                                "Mini player diubah ke mode mengambang"
-                            } else {
-                                "Mini player diubah ke bar bawah"
-                            },
-                        )
                     },
                     onOpenExternal = {
                         showSettingsHub = false

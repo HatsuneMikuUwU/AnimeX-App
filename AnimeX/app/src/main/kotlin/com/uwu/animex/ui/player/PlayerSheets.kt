@@ -21,7 +21,6 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.Tab
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TimerOff
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -155,31 +154,20 @@ internal fun YouTubePlayerSettingsSheet(
     speedValue: String,
     sleepValue: String,
     resizeValue: String,
-    floatingMiniPlayer: Boolean,
     canOpenExternal: Boolean,
     onDismiss: () -> Unit,
     onOpenQuality: () -> Unit,
     onOpenSpeed: () -> Unit,
     onOpenSleep: () -> Unit,
     onCycleResize: () -> Unit,
-    onToggleMiniStyle: () -> Unit,
     onOpenExternal: () -> Unit,
 ) {
-
     val rows =
         buildList {
             add(HubRow(Icons.Outlined.HighQuality, "Kualitas video", qualityValue, onOpenQuality))
             add(HubRow(Icons.Outlined.Speed, "Kecepatan pemutaran", speedValue, onOpenSpeed))
             add(HubRow(Icons.Outlined.Bedtime, "Timer tidur", sleepValue, onOpenSleep))
             add(HubRow(Icons.Outlined.AspectRatio, "Rasio tampilan", resizeValue, onCycleResize))
-            add(
-                HubRow(
-                    Icons.Outlined.Tab,
-                    "Gaya mini player",
-                    if (floatingMiniPlayer) "Mengambang" else "Bar bawah",
-                    onToggleMiniStyle,
-                ),
-            )
             if (canOpenExternal) {
                 add(HubRow(Icons.AutoMirrored.Outlined.OpenInNew, "Putar di aplikasi eksternal", "", onOpenExternal))
             }
