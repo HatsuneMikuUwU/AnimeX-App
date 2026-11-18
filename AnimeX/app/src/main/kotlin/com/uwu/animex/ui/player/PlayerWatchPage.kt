@@ -409,8 +409,6 @@ internal fun PlayerWatchPage(
                                 ?.takeIf { it.isNotBlank() && !hideStats }
                                 ?.let { "${fmtNum(it)} favorit" },
                         ).joinToString(" • "),
-                    status = synced.status,
-                    statusEnabled = movie != null && movieId != null,
                     alertActive = alertActive,
                     alertEnabled = movie != null && movieId != null,
                     onToggleAlert = {
@@ -425,7 +423,6 @@ internal fun PlayerWatchPage(
                             snackbar.show(snackScope, "Notifikasi episode baru diaktifkan")
                         }
                     },
-                    onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                     onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
                 )
             }
@@ -434,6 +431,9 @@ internal fun PlayerWatchPage(
                 YouTubeActionPillsRow(
                     onPrev = onPrev,
                     onNext = onNext,
+                    status = synced.status,
+                    statusEnabled = movie != null && movieId != null,
+                    onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                     onShare = {
                         if (movieId != null) {
                             shareEpisode(
@@ -675,12 +675,9 @@ private fun YouTubeChannelBar(
     poster: String?,
     animeTitle: String,
     subtitle: String,
-    status: WatchStatus?,
-    statusEnabled: Boolean,
     alertActive: Boolean,
     alertEnabled: Boolean,
     onToggleAlert: () -> Unit,
-    onStatusClick: () -> Unit,
     onOpenAnime: (() -> Unit)?,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -736,13 +733,15 @@ private fun YouTubeChannelBar(
         Spacer(Modifier.width(8.dp))
 
         if (alertEnabled) {
-            Box(
+            Row(
                 Modifier
-                    .size(36.dp)
+                    .height(36.dp)
                     .clip(CircleShape)
                     .background(if (alertActive) cs.primaryContainer else cs.surfaceContainerHigh)
-                    .clickable(onClick = hapticClick(block = onToggleAlert)),
-                contentAlignment = Alignment.Center,
+                    .clickable(onClick = hapticClick(block = onToggleAlert))
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Icon(
                     if (alertActive) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
@@ -750,55 +749,12 @@ private fun YouTubeChannelBar(
                     tint = if (alertActive) cs.onPrimaryContainer else cs.onSurface,
                     modifier = Modifier.size(18.dp),
                 )
-            }
-            Spacer(Modifier.width(6.dp))
-        }
-
-        val saved = status != null
-        val pillBg by animateColorAsState(
-            targetValue = if (saved) cs.surfaceContainerHigh else cs.primary,
-            label = "ytSubBg",
-        )
-        val pillFg by animateColorAsState(
-            targetValue = if (saved) cs.onSurface else cs.onPrimary,
-            label = "ytSubFg",
-        )
-        Row(
-            Modifier
-                .height(36.dp)
-                .clip(CircleShape)
-                .background(pillBg.copy(alpha = if (statusEnabled) 1f else 0.5f))
-                .then(
-                    if (statusEnabled) {
-                        Modifier.clickable(onClick = hapticClick(block = onStatusClick))
-                    } else {
-                        Modifier
-                    },
-                ).padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            if (saved) {
-                Icon(
-                    status?.icon ?: Icons.Outlined.BookmarkBorder,
-                    contentDescription = null,
-                    tint = pillFg,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Text(
-                status?.label ?: "Simpan",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = pillFg,
-                maxLines = 1,
-            )
-            if (saved) {
-                Icon(
-                    Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = pillFg,
-                    modifier = Modifier.size(16.dp),
+                Text(
+                    if (alertActive) "Unsubscribe" else "Subscribe",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (alertActive) cs.onPrimaryContainer else cs.onSurface,
+                    maxLines = 1,
                 )
             }
         }
@@ -809,6 +765,9 @@ private fun YouTubeChannelBar(
 private fun YouTubeActionPillsRow(
     onPrev: (() -> Unit)?,
     onNext: (() -> Unit)?,
+    status: WatchStatus?,
+    statusEnabled: Boolean,
+    onStatusClick: () -> Unit,
     onShare: () -> Unit,
     currentDownload: Downloads.Item?,
     onStartDownload: () -> Unit,
@@ -884,6 +843,45 @@ private fun YouTubeActionPillsRow(
                     )
                 }
             }
+        }
+
+        val saved = status != null
+        val pillBg by animateColorAsState(
+            targetValue = if (saved) cs.surfaceContainerHigh else cs.primary,
+            label = "ytSubBg",
+        )
+        val pillFg by animateColorAsState(
+            targetValue = if (saved) cs.onSurface else cs.onPrimary,
+            label = "ytSubFg",
+        )
+        Row(
+            Modifier
+                .height(36.dp)
+                .clip(CircleShape)
+                .background(pillBg.copy(alpha = if (statusEnabled) 1f else 0.5f))
+                .then(
+                    if (statusEnabled) {
+                        Modifier.clickable(onClick = hapticClick(block = onStatusClick))
+                    } else {
+                        Modifier
+                    },
+                ).padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                status?.icon ?: Icons.Outlined.BookmarkBorder,
+                contentDescription = null,
+                tint = pillFg,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                status?.label ?: "Simpan",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = pillFg,
+                maxLines = 1,
+            )
         }
 
         YouTubePillActionChip(

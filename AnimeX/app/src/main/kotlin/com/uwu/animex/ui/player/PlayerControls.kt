@@ -804,7 +804,7 @@ fun PlayerChrome(
                         .align(Alignment.TopStart)
                         .fillMaxWidth()
                         .then(if (compact) Modifier else Modifier.safeDrawingPadding())
-                        .padding(horizontal = if (compact) 6.dp else 4.dp, vertical = if (compact) 4.dp else 8.dp),
+                        .padding(horizontal = if (compact) 12.dp else 4.dp, vertical = if (compact) 4.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (compact) {
@@ -900,41 +900,41 @@ fun PlayerChrome(
                     horizontalArrangement = Arrangement.spacedBy(if (compact) 28.dp else 24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledIconButton(
-                        onClick = hapticClick {
-                            onPrev()
-                            poke++
-                        },
-                        enabled = hasPrev,
-                        modifier = Modifier.size(sideBtn),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = overlayButtonColors(),
-                    ) {
-                        Icon(
-                            Icons.Outlined.SkipPrevious,
-                            contentDescription = "Episode sebelumnya",
-                            tint = Color.White.copy(alpha = if (hasPrev) 1f else 0.35f),
-                            modifier = Modifier.size(sideIcon),
-                        )
-                    }
-
                     if (!compact) {
                         FilledIconButton(
                             onClick = hapticClick {
-                                seekBy(-SEEK_STEP_MS)
+                                onPrev()
                                 poke++
                             },
+                            enabled = hasPrev,
                             modifier = Modifier.size(sideBtn),
                             shapes = IconButtonDefaults.shapes(),
                             colors = overlayButtonColors(),
                         ) {
                             Icon(
-                                Icons.Outlined.Replay10,
-                                contentDescription = "Mundur 10 detik",
-                                tint = Color.White,
+                                Icons.Outlined.SkipPrevious,
+                                contentDescription = "Episode sebelumnya",
+                                tint = Color.White.copy(alpha = if (hasPrev) 1f else 0.35f),
                                 modifier = Modifier.size(sideIcon),
                             )
                         }
+                    }
+
+                    FilledIconButton(
+                        onClick = hapticClick {
+                            seekBy(-SEEK_STEP_MS)
+                            poke++
+                        },
+                        modifier = Modifier.size(sideBtn),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Replay10,
+                            contentDescription = "Mundur 10 detik",
+                            tint = Color.White,
+                            modifier = Modifier.size(sideIcon),
+                        )
                     }
 
                     FilledIconButton(
@@ -966,41 +966,41 @@ fun PlayerChrome(
                         }
                     }
 
-                    if (!compact) {
-                        FilledIconButton(
-                            onClick = hapticClick {
-                                seekBy(SEEK_STEP_MS)
-                                poke++
-                            },
-                            modifier = Modifier.size(sideBtn),
-                            shapes = IconButtonDefaults.shapes(),
-                            colors = overlayButtonColors(),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Forward10,
-                                contentDescription = "Maju 10 detik",
-                                tint = Color.White,
-                                modifier = Modifier.size(sideIcon),
-                            )
-                        }
-                    }
-
                     FilledIconButton(
                         onClick = hapticClick {
-                            onNext()
+                            seekBy(SEEK_STEP_MS)
                             poke++
                         },
-                        enabled = hasNext,
                         modifier = Modifier.size(sideBtn),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
                         Icon(
-                            Icons.Outlined.SkipNext,
-                            contentDescription = "Episode selanjutnya",
-                            tint = Color.White.copy(alpha = if (hasNext) 1f else 0.35f),
+                            Icons.Outlined.Forward10,
+                            contentDescription = "Maju 10 detik",
+                            tint = Color.White,
                             modifier = Modifier.size(sideIcon),
                         )
+                    }
+
+                    if (!compact) {
+                        FilledIconButton(
+                            onClick = hapticClick {
+                                onNext()
+                                poke++
+                            },
+                            enabled = hasNext,
+                            modifier = Modifier.size(sideBtn),
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = overlayButtonColors(),
+                        ) {
+                            Icon(
+                                Icons.Outlined.SkipNext,
+                                contentDescription = "Episode selanjutnya",
+                                tint = Color.White.copy(alpha = if (hasNext) 1f else 0.35f),
+                                modifier = Modifier.size(sideIcon),
+                            )
+                        }
                     }
                 }
 
@@ -1013,7 +1013,7 @@ fun PlayerChrome(
                         Row(
                             Modifier
                                 .fillMaxWidth()
-                                .padding(start = 12.dp, end = 4.dp),
+                                .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             val currentStr =
