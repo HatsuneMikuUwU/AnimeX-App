@@ -348,15 +348,13 @@ internal fun PlayerWatchPage(
     val currentDownload by remember(currentEpId) { Downloads.itemFlow(currentEpId) }
         .collectAsStateWithLifecycle(initialValue = Downloads.item(currentEpId))
 
-    val viewsDisplay =
-        remember(curEpisodeObj.views, movie?.views, hideStats) {
-            if (hideStats) {
-                null
-            } else {
-                val raw = curEpisodeObj.views?.takeIf { it.isNotBlank() } ?: movie?.views?.takeIf { it.isNotBlank() }
-                raw?.let { "${fmtNum(it)} x ditonton" }
-            }
+    val rawViews =
+        if (hideStats) {
+            null
+        } else {
+            curEpisodeObj.views?.takeIf { it.isNotBlank() } ?: movie?.views?.takeIf { it.isNotBlank() }
         }
+    val viewsDisplay = rawViews?.let { "${fmtNum(it)} x ditonton" }
     val dateDisplay = AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() }
     val genreTags =
         remember(movie?.genre) {
@@ -1420,7 +1418,7 @@ private fun YouTubeDescriptionSheetPanel(
                         "—"
                     } else {
                         viewsText?.substringBefore(" x")
-                            ?: movie?.favorites?.takeIf { it.isNotBlank() }?.let(::fmtNum)
+                            ?: movie?.favorites?.takeIf { it.isNotBlank() }?.let { fmtNum(it) }
                             ?: "—"
                     }
                 val countLabel = if (viewsText != null) "Ditonton" else "Favorit"
