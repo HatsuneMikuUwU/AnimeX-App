@@ -124,7 +124,7 @@ object PlayerPrefs {
     private val _backgroundPlay = MutableStateFlow(false)
     val backgroundPlay: StateFlow<Boolean> = _backgroundPlay.asStateFlow()
 
-    private val _miniPlayerFloating = MutableStateFlow(false)
+    private val _miniPlayerFloating = MutableStateFlow(true)
     val miniPlayerFloating: StateFlow<Boolean> = _miniPlayerFloating.asStateFlow()
 
     const val DEFAULT_SKIP_INTRO_MS = 85_000
@@ -185,7 +185,7 @@ object PlayerPrefs {
         _pauseOnNoisy.value = sp.getBoolean(PrefKeys.Player.PAUSE_ON_NOISY, true)
         _volumeBoost.value = sp.getBoolean(PrefKeys.Player.VOLUME_BOOST, false)
         _backgroundPlay.value = sp.getBoolean(PrefKeys.Player.BACKGROUND_PLAY, false)
-        _miniPlayerFloating.value = sp.getBoolean(PrefKeys.Player.MINI_PLAYER_FLOATING, false)
+        _miniPlayerFloating.value = sp.getBoolean(PrefKeys.Player.MINI_PLAYER_FLOATING, true)
         _skipIntroMs.value = sp.getInt(PrefKeys.Player.SKIP_INTRO_MS, DEFAULT_SKIP_INTRO_MS).coerceIn(10_000, 300_000)
     }
 
