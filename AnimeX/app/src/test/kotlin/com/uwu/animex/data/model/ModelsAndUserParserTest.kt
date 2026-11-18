@@ -2,7 +2,7 @@ package com.uwu.animex.data.model
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
-import com.uwu.animex.data.user.Discussion
+import com.uwu.animex.data.user.UserApi.Discussion
 import com.uwu.animex.data.user.unmaskAccountSecret
 import com.uwu.animex.data.user.parseUserApiList
 import org.junit.Assert.assertEquals
