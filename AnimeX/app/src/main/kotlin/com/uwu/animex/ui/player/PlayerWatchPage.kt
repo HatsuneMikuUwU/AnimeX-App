@@ -1609,7 +1609,6 @@ private fun YouTubeEpisodeListItem(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val hideStats = rememberHideStats()
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
         .collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
     val progress = Progress.fractionOf(watch)
@@ -1618,7 +1617,8 @@ private fun YouTubeEpisodeListItem(
             (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
     val done = Progress.isDoneWatch(watch) || doneInMal
     val rawTitle = meta?.title?.takeIf { it.isNotBlank() } ?: ep.title?.takeIf { it.isNotBlank() }
-    val displayTitle = rawTitle ?: "Episode ${ep.index.orEmpty()}"
+    val displayTitle =
+        if (rawTitle == null) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. $rawTitle"
 
     Row(
         Modifier
@@ -1748,22 +1748,6 @@ private fun YouTubeEpisodeListItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            val subInfo =
-                listOfNotNull(
-                    if (rawTitle != null) ep.index?.takeIf { it.isNotBlank() }?.let { "Ep $it" } else null,
-                    ep.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} ditonton" },
-                    meta?.rating?.takeIf { it.isNotBlank() }?.let { "★ ${it.replace('.', ',')}" },
-                    AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
-                )
-            if (subInfo.isNotEmpty()) {
-                Text(
-                    subInfo.joinToString(" • "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = cs.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
     }
 }
