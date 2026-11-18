@@ -845,20 +845,11 @@ private fun YouTubeActionPillsRow(
             }
         }
 
-        val saved = status != null
-        val pillBg by animateColorAsState(
-            targetValue = if (saved) cs.surfaceContainerHigh else cs.primary,
-            label = "ytSubBg",
-        )
-        val pillFg by animateColorAsState(
-            targetValue = if (saved) cs.onSurface else cs.onPrimary,
-            label = "ytSubFg",
-        )
         Row(
             Modifier
                 .height(36.dp)
                 .clip(CircleShape)
-                .background(pillBg.copy(alpha = if (statusEnabled) 1f else 0.5f))
+                .background(cs.surfaceContainerHigh.copy(alpha = if (statusEnabled) 1f else 0.5f))
                 .then(
                     if (statusEnabled) {
                         Modifier.clickable(onClick = hapticClick(block = onStatusClick))
@@ -872,14 +863,14 @@ private fun YouTubeActionPillsRow(
             Icon(
                 status?.icon ?: Icons.Outlined.BookmarkBorder,
                 contentDescription = null,
-                tint = pillFg,
+                tint = cs.onSurface,
                 modifier = Modifier.size(18.dp),
             )
             Text(
-                status?.label ?: "Simpan",
+                status?.label ?: "Atur status",
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = pillFg,
+                fontWeight = FontWeight.Medium,
+                color = cs.onSurface,
                 maxLines = 1,
             )
         }
