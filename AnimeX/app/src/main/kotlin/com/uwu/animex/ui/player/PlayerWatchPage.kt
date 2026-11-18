@@ -329,9 +329,8 @@ internal fun PlayerWatchPage(
     val resolvedAnimeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle
     val headerTitle =
         when {
-            epNumber != null && epTitle != null -> "Episode $epNumber — $epTitle"
-            epNumber != null -> "$resolvedAnimeTitle — Episode $epNumber"
             epTitle != null -> epTitle
+            epNumber != null -> "$resolvedAnimeTitle — Episode $epNumber"
             else -> resolvedAnimeTitle
         }
     val miniEpisodeLabel =
@@ -1281,7 +1280,7 @@ private fun YouTubeEpisodePlaylistCard(
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        if (epTitle != null) "Episode ${ep.index.orEmpty()} — $epTitle" else "Episode ${ep.index.orEmpty()}",
+                                        epTitle ?: "Episode ${ep.index.orEmpty()}",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
                                         color = if (isCurrent) cs.primary else cs.onSurface,
@@ -1866,12 +1865,7 @@ private fun YouTubeEpisodeListItem(
             (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
     val done = Progress.isDoneWatch(watch) || doneInMal
     val rawTitle = meta?.title?.takeIf { it.isNotBlank() } ?: ep.title?.takeIf { it.isNotBlank() }
-    val displayTitle =
-        if (rawTitle != null) {
-            "Episode ${ep.index.orEmpty()} — $rawTitle"
-        } else {
-            "Episode ${ep.index.orEmpty()}"
-        }
+    val displayTitle = rawTitle ?: "Episode ${ep.index.orEmpty()}"
 
     Row(
         Modifier
@@ -2008,6 +2002,7 @@ private fun YouTubeEpisodeListItem(
             )
             val subInfo =
                 listOfNotNull(
+                    if (rawTitle != null) ep.index?.takeIf { it.isNotBlank() }?.let { "Ep $it" } else null,
                     ep.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} x ditonton" },
                     meta?.rating?.takeIf { it.isNotBlank() }?.let { "★ ${it.replace('.', ',')}" },
                     AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
