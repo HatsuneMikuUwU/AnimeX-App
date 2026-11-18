@@ -482,7 +482,6 @@ internal fun PlayerWatchPage(
                         aniZip = aniZip,
                         expanded = playlistExpanded,
                         onToggleExpanded = { playlistExpanded = !playlistExpanded },
-                        onShowAllEpisodes = { section = 1 },
                         onSortToggle = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
                         onPickEpisode = onPickEpisode,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1093,7 +1092,6 @@ private fun YouTubeEpisodePlaylistCard(
     aniZip: com.uwu.animex.data.api.AniZipInfo?,
     expanded: Boolean,
     onToggleExpanded: () -> Unit,
-    onShowAllEpisodes: () -> Unit,
     onSortToggle: () -> Unit,
     onPickEpisode: (Episode) -> Unit,
     modifier: Modifier = Modifier,
@@ -1174,13 +1172,6 @@ private fun YouTubeEpisodePlaylistCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-            TextButton(
-                onClick = hapticClick(block = onShowAllEpisodes),
-                shapes = ButtonDefaults.shapes(),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-            ) {
-                Text("Semua", style = MaterialTheme.typography.labelLarge)
             }
             IconButton(
                 onClick = hapticClick(block = onToggleExpanded),
