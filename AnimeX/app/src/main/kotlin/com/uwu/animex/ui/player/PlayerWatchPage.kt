@@ -481,7 +481,6 @@ internal fun PlayerWatchPage(
                 0 -> {
                     watchEpisodeItems(
                         movieId = movieId,
-                        animeTitle = resolvedAnimeTitle,
                         list = episodeList,
                         currentEpId = currentEpId,
                         fallbackImage = fallbackImage,
@@ -1537,7 +1536,6 @@ private fun YouTubeRecommendationCard(
 
 private fun LazyListScope.watchEpisodeItems(
     movieId: String?,
-    animeTitle: String,
     list: PlayerEpisodeList,
     currentEpId: String,
     fallbackImage: String?,
@@ -1570,7 +1568,6 @@ private fun LazyListScope.watchEpisodeItems(
                     .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
                 YouTubeEpisodeListItem(
                     ep = ep,
-                    animeTitle = animeTitle,
                     fallbackImage = fallbackImage,
                     download = epDownload,
                     malWatched = malWatched,
@@ -1603,7 +1600,6 @@ private fun LazyListScope.watchEpisodeItems(
 @Composable
 private fun YouTubeEpisodeListItem(
     ep: Episode,
-    animeTitle: String,
     fallbackImage: String?,
     download: Downloads.Item?,
     malWatched: Int?,
@@ -1750,13 +1746,6 @@ private fun YouTubeEpisodeListItem(
                 fontWeight = if (current) FontWeight.Bold else FontWeight.SemiBold,
                 color = if (current) cs.primary else cs.onSurface,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                animeTitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = cs.onSurfaceVariant,
-                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             val subInfo =
