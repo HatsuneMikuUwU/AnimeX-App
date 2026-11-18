@@ -18,7 +18,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -1070,14 +1069,7 @@ fun PlayerScreen(
                             with(density) { containerY.roundToPx() },
                         )
                     }.size(containerW, containerH)
-                    .graphicsLayer { alpha = dismissFade }
-                    .then(
-                        if (!fullscreen && expandFrac < 0.5f) {
-                            Modifier.border(1.dp, cs.outlineVariant.copy(alpha = 0.45f), shape)
-                        } else {
-                            Modifier
-                        },
-                    ),
+                    .graphicsLayer { alpha = dismissFade },
         ) {
             Box(Modifier.fillMaxSize()) {
                 if (!fullscreen && expandFrac > 0.01f) {
