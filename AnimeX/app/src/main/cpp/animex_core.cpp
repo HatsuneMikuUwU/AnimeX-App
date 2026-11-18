@@ -82,6 +82,47 @@ std::string makeSearchStep(const std::string &path,
   return path + "|" + parameterName + "|" + (usesPagination ? "1" : "0");
 }
 
+} // namespace
+
+void secureZeroString(std::string &text) {
+  if (text.empty())
+    return;
+  volatile char *ptr = &text[0];
+  for (std::size_t i = 0; i < text.size(); ++i) {
+    ptr[i] = '\0';
+  }
+  text.clear();
+}
+
+std::string sanitizePathSegment(const std::string &raw) {
+  std::size_t start = 0;
+  std::size_t end = raw.size();
+  while (start < end &&
+         std::isspace(static_cast<unsigned char>(raw[start]))) {
+    ++start;
+  }
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(raw[end - 1]))) {
+    --end;
+  }
+  if (start >= end) {
+    return "";
+  }
+  std::string cleaned;
+  cleaned.reserve(end - start);
+  for (std::size_t i = start; i < end; ++i) {
+    const char ch = raw[i];
+    const unsigned char uch = static_cast<unsigned char>(ch);
+    if (std::isalnum(uch) || ch == '_' || ch == '-' || ch == '.') {
+      cleaned.push_back(ch);
+    } else {
+      return "";
+    }
+  }
+  if (cleaned == "." || cleaned.find("..") != std::string::npos) {
+    return "";
+  }
+  return cleaned;
 }
 
 std::string decodeSecret(const char *maskedHexText) {
@@ -89,30 +130,38 @@ std::string decodeSecret(const char *maskedHexText) {
   if (hexText.empty() || hexText.size() % 2 != 0)
     return "";
 
-  const std::string maskingKey = secretMaskingKey();
+  std::string maskingKey = secretMaskingKey();
+  if (maskingKey.empty())
+    return "";
   std::string decodedSecret(hexText.size() / 2, '\0');
 
   for (std::size_t index = 0; index < decodedSecret.size(); ++index) {
-    unsigned char maskedByte;
+    unsigned char maskedByte = 0;
     if (!tryDecodeHexByte(hexText[index * 2], hexText[index * 2 + 1],
-                          maskedByte))
+                          maskedByte)) {
+      secureZeroString(maskingKey);
+      secureZeroString(decodedSecret);
       return "";
+    }
 
     const unsigned char keyByte =
         static_cast<unsigned char>(maskingKey[index % maskingKey.size()]);
     decodedSecret[index] = static_cast<char>(maskedByte ^ keyByte);
   }
+  secureZeroString(maskingKey);
   return decodedSecret;
 }
 
 std::string buildEndpointPath(int operation, const std::string &argument) {
+  const std::string safeArg = sanitizePathSegment(argument);
+  const bool invalidArg = !argument.empty() && safeArg.empty();
   switch (operation) {
   case GATE_SETUP:
     return OBFUSCATED_TEXT("data/setup/data");
   case HOME_LIST:
     return OBFUSCATED_TEXT("data/home/list");
   case HOME_SECTION:
-    return OBFUSCATED_TEXT("3/2/home/") + argument;
+    return invalidArg ? "" : OBFUSCATED_TEXT("3/2/home/") + safeArg;
   case HOME_NEW_EPISODE:
     return OBFUSCATED_TEXT("data/home/list_new_episode");
   case SCHEDULE:
@@ -122,15 +171,15 @@ std::string buildEndpointPath(int operation, const std::string &argument) {
   case FIND:
     return OBFUSCATED_TEXT("data/movie/find");
   case DETAIL:
-    return OBFUSCATED_TEXT("3/2/movie/detail/") + argument;
+    return invalidArg ? "" : OBFUSCATED_TEXT("3/2/movie/detail/") + safeArg;
   case EPISODE_LIST:
-    return OBFUSCATED_TEXT("3/2/movie/episode/") + argument;
+    return invalidArg ? "" : OBFUSCATED_TEXT("3/2/movie/episode/") + safeArg;
   case TRAILER_MOVIE:
     return OBFUSCATED_TEXT("data/movie/trailer/list");
   case TRAILER_GLOBAL:
     return OBFUSCATED_TEXT("data/trailer/list");
   case STREAM:
-    return OBFUSCATED_TEXT("3/2/episode/streamnew/") + argument;
+    return invalidArg ? "" : OBFUSCATED_TEXT("3/2/episode/streamnew/") + safeArg;
   case EXPLORE_DATA:
     return OBFUSCATED_TEXT("3/2/explore/data");
   case EXPLORE_GENRE:
@@ -253,4 +302,4 @@ std::vector<std::string> scheduleDayNames() {
   };
 }
 
-}
+} // namespace animex

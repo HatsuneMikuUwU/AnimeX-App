@@ -18,13 +18,14 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
--keepclassmembers class com.uwu.animex.data.** {
+# Keep field names and all constructors for Gson reflection in data/ and sync/ models
+-keep class com.uwu.animex.data.** {
     <fields>;
-    <init>();
+    <init>(...);
 }
--keepclassmembers class com.uwu.animex.sync.** {
+-keep class com.uwu.animex.sync.** {
     <fields>;
-    <init>();
+    <init>(...);
 }
 -keep class com.uwu.animex.data.model.** { *; }
 

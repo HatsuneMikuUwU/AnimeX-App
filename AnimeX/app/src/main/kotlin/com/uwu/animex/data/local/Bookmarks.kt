@@ -28,19 +28,22 @@ data class BookmarkEntry(
 )
 
 object Bookmarks {
-    private lateinit var dao: AnimeDao
+    @Volatile
+    private var dao: AnimeDao? = null
     private val scope get() = AppScope.io
 
     private val _entries = MutableStateFlow<Map<String, BookmarkEntry>>(emptyMap())
     val entries: StateFlow<Map<String, BookmarkEntry>> = _entries.asStateFlow()
 
+    @Synchronized
     fun init(context: Context) {
-        if (::dao.isInitialized) return
+        if (dao != null) return
         val app = context.applicationContext
-        dao = AnimeDatabase.get(app).animeDao()
-        scope.launch { dropLocalFavorites(app) }
+        val animeDao = AnimeDatabase.get(app).animeDao()
+        dao = animeDao
+        scope.launch { dropLocalFavorites(app, animeDao) }
         scope.launch {
-            dao.observeBookmarks().collect { list ->
+            animeDao.observeBookmarks().collect { list ->
                 _entries.value =
                     list.associate { e ->
                         e.movieId to
@@ -72,13 +75,14 @@ object Bookmarks {
         status: WatchStatus?,
     ) {
         val id = movie.id ?: return
+        val activeDao = dao ?: return
         val m = trim(movie)
         val existing = _entries.value[id]
         scope.launch {
             if (status == null) {
-                dao.deleteBookmark(id)
+                activeDao.deleteBookmark(id)
             } else {
-                dao.upsertBookmark(
+                activeDao.upsertBookmark(
                     BookmarkEntity(
                         movieId = id,
                         title = m.title ?: existing?.movie?.title,
@@ -95,11 +99,14 @@ object Bookmarks {
         }
     }
 
-    private suspend fun dropLocalFavorites(context: Context) {
+    private suspend fun dropLocalFavorites(
+        context: Context,
+        animeDao: AnimeDao,
+    ) {
         val prefs = context.getSharedPreferences(PrefKeys.Bookmarks.FILE, Context.MODE_PRIVATE)
         if (prefs.getBoolean(PrefKeys.Bookmarks.LOCAL_FAVORITES_DROPPED, false)) return
-        dao.clearFavoriteFlags()
-        dao.cleanEmptyBookmarks()
+        animeDao.clearFavoriteFlags()
+        animeDao.cleanEmptyBookmarks()
         prefs.edit().putBoolean(PrefKeys.Bookmarks.LOCAL_FAVORITES_DROPPED, true).apply()
     }
 

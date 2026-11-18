@@ -254,10 +254,8 @@ internal object AnimeDatabaseMigrations {
         .map { from ->
             object : Migration(from, 10) {
                 override fun migrate(db: SupportSQLiteDatabase) {
-                    if (from < 6) {
-                        tables.forEach { table -> rebuildTable(db, table) }
-                        tables.flatMap { it.indexes }.forEach { db.execSQL(it) }
-                    }
+                    tables.forEach { table -> ensureTableSchema(db, table, forceRebuild = from < 6) }
+                    tables.flatMap { it.indexes }.forEach { db.execSQL(it) }
                     db.execSQL("DROP TABLE IF EXISTS `cuplix_seen`")
                     db.execSQL(CUPLIX_WATCHED_SQL)
                     db.execSQL(CUPLIX_WATCHED_INDEX)
@@ -267,9 +265,10 @@ internal object AnimeDatabaseMigrations {
             }
         }.toTypedArray()
 
-    private fun rebuildTable(
+    private fun ensureTableSchema(
         db: SupportSQLiteDatabase,
         table: Table,
+        forceRebuild: Boolean,
     ) {
         val exists = db
             .query(
@@ -278,7 +277,6 @@ internal object AnimeDatabaseMigrations {
                     arrayOf(table.name),
                 ),
             ).use { it.moveToFirst() }
-        val backup = "__animex_migration_${table.name}"
         val oldColumns = if (exists) {
             db.query(SimpleSQLiteQuery("PRAGMA table_info(`${table.name}`)")).use { cursor ->
                 buildSet {
@@ -290,6 +288,11 @@ internal object AnimeDatabaseMigrations {
             emptySet()
         }
 
+        if (exists && !forceRebuild && oldColumns == table.columns.toSet()) {
+            return
+        }
+
+        val backup = "__animex_migration_${table.name}"
         if (exists) {
             db.execSQL("DROP TABLE IF EXISTS `$backup`")
             db.execSQL("ALTER TABLE `${table.name}` RENAME TO `$backup`")

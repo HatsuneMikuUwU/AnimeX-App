@@ -27,6 +27,7 @@ import com.uwu.animex.sync.anilist.AniListApi
 import com.uwu.animex.sync.anilist.AniListEditData
 import com.uwu.animex.sync.anilist.AniListEditOptions
 import com.uwu.animex.sync.anilist.AniListEditUpdate
+import com.uwu.animex.sync.anilist.aniScoreToTen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,7 +37,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.roundToInt
 
 data class AniFavorite(
     val id: Int,
@@ -61,6 +61,7 @@ object AniList {
     private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile
     private var prefs: SharedPreferences? = null
     private val repo get() = AccountManager.aniListApi
 
@@ -98,6 +99,7 @@ object AniList {
         _message.value = null
     }
 
+    @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
@@ -292,7 +294,7 @@ object AniList {
                     id = id,
                     status = status.status,
                     progress = status.watchedEpisodes,
-                    rating = status.score?.let { nativeScore(it.toDouble(), fromTen = true) },
+                    rating = status.score,
                     startDate = status.startDate,
                     finishDate = status.finishDate,
                     hint = hint,
@@ -314,7 +316,7 @@ object AniList {
             repo.withAuth { (repo.api as AniListApi).editData(it, aniId) }
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
         cacheId(movieId, aniId)
-        cacheTotal(aniId, data.totalEpisodes ?: 0)
+        cacheTotal(aniId, data.totalEpisodes)
         editCache[movieId] = data
         rememberOptions(data.options)
         return data
@@ -333,7 +335,7 @@ object AniList {
                     id = id,
                     status = aniWatchType(update.status),
                     progress = update.progress,
-                    rating = update.score?.let { nativeScore(it, fromTen = false) },
+                    rating = update.score?.let { aniScoreToTen(lastEditOptions?.scoreFormat, it) },
                     startDate = update.startedAt,
                     finishDate = update.completedAt,
                     hint = hint,
@@ -367,19 +369,7 @@ object AniList {
         editCache.entries.removeIf { it.value.mediaId == id }
     }
 
-    private fun nativeScore(
-        value: Double,
-        fromTen: Boolean,
-    ): Int {
-        if (!fromTen) return value.roundToInt()
-        return when (lastEditOptions?.scoreFormat ?: "POINT_100") {
-            "POINT_10_DECIMAL", "POINT_10" -> value
-            "POINT_5" -> value / 2.0
-            "POINT_3" -> value * 3.0 / 10.0
-            else -> value * 10.0
-        }.roundToInt()
-    }
-
+    @Synchronized
     private fun cacheId(
         movieId: String,
         aniListId: Int,
@@ -413,7 +403,7 @@ object AniList {
             runCatching { repo.withAuth { (repo.api as AniListApi).loadWithEdit(it, aniId) } }.getOrNull() ?: return
         preloadCache[movieId] = result
         editCache[movieId] = edit
-        cacheTotal(aniId, result.totalEpisodes ?: 0)
+        cacheTotal(aniId, result.totalEpisodes)
         rememberOptions(edit.options)
     }
 
@@ -424,11 +414,12 @@ object AniList {
 
     fun cachedTotal(aniListId: Int): Int? = readTotals()?.get(aniListId.toString())
 
+    @Synchronized
     private fun cacheTotal(
         aniListId: Int,
         total: Int?,
     ) {
-        val value = total ?: return
+        val value = total?.takeIf { it > 0 } ?: return
         val m = readTotals() ?: HashMap()
         if (m[aniListId.toString()] == value) return
         m[aniListId.toString()] = value
@@ -438,7 +429,7 @@ object AniList {
     private suspend fun loadCached(id: String): SyncResult? {
         val r = repo.load(id).getOrThrow()
         val aniId = r?.id?.toIntOrNull()
-        if (aniId != null) cacheTotal(aniId, r.totalEpisodes ?: 0)
+        if (aniId != null) cacheTotal(aniId, r.totalEpisodes)
         return r
     }
 

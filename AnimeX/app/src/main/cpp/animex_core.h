@@ -56,6 +56,8 @@ enum EndpointOperation {
 
 std::string decodeSecret(const char *maskedHexText);
 
+std::string sanitizePathSegment(const std::string &raw);
+
 std::string buildEndpointPath(int operation, const std::string &argument);
 
 bool isVolatilePath(const std::string &path);
@@ -65,5 +67,7 @@ std::vector<std::string> exploreTargetFor(const std::string &kind);
 std::vector<std::string> buildSearchPlan();
 
 std::vector<std::string> scheduleDayNames();
+
+void secureZeroString(std::string &text);
 
 }

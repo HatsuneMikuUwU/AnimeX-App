@@ -23,6 +23,7 @@
         <package android:name="com.mxtech.videoplayer.pro" />
         <package android:name="com.mxtech.videoplayer.free" />
         <package android:name="org.videolan.vlc" />
+        <package android:name="live.mehiz.mpvkt" />
         <package android:name="com.brouken.player" />
     </queries>
 
@@ -65,6 +66,15 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="animex" android:host="anime" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="hatsunemikuuwu.github.io"
+                    android:pathPrefix="/AnimeX-App/anime.html" />
             </intent-filter>
         </activity>
 

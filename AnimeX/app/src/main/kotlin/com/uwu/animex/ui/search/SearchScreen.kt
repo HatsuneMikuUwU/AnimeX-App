@@ -66,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.api.TraceMoe
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.model.ExploreData
@@ -298,9 +299,27 @@ private fun BrowseCategories(
             try {
                 val jpeg =
                     withContext(Dispatchers.IO) {
-                        java.io.ByteArrayOutputStream().use { out ->
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
-                            out.toByteArray()
+                        val maxSide = 1280
+                        val largest = maxOf(bitmap.width, bitmap.height).coerceAtLeast(1)
+                        val scaled =
+                            if (largest <= maxSide) {
+                                bitmap
+                            } else {
+                                val ratio = maxSide.toFloat() / largest.toFloat()
+                                Bitmap.createScaledBitmap(
+                                    bitmap,
+                                    (bitmap.width * ratio).toInt().coerceAtLeast(1),
+                                    (bitmap.height * ratio).toInt().coerceAtLeast(1),
+                                    true,
+                                )
+                            }
+                        try {
+                            java.io.ByteArrayOutputStream().use { out ->
+                                scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                                out.toByteArray()
+                            }
+                        } finally {
+                            if (scaled !== bitmap) scaled.recycle()
                         }
                     }
                 val hits = TraceMoe.search(jpeg)
@@ -393,8 +412,18 @@ private fun BrowseCategories(
                         scope.launch {
                             resolvingId = hit.displayTitle
                             try {
-                                val movies = Api.search(hit.displayTitle)
-                                val id = movies.firstOrNull()?.id
+                                val candidateTitles =
+                                    listOfNotNull(
+                                        hit.anilist?.title?.romaji,
+                                        hit.anilist?.title?.english,
+                                        hit.anilist?.title?.native,
+                                        hit.displayTitle,
+                                    ).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+                                val matched = TitleMatcher.find(candidateTitles)
+                                val id =
+                                    matched.best?.id
+                                        ?: matched.guess?.id
+                                        ?: Api.search(hit.displayTitle).firstOrNull()?.id
                                 if (id != null) {
                                     results = null
                                     onOpen(id)

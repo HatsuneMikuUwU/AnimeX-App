@@ -7,16 +7,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 object Onboarding {
-    private lateinit var appContext: Context
+    @Volatile
+    private var appContext: Context? = null
 
     private val _done = MutableStateFlow(true)
     val done: StateFlow<Boolean> = _done.asStateFlow()
 
+    @Synchronized
     fun init(context: Context) {
-        if (::appContext.isInitialized) return
-        appContext = context.applicationContext
+        if (appContext != null) return
+        val app = context.applicationContext
+        appContext = app
         _done.value =
-            appContext
+            app
                 .getSharedPreferences(PrefKeys.Onboarding.FILE, Context.MODE_PRIVATE)
                 .getBoolean(PrefKeys.Onboarding.DONE, false)
     }
@@ -24,9 +27,9 @@ object Onboarding {
     fun complete() {
         _done.value = true
         appContext
-            .getSharedPreferences(PrefKeys.Onboarding.FILE, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(PrefKeys.Onboarding.DONE, true)
-            .apply()
+            ?.getSharedPreferences(PrefKeys.Onboarding.FILE, Context.MODE_PRIVATE)
+            ?.edit()
+            ?.putBoolean(PrefKeys.Onboarding.DONE, true)
+            ?.apply()
     }
 }

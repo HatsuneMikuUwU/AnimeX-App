@@ -66,6 +66,7 @@ object Mal {
 
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile
     private var prefs: SharedPreferences? = null
 
     private val repo get() = AccountManager.malApi
@@ -96,6 +97,7 @@ object Mal {
         _message.value = null
     }
 
+    @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
@@ -251,10 +253,12 @@ object Mal {
 
     fun cachedTotal(malId: Int): Int? = readTotals()?.get(malId.toString())
 
+    @Synchronized
     private fun cacheTotal(
         malId: Int,
         total: Int,
     ) {
+        if (total <= 0) return
         val m = readTotals() ?: HashMap()
         if (m[malId.toString()] == total) return
         m[malId.toString()] = total
@@ -264,8 +268,8 @@ object Mal {
     private suspend fun loadCached(id: String): SyncResult? {
         val r = repo.load(id).getOrThrow()
         val malId = r?.id?.toIntOrNull()
-
-        if (malId != null) cacheTotal(malId, r.totalEpisodes ?: 0)
+        val total = r?.totalEpisodes
+        if (malId != null && total != null && total > 0) cacheTotal(malId, total)
         return r
     }
 

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.google.gson.Gson
@@ -33,6 +34,7 @@ import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import java.io.File
+import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
@@ -238,6 +240,7 @@ object Downloads {
         context: Context,
         id: String,
     ) {
+        val appCtx = context.applicationContext
         val item: Item?
         val job: Job?
         synchronized(lock) {
@@ -249,7 +252,7 @@ object Downloads {
         job?.cancel()
         scope.launch {
             job?.join()
-            item?.fileUri?.let { runCatching { DocumentFile.fromSingleUri(context, Uri.parse(it))?.delete() } }
+            item?.fileUri?.let { runCatching { DocumentFile.fromSingleUri(appCtx, Uri.parse(it))?.delete() } }
             pump()
         }
     }
@@ -352,6 +355,29 @@ object Downloads {
         return clean.ifBlank { item.id }
     }
 
+    private fun openStreamForWrite(
+        ctx: Context,
+        uri: Uri,
+        append: Boolean,
+    ): OutputStream {
+        val resolver = ctx.contentResolver
+        if (!append) {
+            return resolver.openOutputStream(uri, "wt")
+                ?: resolver.openOutputStream(uri)
+                ?: error("Gak bisa nulis ke folder unduhan")
+        }
+        runCatching { resolver.openOutputStream(uri, "wa") }.getOrNull()?.let { return it }
+        val pfd = resolver.openFileDescriptor(uri, "rw") ?: error("Gak bisa nulis ke folder unduhan")
+        return try {
+            ParcelFileDescriptor.AutoCloseOutputStream(pfd).also { stream ->
+                stream.channel.position(stream.channel.size())
+            }
+        } catch (e: Exception) {
+            runCatching { pfd.close() }
+            throw e
+        }
+    }
+
     private fun docFor(
         ctx: Context,
         root: DocumentFile,
@@ -411,9 +437,7 @@ object Downloads {
                 val start = if (partial) have else 0L
                 val len = resp.body.contentLength()
                 val total = if (len > 0) start + len else -1L
-                val out =
-                    ctx.contentResolver.openOutputStream(doc.uri, if (partial) "wa" else "wt")
-                        ?: error("Gak bisa nulis ke folder unduhan")
+                val out = openStreamForWrite(ctx, doc.uri, append = partial)
                 out.use { o ->
                     val input = resp.body.byteStream()
                     val buf = ByteArray(64 * 1024)
@@ -453,9 +477,7 @@ object Downloads {
                 progress(id, temp.length(), percent * 0.95f)
             }
             val (doc, _) = docFor(ctx, root, item, "video/mp4")
-            val out =
-                ctx.contentResolver.openOutputStream(doc.uri, "wt")
-                    ?: error("Gak bisa nulis ke folder unduhan")
+            val out = openStreamForWrite(ctx, doc.uri, append = false)
             out.use { o -> temp.inputStream().use { it.copyTo(o, 64 * 1024) } }
             progress(id, temp.length(), 100f)
         } finally {
@@ -568,9 +590,7 @@ object Downloads {
         var written = if (startIdx == 0) 0L else _items.value[id]?.bytes ?: 0L
         val keys = HashMap<String, ByteArray>()
 
-        val out =
-            ctx.contentResolver.openOutputStream(doc.uri, if (startIdx > 0) "wa" else "wt")
-                ?: error("Gak bisa nulis ke folder unduhan")
+        val out = openStreamForWrite(ctx, doc.uri, append = startIdx > 0)
         out.use { o ->
             if (startIdx == 0 && mapUri != null) {
                 val init = fetchBytes(job, mapUri, hdr)
@@ -584,10 +604,16 @@ object Downloads {
                 if (s.keyUri != null) {
                     val key = keys.getOrPut(s.keyUri) { fetchBytes(job, s.keyUri, hdr) }
                     val iv =
-                        s.iv?.removePrefix("0x")?.removePrefix("0X")?.let { hex ->
-                            val padded = hex.padStart(32, '0')
-                            ByteArray(16) { idx -> padded.substring(idx * 2, idx * 2 + 2).toInt(16).toByte() }
-                        } ?: ByteArray(16).also { b ->
+                        s.iv
+                            ?.trim()
+                            ?.removePrefix("0x")
+                            ?.removePrefix("0X")
+                            ?.let { hex ->
+                                runCatching {
+                                    val padded = hex.takeLast(32).padStart(32, '0')
+                                    ByteArray(16) { idx -> padded.substring(idx * 2, idx * 2 + 2).toInt(16).toByte() }
+                                }.getOrNull()
+                            } ?: ByteArray(16).also { b ->
                             var v = s.seq
                             for (k in 15 downTo 8) {
                                 b[k] = (v and 0xFF).toByte()

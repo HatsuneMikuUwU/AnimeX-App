@@ -35,7 +35,8 @@ object Progress {
         val dur: Long = 0,
     )
 
-    private lateinit var dao: AnimeDao
+    @Volatile
+    private var dao: AnimeDao? = null
     private val scope get() = AppScope.io
     private val persistMutex = Mutex()
     private val flushWriteMutex = Mutex()
@@ -58,17 +59,26 @@ object Progress {
 
     fun isDoneWatch(w: Watch?): Boolean = fractionOf(w) >= doneAt()
 
+    @Synchronized
     fun init(context: Context) {
-        if (::dao.isInitialized) return
+        if (dao != null) return
         val app = context.applicationContext
-        dao = AnimeDatabase.get(app).animeDao()
+        val animeDao = AnimeDatabase.get(app).animeDao()
+        dao = animeDao
         scope.launch {
-            dao.observeProgress().collect { list ->
-                if (pending.isEmpty()) {
-                    _map.value =
-                        list.associate { e ->
-                            e.episodeId to Watch(pos = e.positionMs, dur = e.durationMs)
+            animeDao.observeProgress().collect { list ->
+                persistMutex.withLock {
+                    val base =
+                        LinkedHashMap<String, Watch>(list.size + pending.size).apply {
+                            list.forEach { e ->
+                                put(e.episodeId, Watch(pos = e.positionMs, dur = e.durationMs))
+                            }
+                            pending.forEach { (id, w) ->
+                                remove(id)
+                                put(id, w)
+                            }
                         }
+                    _map.value = base
                 }
             }
         }
@@ -157,6 +167,7 @@ object Progress {
     }
 
     private fun scheduleFlushLocked(force: Boolean) {
+        if (dao == null) return
         val now = System.currentTimeMillis()
         val due = force || now - lastFlushAt >= PERSIST_INTERVAL_MS
         if (due) {
@@ -175,6 +186,7 @@ object Progress {
     }
 
     private suspend fun doFlush() {
+        val activeDao = dao ?: return
         val currentJob = currentCoroutineContext()[Job]
         try {
             flushWriteMutex.withLock {
@@ -191,16 +203,18 @@ object Progress {
                             }
                         } ?: break
                     try {
-                        batch.forEach { (epId, w) ->
-                            dao.upsertProgress(
+                        val now = System.currentTimeMillis()
+                        activeDao.upsertProgressAll(
+                            batch.map { (epId, w) ->
                                 ProgressEntity(
                                     episodeId = epId,
                                     positionMs = w.pos,
                                     durationMs = w.dur,
-                                ),
-                            )
-                        }
-                        if (_map.value.size >= MAX) dao.trimProgress(MAX)
+                                    updatedAt = now,
+                                )
+                            },
+                        )
+                        if (_map.value.size >= MAX) activeDao.trimProgress(MAX)
                     } catch (e: CancellationException) {
                         restorePending(batch)
                         throw e

@@ -13,18 +13,21 @@ import kotlinx.coroutines.launch
 object SearchHistory {
     private const val MAX = 20
 
-    private lateinit var dao: AnimeDao
+    @Volatile
+    private var dao: AnimeDao? = null
     private val scope get() = AppScope.io
 
     private val _items = MutableStateFlow<List<String>>(emptyList())
     val items: StateFlow<List<String>> = _items.asStateFlow()
 
+    @Synchronized
     fun init(context: Context) {
-        if (::dao.isInitialized) return
+        if (dao != null) return
         val app = context.applicationContext
-        dao = AnimeDatabase.get(app).animeDao()
+        val animeDao = AnimeDatabase.get(app).animeDao()
+        dao = animeDao
         scope.launch {
-            dao.observeSearchHistory(MAX).collect { list ->
+            animeDao.observeSearchHistory(MAX).collect { list ->
                 _items.value = list.map { it.query }
             }
         }
@@ -33,20 +36,23 @@ object SearchHistory {
     fun record(query: String) {
         val q = query.trim()
         if (q.isEmpty()) return
+        val activeDao = dao ?: return
         _items.value = (listOf(q) + _items.value.filterNot { it.equals(q, ignoreCase = true) }).take(MAX)
         scope.launch {
-            dao.upsertSearch(SearchHistoryEntity(query = q))
-            dao.trimSearch(MAX)
+            activeDao.upsertSearch(SearchHistoryEntity(query = q))
+            activeDao.trimSearch(MAX)
         }
     }
 
     fun remove(query: String) {
+        val activeDao = dao ?: return
         _items.value = _items.value.filterNot { it == query }
-        scope.launch { dao.deleteSearch(query) }
+        scope.launch { activeDao.deleteSearch(query) }
     }
 
     fun clear() {
+        val activeDao = dao ?: return
         _items.value = emptyList()
-        scope.launch { dao.clearSearch() }
+        scope.launch { activeDao.clearSearch() }
     }
 }

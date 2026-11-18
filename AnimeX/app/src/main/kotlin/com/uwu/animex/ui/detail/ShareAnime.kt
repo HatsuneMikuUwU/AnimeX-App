@@ -4,7 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.toEpisodeIndex
+import com.uwu.animex.ui.cuplix.clipStartTimeMs
 
 private const val APP_LINK = "https://github.com/HatsuneMikuUwU/AnimeX-App"
 
@@ -68,6 +71,50 @@ internal fun shareEpisode(
             putExtra(Intent.EXTRA_TEXT, text)
         }
     val chooser = Intent.createChooser(send, "Bagikan episode")
+    if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(chooser) }
+}
+
+internal fun shareCuplix(
+    context: Context,
+    clip: Cuplix,
+) {
+    val movieId = clip.id_movie?.trim()?.takeIf { it.isNotEmpty() }
+    val epId = clip.id_episode?.trim()?.takeIf { it.isNotEmpty() }
+    val title = (clip.anime ?: clip.caption)?.trim().orEmpty()
+    if (title.isEmpty()) return
+    if (movieId == null || epId == null) {
+        shareAnime(context, Movie(id = movieId, title = title))
+        return
+    }
+    val idx = clip.episode.toEpisodeIndex()?.takeIf { it.isNotEmpty() }
+    val startMs = clip.clipStartTimeMs()
+    val label = if (idx != null) "$title - Ep $idx" else title
+    val link =
+        buildString {
+            append(SHARE_LINK).append(Uri.encode(movieId))
+            append("&ep=").append(Uri.encode(epId))
+            if (idx != null) append("&idx=").append(Uri.encode(idx))
+            append("&t=").append(Uri.encode(title))
+            if (startMs > 0L) append("&ms=").append(startMs)
+        }
+    val captionLine =
+        clip.caption
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() && !it.equals(title, ignoreCase = true) }
+    val text =
+        buildString {
+            append("Nonton cuplikan \"$label\" di AnimeX")
+            if (captionLine != null) append("\n$captionLine")
+            append("\n\nBuka cuplikan ini: $link\n\n$APP_LINK")
+        }
+    val send =
+        Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, label)
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+    val chooser = Intent.createChooser(send, "Bagikan Cuplix")
     if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(chooser) }
 }

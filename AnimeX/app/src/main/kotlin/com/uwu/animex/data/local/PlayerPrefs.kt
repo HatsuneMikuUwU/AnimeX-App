@@ -36,7 +36,8 @@ object PlayerPrefs {
     private val DEFAULT_SPEED_PRESETS =
         setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0")
 
-    private lateinit var appContext: Context
+    @Volatile
+    private var appContext: Context? = null
 
     var quality: Int = 0
         private set
@@ -128,10 +129,12 @@ object PlayerPrefs {
     private val _skipIntroMs = MutableStateFlow(DEFAULT_SKIP_INTRO_MS)
     val skipIntroMs: StateFlow<Int> = _skipIntroMs.asStateFlow()
 
+    @Synchronized
     fun init(context: Context) {
-        if (::appContext.isInitialized) return
-        appContext = context.applicationContext
-        val sp = appContext.getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
+        if (appContext != null) return
+        val app = context.applicationContext
+        appContext = app
+        val sp = app.getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
         quality = sp.getInt(PrefKeys.Player.QUALITY, 0)
         _gesturesEnabled.value = sp.getBoolean(PrefKeys.Player.GESTURES, true)
         _hiddenButtons.value =
@@ -184,10 +187,10 @@ object PlayerPrefs {
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
         appContext
-            .getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
-            .edit()
-            .apply(block)
-            .apply()
+            ?.getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
+            ?.edit()
+            ?.apply(block)
+            ?.apply()
     }
 
     fun setQuality(value: Int) {
@@ -265,6 +268,12 @@ object PlayerPrefs {
         edit { putBoolean(PrefKeys.Player.INVERT_DURATION, value) }
     }
 
+    fun setSpeedPresets(value: Set<String>) {
+        val valid = value.filter { (it.toFloatOrNull() ?: 0f) in 0.1f..5f }.toSet().ifEmpty { DEFAULT_SPEED_PRESETS }
+        _speedPresets.value = valid
+        edit { putStringSet(PrefKeys.Player.SPEED_PRESETS, valid) }
+    }
+
     fun setPlayerFullscreen(value: Boolean) {
         _playerFullscreen.value = value
         edit { putBoolean(PrefKeys.Player.PLAYER_FULLSCREEN, value) }
@@ -326,6 +335,7 @@ object PlayerPrefs {
             .put("quality", quality)
             .put("gesturesEnabled", _gesturesEnabled.value)
             .put("hiddenButtons", JSONArray(_hiddenButtons.value.map { it.name }))
+            .put("speedPresets", JSONArray(_speedPresets.value.toList()))
             .put("progressPreference", _progressPreference.value.toDouble())
             .put("switchOnFailure", _switchOnFailure.value)
             .put("orientation", _defaultOrientation.value.name)
@@ -354,6 +364,10 @@ object PlayerPrefs {
         o.optJSONArray("hiddenButtons")?.let { arr ->
             val names = (0 until arr.length()).map { arr.optString(it) }.toSet()
             setHiddenButtons(PlayerButton.entries.filter { it.name in names }.toSet())
+        }
+        o.optJSONArray("speedPresets")?.let { arr ->
+            val presets = (0 until arr.length()).map { arr.optString(it) }.toSet()
+            if (presets.isNotEmpty()) setSpeedPresets(presets)
         }
         if (o.has("progressPreference")) {
             val v = o.optDouble("progressPreference", _progressPreference.value.toDouble()).toFloat()

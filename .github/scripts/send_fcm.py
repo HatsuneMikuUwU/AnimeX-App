@@ -47,8 +47,12 @@ print(f"Data         : {json.dumps(data, ensure_ascii=False)}")
 
 try:
     sa = json.loads(sa_json)
-except json.JSONDecodeError as e:
-    fail(f"FCM_SERVICE_ACCOUNT_JSON is not valid JSON: {e}")
+except json.JSONDecodeError:
+    try:
+        decoded_sa = base64.b64decode(sa_json).decode("utf-8")
+        sa = json.loads(decoded_sa)
+    except Exception as e:
+        fail(f"FCM_SERVICE_ACCOUNT_JSON is neither valid JSON nor Base64-encoded JSON: {e}")
 for key in ("client_email", "private_key", "token_uri"):
     if key not in sa:
         fail(f"FCM_SERVICE_ACCOUNT_JSON is missing '{key}'")

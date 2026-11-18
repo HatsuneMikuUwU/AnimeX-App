@@ -18,36 +18,51 @@
 namespace {
 
 std::string javaStringToStdString(JNIEnv *environment, jstring javaString) {
-  if (javaString == nullptr)
+  if (environment == nullptr || javaString == nullptr)
     return "";
 
+  const jsize utfLength = environment->GetStringUTFLength(javaString);
   const char *utf8Characters =
       environment->GetStringUTFChars(javaString, nullptr);
   if (utf8Characters == nullptr)
     return "";
 
-  std::string standardString(utf8Characters);
+  std::string standardString(utf8Characters,
+                             static_cast<std::size_t>(utfLength));
   environment->ReleaseStringUTFChars(javaString, utf8Characters);
   return standardString;
 }
 
 jstring stdStringToJavaString(JNIEnv *environment,
                               const std::string &standardString) {
+  if (environment == nullptr)
+    return nullptr;
   return environment->NewStringUTF(standardString.c_str());
 }
 
 jobjectArray
 stdStringListToJavaArray(JNIEnv *environment,
                          const std::vector<std::string> &stringList) {
+  if (environment == nullptr)
+    return nullptr;
   jclass stringClass = environment->FindClass("java/lang/String");
+  if (stringClass == nullptr)
+    return nullptr;
+
   jobjectArray javaArray = environment->NewObjectArray(
       static_cast<jsize>(stringList.size()), stringClass, nullptr);
+  if (javaArray == nullptr) {
+    environment->DeleteLocalRef(stringClass);
+    return nullptr;
+  }
 
   for (std::size_t index = 0; index < stringList.size(); ++index) {
     jstring javaString = stdStringToJavaString(environment, stringList[index]);
-    environment->SetObjectArrayElement(javaArray, static_cast<jsize>(index),
-                                       javaString);
-    environment->DeleteLocalRef(javaString);
+    if (javaString != nullptr) {
+      environment->SetObjectArrayElement(javaArray, static_cast<jsize>(index),
+                                         javaString);
+      environment->DeleteLocalRef(javaString);
+    }
   }
 
   environment->DeleteLocalRef(stringClass);
@@ -67,7 +82,7 @@ const char *maskedSecretFor(jint secretId) {
   }
 }
 
-}
+} // namespace
 
 #define NATIVE_CORE_FUNCTION(returnType, functionName)                         \
   extern "C" JNIEXPORT returnType JNICALL                                      \
@@ -75,8 +90,10 @@ const char *maskedSecretFor(jint secretId) {
 
 NATIVE_CORE_FUNCTION(jstring, secret)
 (JNIEnv *environment, jobject, jint secretId) {
-  const std::string secret = animex::decodeSecret(maskedSecretFor(secretId));
-  return stdStringToJavaString(environment, secret);
+  std::string decoded = animex::decodeSecret(maskedSecretFor(secretId));
+  jstring result = stdStringToJavaString(environment, decoded);
+  animex::secureZeroString(decoded);
+  return result;
 }
 
 NATIVE_CORE_FUNCTION(jstring, endpoint)

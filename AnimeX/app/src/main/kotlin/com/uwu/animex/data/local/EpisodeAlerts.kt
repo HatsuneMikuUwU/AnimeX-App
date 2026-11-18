@@ -12,17 +12,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 object EpisodeAlerts {
-    private lateinit var dao: AnimeDao
+    @Volatile
+    private var dao: AnimeDao? = null
     private val scope get() = AppScope.io
 
     private val _alerts = MutableStateFlow<Map<String, EpisodeAlertEntity>>(emptyMap())
     val alerts: StateFlow<Map<String, EpisodeAlertEntity>> = _alerts.asStateFlow()
 
+    @Synchronized
     fun init(context: Context) {
-        if (::dao.isInitialized) return
-        dao = AnimeDatabase.get(context.applicationContext).animeDao()
+        if (dao != null) return
+        val animeDao = AnimeDatabase.get(context.applicationContext).animeDao()
+        dao = animeDao
         scope.launch {
-            dao.observeEpisodeAlerts().collect { list ->
+            animeDao.observeEpisodeAlerts().collect { list ->
                 _alerts.value = list.associateBy { it.movieId }
             }
         }
@@ -33,8 +36,9 @@ object EpisodeAlerts {
         latestEpisode: Int,
     ) {
         val id = movie.id ?: return
+        val activeDao = dao ?: return
         scope.launch {
-            dao.upsertEpisodeAlert(
+            activeDao.upsertEpisodeAlert(
                 EpisodeAlertEntity(
                     movieId = id,
                     title = movie.title,
@@ -47,8 +51,9 @@ object EpisodeAlerts {
 
     fun disable(id: String?) {
         id ?: return
+        val activeDao = dao ?: return
         scope.launch {
-            dao.deleteEpisodeAlert(id)
+            activeDao.deleteEpisodeAlert(id)
         }
     }
 

@@ -4,32 +4,50 @@
 <title>Buka di AnimeX</title>
 <style>
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:#141218;color:#e6e0e9;font-family:system-ui,sans-serif;text-align:center;padding:24px}
+main{max-width:420px;width:100%}
 a.b{display:block;margin:12px auto 0;max-width:280px;padding:14px;border-radius:28px;background:#d0bcff;color:#381e72;font-weight:700;text-decoration:none}
 a.s{background:#4a4458;color:#e8def8}
-p{opacity:.75}
+p{opacity:.78;line-height:1.5}
+.sub{font-weight:600;color:#d0bcff;margin:6px 0 12px}
 </style></head><body><main>
-<h2>Membuka AnimeX…</h2>
-<p>Kalau aplikasi nggak kebuka otomatis, tekan tombol di bawah.</p>
-<a class="b" id="open" href="#">Buka di AnimeX</a>
+<h2 id="heading">Membuka AnimeX…</h2>
+<div class="sub" id="subtitle" hidden></div>
+<p id="desc">Kalau aplikasi nggak kebuka otomatis, tekan tombol di bawah.</p>
+<a class="b" id="open" href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest">Buka di AnimeX</a>
 <a class="b s" href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest">Belum punya? Unduh APK</a>
 </main>
 <script>
-var q=new URLSearchParams(location.search);
-var id=q.get("id");
-var ep=q.get("ep"),idx=q.get("idx"),t=q.get("t");
-var extra="";
-if(ep&&/^[\w.-]+$/.test(ep)){
-  extra="?ep="+encodeURIComponent(ep);
-  if(idx)extra+="&idx="+encodeURIComponent(idx);
-  if(t)extra+="&t="+encodeURIComponent(t);
-}
-if(id&&/^[\w.-]+$/.test(id)){
-  var fallback="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest";
-  var isAndroid=/android/i.test(navigator.userAgent);
-  var url=isAndroid
-    ?"intent://anime/"+id+extra+"#Intent;scheme=animex;package=com.uwu.animex;S.browser_fallback_url="+encodeURIComponent(fallback)+";end"
-    :"animex://anime/"+id+extra;
-  document.getElementById("open").href=url;
-  if(isAndroid) location.replace(url);
-}
+(function(){
+  var q=new URLSearchParams(location.search);
+  var id=q.get("id");
+  var ep=q.get("ep"),idx=q.get("idx"),t=q.get("t"),ms=q.get("ms");
+  var sub=document.getElementById("subtitle");
+  if(t){
+    var label=idx?(t+" • Ep "+idx):t;
+    sub.textContent=label;
+    sub.hidden=false;
+    document.title=label+" — AnimeX";
+  }
+  var extra="";
+  if(ep&&/^[\w.-]+$/.test(ep)){
+    extra="?ep="+encodeURIComponent(ep);
+    if(idx)extra+="&idx="+encodeURIComponent(idx);
+    if(t)extra+="&t="+encodeURIComponent(t);
+    if(ms&&/^\d+$/.test(ms))extra+="&ms="+encodeURIComponent(ms);
+  }
+  var openBtn=document.getElementById("open");
+  if(id&&/^[\w.-]+$/.test(id)){
+    var fallback="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest";
+    var isAndroid=/android/i.test(navigator.userAgent);
+    var url=isAndroid
+      ?"intent://anime/"+encodeURIComponent(id)+extra+"#Intent;scheme=animex;package=com.uwu.animex;S.browser_fallback_url="+encodeURIComponent(fallback)+";end"
+      :"animex://anime/"+encodeURIComponent(id)+extra;
+    openBtn.href=url;
+    if(isAndroid)location.replace(url);
+  }else{
+    document.getElementById("heading").textContent="Tautan AnimeX";
+    document.getElementById("desc").textContent="Tautan ini tidak memiliki ID anime yang valid. Kamu tetap bisa mengunduh aplikasi AnimeX terbaru di bawah.";
+    openBtn.style.display="none";
+  }
+})();
 </script></body></html>

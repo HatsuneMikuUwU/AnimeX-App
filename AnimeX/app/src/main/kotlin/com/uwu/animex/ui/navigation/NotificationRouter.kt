@@ -7,6 +7,7 @@ data class EpisodeLink(
     val epId: String,
     val epIndex: String?,
     val title: String,
+    val startAtMs: Long? = null,
 )
 
 object NotificationRouter {

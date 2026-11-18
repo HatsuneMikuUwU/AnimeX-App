@@ -89,9 +89,12 @@ data class Trailer(
         get() {
             val raw = url_youtube?.trim()?.takeIf { it.isNotBlank() } ?: return null
             return when {
-                raw.startsWith("http://", true) || raw.startsWith("https://", true) -> raw
+                raw.startsWith("https://", true) -> raw
+                raw.startsWith("http://", true) -> "https://" + raw.substring(7)
+                raw.startsWith("//") -> "https:$raw"
                 raw.startsWith("www.", true) -> "https://$raw"
-                raw.contains("youtu") -> raw
+                raw.contains("youtu.be/", true) || raw.contains("youtube.com/", true) ->
+                    "https://${raw.trimStart('/')}"
                 else -> "https://www.youtube.com/watch?v=$raw"
             }
         }

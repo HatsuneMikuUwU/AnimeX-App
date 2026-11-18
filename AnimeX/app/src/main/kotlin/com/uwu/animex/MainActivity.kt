@@ -116,15 +116,24 @@ class MainActivity : ComponentActivity() {
 
     private fun handleAnimeLink(intent: Intent?) {
         val uri = intent?.data ?: return
-        if (uri.scheme != "animex" || uri.host != "anime") return
-        val id = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return
+        val scheme = uri.scheme?.lowercase()
+        val host = uri.host?.lowercase()
+        val id =
+            when {
+                scheme == "animex" && host == "anime" -> uri.lastPathSegment
+                scheme == "https" &&
+                    host == "hatsunemikuuwu.github.io" &&
+                    uri.path?.startsWith("/AnimeX-App/anime.html") == true -> uri.getQueryParameter("id")
+                else -> null
+            }?.trim()?.takeIf { it.isNotBlank() } ?: return
         intent.data = null
-        val epId = uri.getQueryParameter("ep")?.takeIf { it.isNotBlank() }
+        val epId = uri.getQueryParameter("ep")?.trim()?.takeIf { it.isNotBlank() }
         if (epId != null) {
-            val idx = uri.getQueryParameter("idx")?.takeIf { it.isNotBlank() }
-            val name = uri.getQueryParameter("t").orEmpty()
+            val idx = uri.getQueryParameter("idx")?.trim()?.takeIf { it.isNotBlank() }
+            val name = uri.getQueryParameter("t")?.trim().orEmpty()
+            val startAtMs = uri.getQueryParameter("ms")?.trim()?.toLongOrNull()?.takeIf { it >= 0L }
             val title = if (idx != null && name.isNotEmpty()) "$name - Ep $idx" else name
-            NotificationRouter.pendingEpisode.value = EpisodeLink(id, epId, idx, title)
+            NotificationRouter.pendingEpisode.value = EpisodeLink(id, epId, idx, title, startAtMs)
             return
         }
         NotificationRouter.pendingDetail.value = id

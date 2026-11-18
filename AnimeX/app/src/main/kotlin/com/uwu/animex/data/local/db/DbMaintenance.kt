@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 object DbMaintenance {
     private val SEARCH_TTL_MS = TimeUnit.DAYS.toMillis(90)
     private val PROGRESS_TTL_MS = TimeUnit.DAYS.toMillis(365)
+    private const val CUPLIX_KEEP_CLIPS = 500
 
     suspend fun run(
         context: Context,
@@ -15,12 +16,14 @@ object DbMaintenance {
     ) {
         val db = AnimeDatabase.get(context)
         val dao = db.animeDao()
+        val cuplixDao = db.cuplixDao()
         db.withTransaction {
             dao.deleteSearchOlderThan(now - SEARCH_TTL_MS)
             dao.deleteProgressOlderThan(now - PROGRESS_TTL_MS)
             dao.trimHistory()
             dao.trimProgress()
             dao.trimSearch()
+            cuplixDao.trimClips(CUPLIX_KEEP_CLIPS)
         }
 
         runCatching {

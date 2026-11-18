@@ -17,19 +17,22 @@ import kotlinx.coroutines.sync.withLock
 object History {
     private const val MAX = 100
 
-    private lateinit var dao: AnimeDao
+    @Volatile
+    private var dao: AnimeDao? = null
     private val scope get() = AppScope.io
     private val writeMutex = Mutex()
 
     private val _items = MutableStateFlow<List<Movie>>(emptyList())
     val items: StateFlow<List<Movie>> = _items.asStateFlow()
 
+    @Synchronized
     fun init(context: Context) {
-        if (::dao.isInitialized) return
+        if (dao != null) return
         val app = context.applicationContext
-        dao = AnimeDatabase.get(app).animeDao()
+        val animeDao = AnimeDatabase.get(app).animeDao()
+        dao = animeDao
         scope.launch {
-            dao.observeHistory(MAX).collect { list ->
+            animeDao.observeHistory(MAX).collect { list ->
                 _items.value =
                     list.map { e ->
                         Movie(
@@ -56,6 +59,7 @@ object History {
         }
     }
 
+    @Volatile
     private var staged: Triple<Movie, String?, String>? = null
 
     fun stage(
@@ -79,10 +83,11 @@ object History {
         episodeId: String? = null,
     ) {
         val id = movie.id ?: return
+        val activeDao = dao ?: return
         scope.launch {
             writeMutex.withLock {
-                val old = dao.getHistory(id)
-                dao.upsertHistory(
+                val old = activeDao.getHistory(id)
+                activeDao.upsertHistory(
                     HistoryEntity(
                         movieId = id,
                         title = movie.title ?: old?.title,
@@ -104,18 +109,19 @@ object History {
                         watchedAt = System.currentTimeMillis(),
                     ),
                 )
-                dao.trimHistory(MAX)
+                activeDao.trimHistory(MAX)
             }
         }
     }
 
     fun remove(id: String) {
-        scope.launch { dao.deleteHistory(id) }
+        val activeDao = dao ?: return
+        scope.launch { writeMutex.withLock { activeDao.deleteHistory(id) } }
     }
 
     fun clear() {
-        if (!::dao.isInitialized) return
-        scope.launch { writeMutex.withLock { dao.clearHistory() } }
+        val activeDao = dao ?: return
+        scope.launch { writeMutex.withLock { activeDao.clearHistory() } }
     }
 
     fun applyContinueWatching(

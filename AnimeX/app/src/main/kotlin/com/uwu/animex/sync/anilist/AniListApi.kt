@@ -438,11 +438,14 @@ class AniListApi : SyncAPI() {
             ?.mapNotNull { e -> e.takeIf { it.isJsonObject }?.asJsonObject }
             .orEmpty()
 
-    private fun JsonObject.str(key: String): String? = get(key)?.takeIf { it.isJsonPrimitive }?.asString
+    private fun JsonObject.str(key: String): String? =
+        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asString }.getOrNull() }
 
-    private fun JsonObject.int(key: String): Int = get(key)?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
+    private fun JsonObject.int(key: String): Int =
+        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asInt }.getOrNull() } ?: 0
 
-    private fun JsonObject.dbl(key: String): Double = get(key)?.takeIf { it.isJsonPrimitive }?.asDouble ?: 0.0
+    private fun JsonObject.dbl(key: String): Double =
+        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
 
     private fun JsonObject.toStat(keyField: String) =
         ListStat(str(keyField), int("count"), int("minutesWatched"), dbl("meanScore"))
@@ -714,8 +717,9 @@ class AniListApi : SyncAPI() {
             "SaveMediaListEntry(mediaId: \$mediaId, status: \$status, progress: \$progress, score: \$score, " +
             "repeat: \$repeat, notes: \$notes, startedAt: \$startedAt, completedAt: \$completedAt) { id status " +
             "progress score } }"
+        val mediaId = id.toIntOrNull() ?: return false
         val vars = JsonObject().apply {
-            addProperty("mediaId", id.toInt())
+            addProperty("mediaId", mediaId)
             newStatus.status?.let { status ->
                 addProperty(
                     "status",
@@ -995,7 +999,7 @@ class AniListApi : SyncAPI() {
         val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
         cal.clear()
         cal.set(y, (d.int("month").takeIf { it > 0 } ?: 1) - 1, d.int("day").takeIf { it > 0 } ?: 1)
-        return cal.timeInMillis / 1000L
+        return cal.timeInMillis
     }
 
     override suspend fun library(auth: AuthData?): LibraryMetadata? {

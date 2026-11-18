@@ -84,6 +84,8 @@ object Api {
         )
 
     private const val MAX_EPISODE_PAGES = 100
+    private const val MAX_OLDEST_FILES = 64
+    private const val MAX_OLDEST_AGE_MS = 30L * 24 * 60 * 60 * 1000L
     private const val MAX_NEIGHBOR_PAGES = 6
     private const val GATE_RETRY_MS = 60 * 1000L
     private const val GATE_TTL_MS = 6 * 60 * 60 * 1000L
@@ -292,14 +294,15 @@ object Api {
         path: String,
         params: Map<String, String>,
     ): String {
+        val inflightKey = "$domain|$key"
         val deferred =
             synchronized(inflight) {
-                inflight.getOrPut(key) {
+                inflight.getOrPut(inflightKey) {
                     AppScope.io.async(start = CoroutineStart.LAZY) {
                         try {
                             fetch(domain, path, params)
                         } finally {
-                            synchronized(inflight) { inflight.remove(key) }
+                            synchronized(inflight) { inflight.remove(inflightKey) }
                         }
                     }
                 }
@@ -376,8 +379,33 @@ object Api {
     private fun kindOf(path: String): CacheKind =
         kindRules.firstOrNull { path.startsWith(it.first) }?.second ?: CacheKind.LIST
 
+    fun oldestEpisodesSizeBytes(): Long =
+        oldestDir
+            ?.listFiles()
+            ?.filter { it.isFile }
+            ?.sumOf { it.length() }
+            ?: 0L
+
     fun trimCache() {
         cache.trim()
+        val dir = oldestDir ?: return
+        val files = dir.listFiles() ?: return
+        val now = System.currentTimeMillis()
+        val jsonFiles = ArrayList<File>(files.size)
+        for (f in files) {
+            if (!f.isFile) continue
+            if (f.name.endsWith(".tmp") || now - f.lastModified() > MAX_OLDEST_AGE_MS) {
+                f.delete()
+            } else {
+                jsonFiles += f
+            }
+        }
+        if (jsonFiles.size > MAX_OLDEST_FILES) {
+            jsonFiles
+                .sortedByDescending { it.lastModified() }
+                .drop(MAX_OLDEST_FILES)
+                .forEach { it.delete() }
+        }
     }
 
     private suspend fun fetchCached(
@@ -586,7 +614,11 @@ object Api {
         when (this) {
             is ApiException -> this
             is IOException -> toApiException()
-            is JsonParseException, is IllegalStateException, is ClassCastException -> ApiException.Parse(this)
+            is JsonParseException,
+            is IllegalStateException,
+            is ClassCastException,
+            is UnsupportedOperationException,
+            -> ApiException.Parse(this)
             else -> this
         }
 
@@ -668,7 +700,9 @@ object Api {
                 }
             if (isError) {
                 invalidateCachedResponse(path, params)
-                throw ApiException.Remote(root.get("message")?.asString ?: "API error")
+                throw ApiException.Remote(
+                    root.get("message")?.takeIf { it.isJsonPrimitive }?.asString ?: "API error",
+                )
             }
             root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
         }
@@ -946,7 +980,14 @@ object Api {
                 runCatching {
                     val root = JsonParser.parseString(json).asJsonObject
                     val err = root.get("error")
-                    if (err != null && err.isJsonPrimitive && err.asString.equals("true", ignoreCase = true)) {
+                    val isErr =
+                        err != null &&
+                            err.isJsonPrimitive &&
+                            (
+                                (err.asJsonPrimitive.isBoolean && err.asBoolean) ||
+                                    (err.asJsonPrimitive.isString && err.asString.equals("true", ignoreCase = true))
+                            )
+                    if (isErr) {
                         return@runCatching null
                     }
                     val data =

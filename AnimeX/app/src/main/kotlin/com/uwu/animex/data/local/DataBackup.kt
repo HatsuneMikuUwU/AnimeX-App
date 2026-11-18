@@ -3,16 +3,21 @@ package com.uwu.animex.data.local
 import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
+import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.BookmarkEntity
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.local.db.HistoryEntity
 import com.uwu.animex.data.local.db.ProgressEntity
 import com.uwu.animex.data.local.db.SearchHistoryEntity
+import com.uwu.animex.data.tracker.SyncSource
+import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.theme.coerceToColorAnimMs
+import com.uwu.animex.ui.theme.coerceToFontScale
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
+import com.uwu.animex.ui.theme.coerceToUiScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -56,6 +61,7 @@ object DataBackup {
             val searches = dao.getAllSearchHistory()
             val alerts = dao.getEpisodeAlerts()
             val a = Appearance.settings.value
+            val n = NotificationPrefs.state.value
 
             val root =
                 JSONObject()
@@ -87,6 +93,9 @@ object DataBackup {
                                     .put("error", a.roleOverrides.error),
                             ).put("animateColorChange", a.animateColorChange)
                             .put("colorAnimationMs", a.colorAnimationMs)
+                            .put("uiScale", a.uiScale.toDouble())
+                            .put("fontScale", a.fontScale.toDouble())
+                            .put("autoScaleUi", a.autoScaleUi)
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers)
                             .put("hideStats", a.hideStats)
@@ -97,7 +106,24 @@ object DataBackup {
                             .put("seasonalThemes", a.seasonalThemes),
                     ).put("player", PlayerPrefs.exportJson())
                     .put("homeSections", HomeSectionPrefs.exportJson())
-                    .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
+                    .put(
+                        "notifications",
+                        JSONObject()
+                            .put("enabled", n.enabled)
+                            .put("episodes", n.episodes)
+                            .put("appUpdates", n.appUpdates)
+                            .put("prereleases", n.prereleases),
+                    ).put(
+                        "cuplix",
+                        JSONObject()
+                            .put("enabled", CuplixPrefs.enabled.value)
+                            .put("muted", CuplixPrefs.muted.value),
+                    ).put(
+                        "sync",
+                        JSONObject()
+                            .put("source", SyncSourcePref.source.value.name)
+                            .put("mirror", SyncSourcePref.mirror.value),
+                    ).put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
                     .put("progress", JSONArray(progress.map { it.toJson() }))
                     .put("searchHistory", JSONArray(searches.map { it.toJson() }))
@@ -139,9 +165,13 @@ object DataBackup {
             val progress = root.objects("progress").mapNotNull { it.toProgress() }
             val searches = root.objects("searchHistory").mapNotNull { it.toSearch() }
             val alerts = root.objects("episodeAlerts").mapNotNull { it.toAlert() }
-            val appearance = root.optJSONObject("appearance")?.toAppearance()
+            val appearanceObj = root.optJSONObject("appearance")
+            val appearance = appearanceObj?.toAppearance()
             val player = root.optJSONObject("player")
             val homeSections = root.optJSONObject("homeSections")
+            val notifications = root.optJSONObject("notifications")
+            val cuplix = root.optJSONObject("cuplix")
+            val sync = root.optJSONObject("sync")
 
             val database = AnimeDatabase.get(app)
             val dao = database.animeDao()
@@ -155,9 +185,32 @@ object DataBackup {
                 dao.trimProgress()
                 dao.trimSearch()
             }
-            if (appearance != null) Appearance.restore(appearance)
+            if (appearance != null) {
+                Appearance.restore(appearance)
+                if (appearanceObj.has("uiScale")) Appearance.setUiScale(appearance.uiScale)
+                if (appearanceObj.has("fontScale")) Appearance.setFontScale(appearance.fontScale)
+                if (appearanceObj.has("autoScaleUi")) Appearance.setAutoScaleUi(appearance.autoScaleUi)
+            }
             if (player != null) PlayerPrefs.restoreJson(player)
             if (homeSections != null) HomeSectionPrefs.restoreJson(homeSections)
+            if (notifications != null) {
+                NotificationPrefs.update {
+                    copy(
+                        enabled = notifications.optBoolean("enabled", enabled),
+                        episodes = notifications.optBoolean("episodes", episodes),
+                        appUpdates = notifications.optBoolean("appUpdates", appUpdates),
+                        prereleases = notifications.optBoolean("prereleases", prereleases),
+                    )
+                }
+            }
+            if (cuplix != null) {
+                if (cuplix.has("enabled")) CuplixPrefs.setEnabled(cuplix.optBoolean("enabled"))
+                if (cuplix.has("muted")) CuplixPrefs.setMuted(cuplix.optBoolean("muted"))
+            }
+            if (sync != null) {
+                runCatching { SyncSource.valueOf(sync.optString("source")) }.getOrNull()?.let(SyncSourcePref::set)
+                if (sync.has("mirror")) SyncSourcePref.setMirror(sync.optBoolean("mirror"))
+            }
 
             Summary(bookmarks.size, history.size, progress.size, searches.size, alerts.size)
         }
@@ -318,6 +371,9 @@ object DataBackup {
                 } ?: d.roleOverrides,
             animateColorChange = optBoolean("animateColorChange", d.animateColorChange),
             colorAnimationMs = optInt("colorAnimationMs", d.colorAnimationMs).coerceToColorAnimMs(),
+            uiScale = optDouble("uiScale", d.uiScale.toDouble()).toFloat().coerceToUiScale(),
+            fontScale = optDouble("fontScale", d.fontScale.toDouble()).toFloat().coerceToFontScale(),
+            autoScaleUi = optBoolean("autoScaleUi", d.autoScaleUi),
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
             compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
             hideStats = optBoolean("hideStats", d.hideStats),

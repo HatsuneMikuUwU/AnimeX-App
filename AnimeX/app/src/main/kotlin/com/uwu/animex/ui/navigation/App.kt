@@ -49,6 +49,7 @@ import com.uwu.animex.ui.cuplix.CuplixAllScreen
 import com.uwu.animex.ui.cuplix.CuplixHistoryScreen
 import com.uwu.animex.ui.cuplix.CuplixSavedScreen
 import com.uwu.animex.ui.cuplix.CuplixShortsScreen
+import com.uwu.animex.ui.cuplix.clipStartTimeMs
 import com.uwu.animex.ui.detail.DetailScreen
 import com.uwu.animex.ui.discussion.DiscussionScreen
 import com.uwu.animex.ui.download.DownloadsPage
@@ -95,7 +96,7 @@ fun App() {
         val id = pendingDetail ?: return@LaunchedEffect
         NotificationRouter.pendingDetail.value = null
         showSettings = false
-        nav.navigate("detail/$id")
+        nav.navigate("detail/${Uri.encode(id)}")
     }
 
     val pendingEpisode by NotificationRouter.pendingEpisode.collectAsStateWithLifecycle()
@@ -106,7 +107,8 @@ fun App() {
         nav.navigate(
             "player/${Uri.encode(link.epId)}?title=${Uri.encode(link.title)}" +
                 "&movieId=${Uri.encode(link.movieId)}" +
-                "&epIndex=${Uri.encode(link.epIndex.orEmpty())}",
+                "&epIndex=${Uri.encode(link.epIndex.orEmpty())}" +
+                "&startAtMs=${link.startAtMs ?: -1L}",
         )
     }
 
@@ -193,7 +195,7 @@ fun App() {
                 composable("notifications") {
                     NotificationCenterScreen(
                         onBack = { nav.popBackStack() },
-                        onOpen = { nav.navigate("detail/$it") },
+                        onOpen = { nav.navigate("detail/${Uri.encode(it)}") },
                     )
                 }
                 composable("notification-setup") {
@@ -205,8 +207,8 @@ fun App() {
                 composable("main") {
                     MainScreen(
                         onOpenUpdate = { nav.navigate("update") },
-                        onOpen = { nav.navigate("detail/$it") },
-                        onMore = { nav.navigate(if (it == "cuplix") "clips" else "list/$it") },
+                        onOpen = { nav.navigate("detail/${Uri.encode(it)}") },
+                        onMore = { nav.navigate(if (it == "cuplix") "clips" else "list/${Uri.encode(it)}") },
                         onFilter = { kind, id, title -> openFilter(kind, id, title) },
                         onOpenCategory = { nav.navigate("category") },
                         onOpenStudio = { nav.navigate("studio") },
@@ -214,7 +216,7 @@ fun App() {
                         onOpenType = { nav.navigate("type") },
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
-                                "player/$epId?title=${Uri.encode(title)}" +
+                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
                                     "&movieId=${Uri.encode(movieId.orEmpty())}" +
                                     "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
@@ -230,13 +232,13 @@ fun App() {
                 composable("mal") {
                     MalProfileScreen(
                         onBack = { nav.popBackStack() },
-                        onOpenDetail = { nav.navigate("detail/$it") },
+                        onOpenDetail = { nav.navigate("detail/${Uri.encode(it)}") },
                     )
                 }
                 composable("anilist") {
                     AniListProfileScreen(
                         onBack = { nav.popBackStack() },
-                        onOpenDetail = { nav.navigate("detail/$it") },
+                        onOpenDetail = { nav.navigate("detail/${Uri.encode(it)}") },
                     )
                 }
                 composable("about") {
@@ -248,10 +250,10 @@ fun App() {
                 composable("downloads") {
                     DownloadsPage(
                         onBack = { nav.popBackStack() },
-                        onOpen = { nav.navigate("detail/$it") },
+                        onOpen = { nav.navigate("detail/${Uri.encode(it)}") },
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
-                                "player/$epId?title=${Uri.encode(title)}" +
+                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
                                     "&movieId=${Uri.encode(movieId.orEmpty())}" +
                                     "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
@@ -286,10 +288,10 @@ fun App() {
                     ListScreen(
                         key = e.arguments?.getString("key").orEmpty(),
                         onBack = { nav.popBackStack() },
-                        onOpen = { nav.navigate("detail/$it") },
+                        onOpen = { nav.navigate("detail/${Uri.encode(it)}") },
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
-                                "player/$epId?title=${Uri.encode(title)}" +
+                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
                                     "&movieId=${Uri.encode(movieId.orEmpty())}" +
                                     "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
@@ -307,34 +309,34 @@ fun App() {
                         ),
                 ) { e ->
                     val kind = e.arguments?.getString("kind").orEmpty()
-                    val id = Uri.decode(e.arguments?.getString("id").orEmpty())
-                    val title = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { id }
+                    val id = e.arguments?.getString("id").orEmpty()
+                    val title = e.arguments?.getString("title").orEmpty().ifBlank { id }
                     FilterListScreen(
                         kind = kind,
                         id = id,
                         title = title,
                         onBack = { nav.popBackStack() },
-                        onOpen = { nav.navigate("detail/$it") },
+                        onOpen = { nav.navigate("detail/${Uri.encode(it)}") },
                     )
                 }
                 composable("detail/{id}") { e ->
                     DetailScreen(
                         id = e.arguments?.getString("id").orEmpty(),
                         onBack = { nav.popBackStack() },
-                        onOpen = { seasonId -> nav.navigate("detail/$seasonId") },
+                        onOpen = { seasonId -> nav.navigate("detail/${Uri.encode(seasonId)}") },
                         onOpenDiscussion = { movieId, title ->
                             nav.navigate(
-                                "discussion/$movieId?title=${Uri.encode(title.orEmpty())}",
+                                "discussion/${Uri.encode(movieId)}?title=${Uri.encode(title.orEmpty())}",
                             )
                         },
                         onOpenEpisodeComment = { episodeId, title ->
                             nav.navigate(
-                                "episode-comment/$episodeId?title=${Uri.encode(title.orEmpty())}",
+                                "episode-comment/${Uri.encode(episodeId)}?title=${Uri.encode(title.orEmpty())}",
                             )
                         },
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
-                                "player/$epId?title=${Uri.encode(title)}" +
+                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
                                     "&movieId=${Uri.encode(movieId.orEmpty())}" +
                                     "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
@@ -353,7 +355,7 @@ fun App() {
                 ) { e ->
                     DiscussionScreen(
                         movieId = e.arguments?.getString("id").orEmpty(),
-                        movieTitle = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null },
+                        movieTitle = e.arguments?.getString("title").orEmpty().ifBlank { null },
                         onBack = { nav.popBackStack() },
                         onNeedLogin = { nav.navigate("login") },
                     )
@@ -370,7 +372,7 @@ fun App() {
                 ) { e ->
                     DiscussionScreen(
                         movieId = e.arguments?.getString("id").orEmpty(),
-                        movieTitle = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null },
+                        movieTitle = e.arguments?.getString("title").orEmpty().ifBlank { null },
                         scope = com.uwu.animex.ui.viewmodel.DiscussionScope.Episode,
                         onBack = { nav.popBackStack() },
                         onNeedLogin = { nav.navigate("login") },
@@ -413,15 +415,16 @@ fun App() {
                 }
                 composable("cuplix/{clipId}") { e ->
                     CuplixShortsScreen(
-                        startClipId = Uri.decode(e.arguments?.getString("clipId").orEmpty()),
+                        startClipId = e.arguments?.getString("clipId").orEmpty(),
                         onBack = { nav.popBackStack() },
-                        onOpenAnime = { animeId -> nav.navigate("detail/$animeId") },
+                        onOpenAnime = { animeId -> nav.navigate("detail/${Uri.encode(animeId)}") },
                         onPlayEpisode = { clip ->
                             nav.navigate(
                                 "player/${Uri.encode(clip.id_episode.orEmpty())}" +
                                     "?title=${Uri.encode(clip.anime.orEmpty())}" +
                                     "&movieId=${Uri.encode(clip.id_movie.orEmpty())}" +
-                                    "&epIndex=${Uri.encode(clip.episode.toEpisodeIndex().orEmpty())}",
+                                    "&epIndex=${Uri.encode(clip.episode.toEpisodeIndex().orEmpty())}" +
+                                    "&startAtMs=${clip.clipStartTimeMs()}",
                             )
                         },
                         onNeedLogin = { nav.navigate("login") },
@@ -457,7 +460,7 @@ fun App() {
                         startAtMs = e.arguments?.getLong("startAtMs")?.takeIf { it >= 0L },
                         onBack = { nav.popBackStack() },
                         onOpenAnime = { animeId ->
-                            nav.navigate("detail/$animeId") {
+                            nav.navigate("detail/${Uri.encode(animeId)}") {
                                 popUpTo(
                                     "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}&startAtMs={startAtMs}",
                                 ) {

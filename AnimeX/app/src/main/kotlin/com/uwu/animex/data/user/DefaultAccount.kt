@@ -2,18 +2,24 @@ package com.uwu.animex.data.user
 
 import com.uwu.animex.BuildConfig
 
-object DefaultAccount {
-    private const val SALT = "com.uwu.animex:v1"
-
-    private fun unmask(hex: String): String {
-        if (hex.isEmpty()) return ""
-        val key = SALT.toByteArray(Charsets.UTF_8)
+internal fun unmaskAccountSecret(
+    hex: String,
+    salt: String = "com.uwu.animex:v1",
+): String {
+    val trimmed = hex.trim()
+    if (trimmed.isEmpty() || trimmed.length % 2 != 0) return ""
+    val key = salt.toByteArray(Charsets.UTF_8)
+    return runCatching {
         val bytes =
-            ByteArray(hex.length / 2) { i ->
-                (hex.substring(i * 2, i * 2 + 2).toInt(16) xor key[i % key.size].toInt()).toByte()
+            ByteArray(trimmed.length / 2) { i ->
+                (trimmed.substring(i * 2, i * 2 + 2).toInt(16) xor key[i % key.size].toInt()).toByte()
             }
-        return String(bytes, Charsets.UTF_8)
-    }
+        String(bytes, Charsets.UTF_8)
+    }.getOrDefault("")
+}
+
+object DefaultAccount {
+    internal fun unmask(hex: String): String = unmaskAccountSecret(hex)
 
     private val username by lazy { unmask(BuildConfig.DEFAULT_ACCOUNT_USER) }
     private val password by lazy { unmask(BuildConfig.DEFAULT_ACCOUNT_PASS) }

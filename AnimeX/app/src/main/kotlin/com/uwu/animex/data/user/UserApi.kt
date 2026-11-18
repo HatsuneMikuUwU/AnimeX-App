@@ -470,26 +470,34 @@ object UserApi {
     private fun <T> parseList(
         root: JsonObject,
         clazz: Class<T>,
-    ): List<T> {
-        val data = root.get("data")
-        val arr =
-            when {
-                data == null -> null
-                data.isJsonArray -> data.asJsonArray
-                data.isJsonObject -> {
-                    val o = data.asJsonObject
-                    o.get("list")?.asJsonArray
-                        ?: o.get("data")?.asJsonArray
-                        ?: o.get("items")?.asJsonArray
-                        ?: o.get("discussion")?.asJsonArray
-                        ?: o.get("movie_discussion")?.asJsonArray
-                        ?: o.get("comment")?.asJsonArray
-                        ?: o.get("comment_replay")?.asJsonArray
-                }
-                else -> null
-            } ?: root.getAsJsonArray("list")
-        if (arr == null) return emptyList()
-        val type = TypeToken.getParameterized(List::class.java, clazz).type
-        return gson.fromJson(arr, type) ?: emptyList()
-    }
+    ): List<T> = parseUserApiList(gson, root, clazz)
+}
+
+internal fun <T> parseUserApiList(
+    gson: Gson,
+    root: JsonObject,
+    clazz: Class<T>,
+): List<T> {
+    fun JsonObject.safeArray(key: String) = get(key)?.takeIf { it.isJsonArray }?.asJsonArray
+
+    val data = root.get("data")
+    val arr =
+        when {
+            data == null || data.isJsonNull -> null
+            data.isJsonArray -> data.asJsonArray
+            data.isJsonObject -> {
+                val o = data.asJsonObject
+                o.safeArray("list")
+                    ?: o.safeArray("data")
+                    ?: o.safeArray("items")
+                    ?: o.safeArray("discussion")
+                    ?: o.safeArray("movie_discussion")
+                    ?: o.safeArray("comment")
+                    ?: o.safeArray("comment_replay")
+            }
+            else -> null
+        } ?: root.safeArray("list")
+    if (arr == null) return emptyList()
+    val type = TypeToken.getParameterized(List::class.java, clazz).type
+    return runCatching { gson.fromJson<List<T>>(arr, type) }.getOrNull().orEmpty()
 }

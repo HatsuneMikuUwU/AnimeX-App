@@ -540,12 +540,14 @@ internal fun WebEmbed(url: String) {
         AndroidView(
             factory = { c ->
                 WebView(c).apply {
+                    setBackgroundColor(android.graphics.Color.BLACK)
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.allowFileAccess = false
                     settings.allowContentAccess = false
                     settings.javaScriptCanOpenWindowsAutomatically = false
+                    settings.setSupportMultipleWindows(true)
                     webViewClient =
                         object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(
@@ -554,10 +556,10 @@ internal fun WebEmbed(url: String) {
                             ): Boolean {
                                 val target = request?.url ?: return false
                                 val scheme = target.scheme?.lowercase()
-                                if (scheme != "http" && scheme != "https") return true
+                                if (scheme != "https") return true
                                 return request.isForMainFrame &&
                                     request.hasGesture() &&
-                                    target.host != originalHost
+                                    !isSameOrSubdomain(target.host, originalHost)
                             }
                         }
                     loadUrl(url)
@@ -566,9 +568,22 @@ internal fun WebEmbed(url: String) {
             },
             onRelease = {
                 if (holder[0] === it) holder[0] = null
+                it.stopLoading()
+                it.loadUrl("about:blank")
+                it.onPause()
                 it.destroy()
             },
             modifier = Modifier.fillMaxSize(),
         )
     }
+}
+
+private fun isSameOrSubdomain(
+    candidate: String?,
+    base: String?,
+): Boolean {
+    val c = candidate?.lowercase()?.trim('.').orEmpty()
+    val b = base?.lowercase()?.trim('.').orEmpty()
+    if (c.isEmpty() || b.isEmpty()) return false
+    return c == b || c.endsWith(".$b") || b.endsWith(".$c")
 }

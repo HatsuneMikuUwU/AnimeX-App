@@ -31,10 +31,10 @@ object UserSession {
     private val _user = MutableStateFlow<UserProfile?>(null)
     val user: StateFlow<UserProfile?> = _user.asStateFlow()
 
-    val loggedIn: StateFlow<Boolean>
-        get() = MutableStateFlow(_user.value?.isAuthenticated == true)
+    private val _loggedIn = MutableStateFlow(false)
+    val loggedIn: StateFlow<Boolean> = _loggedIn.asStateFlow()
 
-    fun isLoggedIn(): Boolean = _user.value?.isAuthenticated == true
+    fun isLoggedIn(): Boolean = _loggedIn.value
 
     fun userId(): String? = _user.value?.id?.takeIf { it.isNotBlank() }
 
@@ -52,17 +52,22 @@ object UserSession {
             }.getOrNull()
         if (saved != null && saved.isAuthenticated) {
             _user.value = saved
+            _loggedIn.value = true
             if (raw != null && !SecureStore.isEncrypted(raw)) {
                 SecureStore.encrypt(raw)?.let {
                     p.edit().putString(PrefKeys.UserSession.USER, it).apply()
                 }
             }
+        } else {
+            _user.value = null
+            _loggedIn.value = false
         }
     }
 
     @Synchronized
     fun save(profile: UserProfile) {
         _user.value = profile
+        _loggedIn.value = profile.isAuthenticated
         SecureStore.encrypt(gson.toJson(profile))?.let {
             prefs?.edit()?.putString(PrefKeys.UserSession.USER, it)?.apply()
         }
@@ -77,6 +82,7 @@ object UserSession {
     @Synchronized
     fun clear() {
         _user.value = null
+        _loggedIn.value = false
         prefs?.edit()?.remove(PrefKeys.UserSession.USER)?.apply()
     }
 }

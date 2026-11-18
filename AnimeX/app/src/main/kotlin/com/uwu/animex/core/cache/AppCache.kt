@@ -19,7 +19,7 @@ import java.io.File
 object AppCache {
     suspend fun sizeBytes(context: Context): Long =
         withContext(Dispatchers.IO) {
-            dirSize(context.applicationContext.cacheDir)
+            dirSize(context.applicationContext.cacheDir) + Api.oldestEpisodesSizeBytes()
         }
 
     suspend fun maintain(context: Context) =
@@ -33,7 +33,7 @@ object AppCache {
     suspend fun clearAll(context: Context): Long =
         withContext(Dispatchers.IO) {
             val app = context.applicationContext
-            val before = dirSize(app.cacheDir)
+            val before = dirSize(app.cacheDir) + Api.oldestEpisodesSizeBytes()
 
             val loader = app.imageLoader
             loader.memoryCache?.clear()
@@ -51,7 +51,7 @@ object AppCache {
             File(app.cacheDir, "updates").deleteRecursively()
             AppUpdate.onCacheCleared()
 
-            (before - dirSize(app.cacheDir)).coerceAtLeast(0L)
+            (before - (dirSize(app.cacheDir) + Api.oldestEpisodesSizeBytes())).coerceAtLeast(0L)
         }
 
     private fun dirSize(dir: File): Long {

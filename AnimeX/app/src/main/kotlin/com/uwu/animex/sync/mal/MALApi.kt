@@ -529,7 +529,7 @@ class MALApi : SyncAPI() {
             page.data.orEmpty().forEach { d ->
                 d.node?.let { items.add(it.toLibraryItem(d.list_status ?: it.my_list_status)) }
             }
-            url = page.paging?.next?.takeIf { it.isNotBlank() } ?: break
+            url = page.paging?.next?.takeIf { it.startsWith("https://api.myanimelist.net/") } ?: break
             if (++pages >= 200) break
         }
         val grouped = items.groupBy { it.status }

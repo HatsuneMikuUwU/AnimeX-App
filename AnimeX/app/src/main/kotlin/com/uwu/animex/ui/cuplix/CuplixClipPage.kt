@@ -111,7 +111,6 @@ import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixSaved
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.model.Cuplix
-import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.Poster
@@ -121,7 +120,7 @@ import com.uwu.animex.ui.common.cuplixCountText
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStableHapticAction
-import com.uwu.animex.ui.detail.shareAnime
+import com.uwu.animex.ui.detail.shareCuplix
 import com.uwu.animex.ui.download.DownloadStatusButton
 import com.uwu.animex.ui.player.PlayerResize
 import kotlinx.coroutines.delay
@@ -521,7 +520,7 @@ internal fun CuplixClipPage(
                 liked = liked,
                 onToggleLike = { onLikedChange(!liked) },
                 onComment = { showComments = true },
-                onShare = { shareAnime(ctx, Movie(id = clip.id_movie, title = clip.anime ?: clip.caption)) },
+                onShare = { shareCuplix(ctx, clip) },
                 saved = isSaved,
                 onToggleSave = {
                     val nowSaved = CuplixSaved.toggle(clip)

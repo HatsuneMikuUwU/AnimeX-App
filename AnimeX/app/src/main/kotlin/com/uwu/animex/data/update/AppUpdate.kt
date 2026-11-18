@@ -11,6 +11,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.MainActivity
@@ -136,64 +138,7 @@ object AppUpdate {
     fun isNewer(
         remote: String,
         current: String = BuildConfig.VERSION_NAME,
-    ): Boolean {
-        fun nums(v: String): List<Int> =
-            v
-                .split('.', '-', '_')
-                .mapNotNull { it.takeWhile { c -> c.isDigit() }.toIntOrNull() }
-                .ifEmpty { listOf(0) }
-
-        fun core(v: String) = v.trim().removePrefix("v").substringBefore('-')
-
-        fun pre(v: String): String? =
-            v
-                .trim()
-                .removePrefix("v")
-                .substringAfter('-', "")
-                .ifBlank { null }
-
-        val a = nums(core(remote))
-        val b = nums(core(current))
-        val n = maxOf(a.size, b.size)
-        for (i in 0 until n) {
-            val x = a.getOrElse(i) { 0 }
-            val y = b.getOrElse(i) { 0 }
-            if (x != y) return x > y
-        }
-        val pr = pre(remote)
-        val pc = pre(current)
-        return when {
-            pr == null && pc == null -> false
-            pr == null -> true
-            pc == null -> false
-            else -> comparePre(pr, pc) > 0
-        }
-    }
-
-    private fun preTokens(v: String): List<String> = Regex("[A-Za-z]+|\\d+").findAll(v).map { it.value }.toList()
-
-    private fun comparePre(
-        a: String,
-        b: String,
-    ): Int {
-        val x = preTokens(a)
-        val y = preTokens(b)
-        for (i in 0 until maxOf(x.size, y.size)) {
-            val p = x.getOrNull(i) ?: return -1
-            val q = y.getOrNull(i) ?: return 1
-            val pn = p.toBigIntegerOrNull()
-            val qn = q.toBigIntegerOrNull()
-            val c =
-                when {
-                    pn != null && qn != null -> pn.compareTo(qn)
-                    pn != null -> -1
-                    qn != null -> 1
-                    else -> p.compareTo(q, ignoreCase = true)
-                }
-            if (c != 0) return c
-        }
-        return 0
-    }
+    ): Boolean = isReleaseNewer(remote, current)
 
     suspend fun check() {
         val current = _state.value
@@ -233,92 +178,12 @@ object AppUpdate {
                 if (!r.isSuccessful) error("GitHub ${r.code}")
                 r.body.string()
             }
-        val arr = JsonParser.parseString(body).asJsonArray
-        val all = mutableListOf<Release>()
-        val allowPrereleases = NotificationPrefs.state.value.prereleases
-        for (el in arr) {
-            val o = el.asJsonObject
-            if (o.get("draft")?.asBoolean == true) continue
-
-            val isPrerelease =
-                o.get("prerelease")?.asBoolean == true ||
-                    o
-                        .get("tag_name")
-                        ?.asString
-                        .orEmpty()
-                        .contains('-')
-            if (isPrerelease && !allowPrereleases) continue
-            parseRelease(o)?.let { all += it }
-        }
-        val newer = all.filter { isNewer(it.tag) }
-        val latest = newer.firstOrNull()
-        val older = newer.drop(1)
-        return latest to older
-    }
-
-    private data class ApkAsset(
-        val url: String,
-        val name: String,
-        val size: Long,
-        val sha256: String?,
-    )
-
-    private fun parseRelease(root: com.google.gson.JsonObject): Release? {
-        val tag =
-            root
-                .get("tag_name")
-                ?.asString
-                ?.trim()
-                .orEmpty()
-        if (tag.isBlank()) return null
-        val name = root.get("name")?.asString?.ifBlank { tag } ?: tag
-        val notes = root.get("body")?.asString.orEmpty()
-        val published =
-            root
-                .get("published_at")
-                ?.asString
-                .orEmpty()
-                .take(10)
-        val assets = root.getAsJsonArray("assets") ?: return null
-
-        val abi = preferredAbi()
-        val candidates = mutableListOf<ApkAsset>()
-        for (el in assets) {
-            val o = el.asJsonObject
-            val n = o.get("name")?.asString.orEmpty()
-            if (!n.endsWith(".apk", ignoreCase = true)) continue
-            val url = o.get("browser_download_url")?.asString.orEmpty()
-            if (!url.startsWith("https://github.com/$REPO/releases/download/")) continue
-            val size = o.get("size")?.asLong ?: 0L
-            val sha =
-                o
-                    .get("digest")
-                    ?.takeIf { !it.isJsonNull }
-                    ?.asString
-                    ?.removePrefix("sha256:")
-                    ?.lowercase()
-                    ?.takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
-            candidates += ApkAsset(url, n, size, sha)
-        }
-        if (candidates.isEmpty()) return null
-
-        val pick =
-            candidates.firstOrNull { it.name.contains(abi, ignoreCase = true) }
-                ?: candidates.firstOrNull { it.name.contains("universal", ignoreCase = true) }
-                ?: candidates.first()
-
-        return Release(
-            tag = tag.removePrefix("v"),
-            name = name,
-            body = notes,
-            publishedAt = published,
-            apkUrl = pick.url,
-            apkName = pick.name,
-            sizeBytes = pick.size,
-            sha256 = pick.sha256,
-            htmlUrl =
-                root.get("html_url")?.asString?.takeIf { it.isNotBlank() }
-                    ?: "https://github.com/$REPO/releases/tag/$tag",
+        return parseGitHubReleasesJson(
+            body = body,
+            allowPrereleases = NotificationPrefs.state.value.prereleases,
+            abi = preferredAbi(),
+            currentVersion = BuildConfig.VERSION_NAME,
+            repo = REPO,
         )
     }
 
@@ -482,4 +347,158 @@ object AppUpdate {
             cancelNotification()
         }
     }
+}
+
+private data class ApkAsset(
+    val url: String,
+    val name: String,
+    val size: Long,
+    val sha256: String?,
+)
+
+private val preTokenRegex = Regex("[A-Za-z]+|\\d+")
+
+internal fun isReleaseNewer(
+    remote: String,
+    current: String,
+): Boolean {
+    fun nums(v: String): List<Int> =
+        v
+            .split('.', '-', '_')
+            .mapNotNull { it.takeWhile { c -> c.isDigit() }.toIntOrNull() }
+            .ifEmpty { listOf(0) }
+
+    fun core(v: String) = v.trim().removePrefix("v").substringBefore('-')
+
+    fun pre(v: String): String? =
+        v
+            .trim()
+            .removePrefix("v")
+            .substringAfter('-', "")
+            .ifBlank { null }
+
+    val a = nums(core(remote))
+    val b = nums(core(current))
+    val n = maxOf(a.size, b.size)
+    for (i in 0 until n) {
+        val x = a.getOrElse(i) { 0 }
+        val y = b.getOrElse(i) { 0 }
+        if (x != y) return x > y
+    }
+    val pr = pre(remote)
+    val pc = pre(current)
+    return when {
+        pr == null && pc == null -> false
+        pr == null -> true
+        pc == null -> false
+        else -> comparePreTokens(pr, pc) > 0
+    }
+}
+
+private fun comparePreTokens(
+    a: String,
+    b: String,
+): Int {
+    val x = preTokenRegex.findAll(a).map { it.value }.toList()
+    val y = preTokenRegex.findAll(b).map { it.value }.toList()
+    for (i in 0 until maxOf(x.size, y.size)) {
+        val p = x.getOrNull(i) ?: return -1
+        val q = y.getOrNull(i) ?: return 1
+        val pn = p.toBigIntegerOrNull()
+        val qn = q.toBigIntegerOrNull()
+        val c =
+            when {
+                pn != null && qn != null -> pn.compareTo(qn)
+                pn != null -> -1
+                qn != null -> 1
+                else -> p.compareTo(q, ignoreCase = true)
+            }
+        if (c != 0) return c
+    }
+    return 0
+}
+
+private fun JsonObject.optString(key: String): String? =
+    get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asString }.getOrNull() }
+
+private fun JsonObject.optBoolean(key: String): Boolean =
+    get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asBoolean }.getOrNull() } == true
+
+private fun JsonObject.optLong(key: String): Long =
+    get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asLong }.getOrNull() } ?: 0L
+
+private fun JsonObject.optArray(key: String): JsonArray? =
+    get(key)?.takeIf { it.isJsonArray }?.asJsonArray
+
+internal fun parseGitHubReleasesJson(
+    body: String,
+    allowPrereleases: Boolean,
+    abi: String,
+    currentVersion: String,
+    repo: String = "HatsuneMikuUwU/AnimeX-App",
+): Pair<AppUpdate.Release?, List<AppUpdate.Release>> {
+    val parsed = JsonParser.parseString(body)
+    if (!parsed.isJsonArray) return null to emptyList()
+    val all = mutableListOf<AppUpdate.Release>()
+    for (el in parsed.asJsonArray) {
+        if (!el.isJsonObject) continue
+        val o = el.asJsonObject
+        if (o.optBoolean("draft")) continue
+        val isPrerelease = o.optBoolean("prerelease") || o.optString("tag_name").orEmpty().contains('-')
+        if (isPrerelease && !allowPrereleases) continue
+        parseSingleRelease(o, abi, repo)?.let { all += it }
+    }
+    val newer = all.filter { isReleaseNewer(it.tag, currentVersion) }
+    return newer.firstOrNull() to newer.drop(1)
+}
+
+private fun parseSingleRelease(
+    root: JsonObject,
+    abi: String,
+    repo: String,
+): AppUpdate.Release? {
+    val tag = root.optString("tag_name")?.trim().orEmpty()
+    if (tag.isBlank()) return null
+    val name = root.optString("name")?.ifBlank { tag } ?: tag
+    val notes = root.optString("body").orEmpty()
+    val published = root.optString("published_at").orEmpty().take(10)
+    val assets = root.optArray("assets") ?: return null
+
+    val candidates = mutableListOf<ApkAsset>()
+    for (el in assets) {
+        if (!el.isJsonObject) continue
+        val o = el.asJsonObject
+        val n = o.optString("name").orEmpty()
+        if (!n.endsWith(".apk", ignoreCase = true)) continue
+        val url = o.optString("browser_download_url").orEmpty()
+        if (!url.startsWith("https://github.com/$repo/releases/download/")) continue
+        val size = o.optLong("size")
+        val sha =
+            o
+                .optString("digest")
+                ?.removePrefix("sha256:")
+                ?.lowercase()
+                ?.takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
+        candidates += ApkAsset(url, n, size, sha)
+    }
+    if (candidates.isEmpty()) return null
+
+    val pick =
+        candidates.firstOrNull { it.name.contains(abi, ignoreCase = true) }
+            ?: candidates.firstOrNull { it.name.contains("universal", ignoreCase = true) }
+            ?: candidates.first()
+
+    return AppUpdate.Release(
+        tag = tag.removePrefix("v"),
+        name = name,
+        body = notes,
+        publishedAt = published,
+        apkUrl = pick.url,
+        apkName = pick.name,
+        sizeBytes = pick.size,
+        sha256 = pick.sha256,
+        htmlUrl =
+            root.optString("html_url")?.takeIf { it.isNotBlank() }
+                ?: "https://github.com/$repo/releases/tag/$tag",
+    )
 }

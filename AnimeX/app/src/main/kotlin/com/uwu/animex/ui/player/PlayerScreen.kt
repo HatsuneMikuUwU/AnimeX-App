@@ -169,9 +169,9 @@ fun PlayerScreen(
     onNeedLogin: () -> Unit = {},
     viewModel: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(epId), key = "player"),
 ) {
-    var curEpId by rememberSaveable { mutableStateOf(epId) }
-    var curTitle by rememberSaveable { mutableStateOf(title) }
-    var curIndex by rememberSaveable { mutableStateOf(epIndex.toEpisodeIndex()) }
+    var curEpId by rememberSaveable(epId) { mutableStateOf(epId) }
+    var curTitle by rememberSaveable(epId) { mutableStateOf(title) }
+    var curIndex by rememberSaveable(epId) { mutableStateOf(epIndex.toEpisodeIndex()) }
     var initialPositionMs by rememberSaveable(epId) { mutableStateOf(startAtMs) }
     var curUploadDate by remember { mutableStateOf<String?>(null) }
 
@@ -305,6 +305,12 @@ fun PlayerScreen(
     val fullscreen = isLandscape || inPip
     val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
     var manualLock by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(orientationPref, manualLock) {
+        if (manualLock == null) {
+            applyPlayerOrientation(activity, true)
+        }
+    }
 
     fun enterFullscreen() {
         val target =

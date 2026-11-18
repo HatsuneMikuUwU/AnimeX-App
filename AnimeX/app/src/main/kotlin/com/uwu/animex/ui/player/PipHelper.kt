@@ -10,6 +10,7 @@ import com.uwu.animex.data.local.PlayerPrefs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.lang.ref.WeakReference
 
 object PipHelper {
     private val _inPip = MutableStateFlow(false)
@@ -30,7 +31,13 @@ object PipHelper {
         }
 
     @Volatile
-    private var lastActivity: Activity? = null
+    private var lastActivityRef: WeakReference<Activity>? = null
+
+    private var lastActivity: Activity?
+        get() = lastActivityRef?.get()?.takeIf { !it.isFinishing && !it.isDestroyed }
+        set(value) {
+            lastActivityRef = value?.let(::WeakReference)
+        }
 
     @Volatile
     private var sourceRect: android.graphics.Rect? = null
@@ -113,5 +120,6 @@ object PipHelper {
         playerActive = false
         isPlaying = false
         updateParams(activity)
+        lastActivity = null
     }
 }
