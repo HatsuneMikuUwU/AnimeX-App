@@ -142,6 +142,13 @@ internal fun QualitySheet(
     )
 }
 
+private data class HubRow(
+    val icon: ImageVector,
+    val label: String,
+    val value: String,
+    val onClick: () -> Unit,
+)
+
 @Composable
 internal fun YouTubePlayerSettingsSheet(
     qualityValue: String,
@@ -158,12 +165,6 @@ internal fun YouTubePlayerSettingsSheet(
     onToggleMiniStyle: () -> Unit,
     onOpenExternal: () -> Unit,
 ) {
-    data class HubRow(
-        val icon: ImageVector,
-        val label: String,
-        val value: String,
-        val onClick: () -> Unit,
-    )
 
     val rows =
         buildList {

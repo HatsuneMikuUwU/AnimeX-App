@@ -1,6 +1,8 @@
 package com.uwu.animex.ui.player
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.uwu.animex.data.model.toEpisodeIndex
 import com.uwu.animex.service.PlaybackSessions
 
