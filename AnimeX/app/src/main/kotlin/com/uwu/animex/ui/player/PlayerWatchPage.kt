@@ -1203,7 +1203,10 @@ private fun YouTubeEpisodePlaylistCard(
                     }
                 }
                 previewWindow.isNotEmpty() -> {
-                    Column(Modifier.padding(vertical = 6.dp)) {
+                    Column(
+                        Modifier.padding(vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         previewWindow.forEach { ep ->
                             val isCurrent = ep.id == currentEpId
                             val meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
@@ -1214,7 +1217,7 @@ private fun YouTubeEpisodePlaylistCard(
                                     .padding(horizontal = 6.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
-                                        if (isCurrent) cs.primaryContainer.copy(alpha = 0.45f) else Color.Transparent,
+                                        if (isCurrent) cs.primaryContainer.copy(alpha = 0.45f) else cs.surfaceContainerHighest,
                                     ).clickable(onClick = hapticClick { onPickEpisode(ep) })
                                     .padding(horizontal = 6.dp, vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically,
