@@ -1609,6 +1609,7 @@ private fun YouTubeEpisodeListItem(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val hideStats = rememberHideStats()
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
         .collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
     val progress = Progress.fractionOf(watch)
@@ -1748,6 +1749,21 @@ private fun YouTubeEpisodeListItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            val subInfo =
+                listOfNotNull(
+                    ep.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} ditonton" },
+                    meta?.rating?.takeIf { it.isNotBlank() }?.let { "★ ${it.replace('.', ',')}" },
+                    AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
+                )
+            if (subInfo.isNotEmpty()) {
+                Text(
+                    subInfo.joinToString(" • "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cs.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
