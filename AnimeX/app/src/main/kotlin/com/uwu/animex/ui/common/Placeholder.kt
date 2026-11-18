@@ -123,11 +123,14 @@ fun NewTitleCardPlaceholder(
 }
 
 @Composable
-fun EpisodeRowPlaceholder(modifier: Modifier = Modifier) {
+fun EpisodeRowPlaceholder(
+    modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 16.dp,
+) {
     Row(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = horizontalPadding, vertical = 4.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),

@@ -1434,7 +1434,7 @@ private fun YouTubeRecommendationCard(
     Column(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 6.dp)
+            .padding(horizontal = 12.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(cs.surfaceContainer)
             .hapticClick(
@@ -1557,7 +1557,7 @@ private fun LazyListScope.watchEpisodeItems(
         error != null && list.episodes.isEmpty() ->
             item(key = "episodes-error") { WatchMessage(error, onRetry) }
         list.loading && list.episodes.isEmpty() ->
-            items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
+            items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder(horizontalPadding = 12.dp) }
         else -> {
             val pinned =
                 list.episodes.firstOrNull { it.id == currentEpId }
@@ -1593,7 +1593,7 @@ private fun LazyListScope.watchEpisodeItems(
                 item(key = "episodes-more-error") { WatchMessage("Gagal muat episode lainnya", onLoadMore) }
             } else if (list.loadingMore) {
                 items(3, key = { "episode-more-placeholder-$it" }, contentType = { "episodePlaceholder" }) {
-                    EpisodeRowPlaceholder()
+                    EpisodeRowPlaceholder(horizontalPadding = 12.dp)
                 }
             }
         }
@@ -1627,7 +1627,7 @@ private fun YouTubeEpisodeListItem(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(if (current) cs.primaryContainer else cs.surfaceContainer)
             .clickable(onClick = hapticClick(block = onClick))
