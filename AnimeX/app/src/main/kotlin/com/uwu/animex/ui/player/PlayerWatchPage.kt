@@ -208,7 +208,7 @@ internal data class WatchChip(
     val onClick: () -> Unit,
 )
 
-private val WATCH_SECTIONS = listOf("Semua", "Episode", "Rekomendasi")
+private val WATCH_SECTIONS = listOf("Semua", "Episode", "Saran")
 
 @Composable
 internal fun PlayerWatchPage(
@@ -1614,7 +1614,7 @@ private fun WatchSortButton(
             modifier = Modifier.size(18.dp).graphicsLayer { scaleY = flip },
         )
         Text(
-            if (newestFirst) "Terbaru" else "Ep 1→",
+            if (newestFirst) "Terbaru" else "Terlama",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
             color = if (newestFirst) cs.onSurface else cs.onSecondaryContainer,
@@ -1635,7 +1635,7 @@ private fun LazyListScope.watchSimilarFeedItems(
         similar.isEmpty() ->
             item(key = "recs-empty") {
                 Text(
-                    "Belum ada rekomendasi serupa untuk anime ini.",
+                    "Belum ada saran serupa untuk anime ini.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
