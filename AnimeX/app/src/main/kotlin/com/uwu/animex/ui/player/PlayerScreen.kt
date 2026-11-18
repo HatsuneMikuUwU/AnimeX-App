@@ -19,8 +19,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -35,15 +33,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -108,7 +104,6 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val AUTO_NEXT_SECONDS = 5
-private val PLAYER_STAGE_TOP_HEIGHT = 80.dp
 
 internal tailrec fun Context.findActivity(): Activity? =
     when (this) {
@@ -685,6 +680,7 @@ fun PlayerScreen(
                     Modifier
                         .fillMaxWidth()
                         .background(Color.Black)
+                        .statusBarsPadding()
                         .consumeWindowInsets(WindowInsets.safeDrawing)
                         .aspectRatio(16f / 9f)
                         .onGloballyPositioned {
@@ -700,39 +696,6 @@ fun PlayerScreen(
                             )
                         }
                 }
-            if (!fullscreen) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(screenContainerColor())
-                        .statusBarsPadding()
-                        .height(PLAYER_STAGE_TOP_HEIGHT),
-                ) {
-                    Row(
-                        Modifier
-                            .align(Alignment.TopStart)
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = hapticClick(block = backOrExit)) {
-                            Icon(
-                                Icons.Outlined.KeyboardArrowDown,
-                                contentDescription = "Tutup",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
-                        IconButton(onClick = hapticClick { toggleFullscreen() }) {
-                            Icon(
-                                Icons.Outlined.Fullscreen,
-                                contentDescription = "Layar penuh",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
-            }
             Box(videoModifier.background(Color.Black)) {
                 if (exoTarget != null) {
                     key(epId, exoTarget.url) {
@@ -746,20 +709,18 @@ fun PlayerScreen(
                                     AppLoadingIndicator(color = Color.White)
                                 }
 
-                                if (fullscreen) {
-                                    Box(
-                                        Modifier
-                                            .align(Alignment.TopStart)
-                                            .safeDrawingPadding()
-                                            .padding(horizontal = 4.dp, vertical = 8.dp),
-                                    ) {
-                                        OverlayButton(backOrExit) {
-                                            Icon(
-                                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                                contentDescription = "Balik",
-                                                tint = Color.White,
-                                            )
-                                        }
+                                Box(
+                                    Modifier
+                                        .align(Alignment.TopStart)
+                                        .safeDrawingPadding()
+                                        .padding(horizontal = 4.dp, vertical = if (fullscreen) 8.dp else 4.dp),
+                                ) {
+                                    OverlayButton(backOrExit) {
+                                        Icon(
+                                            if (fullscreen) Icons.AutoMirrored.Outlined.ArrowBack else Icons.Outlined.Close,
+                                            contentDescription = if (fullscreen) "Balik" else "Tutup",
+                                            tint = Color.White,
+                                        )
                                     }
                                 }
                             }
@@ -867,7 +828,7 @@ fun PlayerScreen(
                         Modifier
                             .align(Alignment.BottomEnd)
                             .safeDrawingPadding()
-                            .padding(end = 12.dp, bottom = if (fullscreen) 132.dp else 16.dp)
+                            .padding(end = 12.dp, bottom = if (fullscreen) 132.dp else 56.dp)
                             .background(Color(0xCC000000), RoundedCornerShape(24.dp))
                             .padding(start = 16.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -892,7 +853,6 @@ fun PlayerScreen(
                     currentEpId = epId,
                     currentIndex = curIndex,
                     uploadDate = curUploadDate,
-                    player = playerRef,
                     playerViewModel = viewModel,
                     commentsViewModel = commentsViewModel,
                     commentsOpen = showComments,

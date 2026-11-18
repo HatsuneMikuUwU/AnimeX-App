@@ -210,10 +210,8 @@ internal fun SeekBar(
     onScrub: (Long?) -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    trackColor: Color = Color(0x40FFFFFF),
-    bufferedColor: Color = Color(0x66FFFFFF),
-    playedColor: Color = MaterialTheme.colorScheme.primary,
 ) {
+    val played = MaterialTheme.colorScheme.primary
     val scrubHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
     var drag by remember { mutableStateOf<Float?>(null) }
     val total = duration.coerceAtLeast(1L)
@@ -264,11 +262,11 @@ internal fun SeekBar(
         val cy = size.height / 2f
         val top = cy - trackH / 2f
         val radius = CornerRadius(trackH / 2f)
-        drawRoundRect(trackColor, Offset(0f, top), Size(size.width, trackH), radius)
-        drawRoundRect(bufferedColor, Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
-        drawRoundRect(playedColor, Offset(0f, top), Size(size.width * frac, trackH), radius)
+        drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
+        drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
+        drawRoundRect(played, Offset(0f, top), Size(size.width * frac, trackH), radius)
         drawCircle(
-            color = playedColor,
+            color = played,
             radius = (if (drag != null) 10.dp else 7.dp).toPx(),
             center = Offset(size.width * frac, cy),
         )
