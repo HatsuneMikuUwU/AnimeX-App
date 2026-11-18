@@ -53,13 +53,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,6 +88,7 @@ import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppBadgedBox
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalMiniPlayerInset
 import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTabBarHeight
@@ -462,7 +461,7 @@ fun DetailScreen(
                         Column(
                             modifier =
                                 Modifier.padding(
-                                    bottom = if (!landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
+                                    bottom = (if (!landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp) + LocalMiniPlayerInset.current,
                                 ),
                             horizontalAlignment = Alignment.End,
                             verticalArrangement = Arrangement.spacedBy(12.dp),

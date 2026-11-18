@@ -187,6 +187,7 @@ object PrefKeys {
         const val VOLUME_BOOST = "volume_boost"
         const val BACKGROUND_PLAY = "background_play"
         const val SKIP_INTRO_MS = "skip_intro_ms"
+        const val MINI_PLAYER_FLOATING = "mini_player_floating"
     }
 
     object SyncSource {

@@ -1,4 +1,8 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalLayoutApi::class,
+)
 
 package com.uwu.animex.ui.player
 
@@ -14,22 +18,27 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,27 +57,37 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.UnfoldMore
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -84,26 +103,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -115,9 +127,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -127,21 +139,26 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
-import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.api.AniZip
+import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.EpisodeAlerts
+import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
@@ -151,8 +168,8 @@ import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
-import com.uwu.animex.ui.common.OverlayChip
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
@@ -167,12 +184,14 @@ import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
-import com.uwu.animex.ui.detail.EpisodeRow
+import com.uwu.animex.ui.detail.DownloadButton
 import com.uwu.animex.ui.detail.shareAnime
 import com.uwu.animex.ui.detail.shareEpisode
 import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
 import com.uwu.animex.ui.discussion.ThreadState
+import com.uwu.animex.ui.navigation.NotificationRouter
+import com.uwu.animex.ui.onboarding.needsNotificationSetup
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerEpisodeList
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
@@ -186,6 +205,8 @@ internal data class WatchChip(
     val onClick: () -> Unit,
 )
 
+private val WATCH_SECTIONS = listOf("Semua", "Episode", "Rekomendasi")
+
 @Composable
 internal fun PlayerWatchPage(
     animeTitle: String,
@@ -198,22 +219,29 @@ internal fun PlayerWatchPage(
     commentsOpen: Boolean,
     onOpenComments: () -> Unit,
     onCloseComments: () -> Unit,
+    descriptionOpen: Boolean = false,
+    onOpenDescription: () -> Unit = {},
+    onCloseDescription: () -> Unit = {},
     chips: List<WatchChip>,
     onPrev: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
     onPickEpisode: (Episode) -> Unit,
     onOpenAnime: (String) -> Unit,
     onNeedLogin: () -> Unit,
+    onMetadataResolved: (episodeTitle: String, animeTitle: String, poster: String?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
     var section by rememberSaveable { mutableIntStateOf(0) }
+    var playlistExpanded by rememberSaveable { mutableStateOf(true) }
     val listState = rememberLazyListState()
     val snackbar = remember { SnackbarHostState() }
-    val bottomPad = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+    val snackScope = rememberCoroutineScope()
+    val bottomPad = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
     val episodeList by playerViewModel.episodeList.collectAsStateWithLifecycle()
     val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
+    val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
     val synced = rememberSyncedWatched(movieId)
     val hideStats = rememberHideStats()
     val ctx = LocalContext.current
@@ -271,7 +299,7 @@ internal fun PlayerWatchPage(
         episodeList.loading,
         episodeList.moreError,
     ) {
-        if (section == 0 &&
+        if (section == 1 &&
             nearEnd &&
             episodeList.hasMore &&
             !episodeList.loadingMore &&
@@ -281,8 +309,66 @@ internal fun PlayerWatchPage(
             playerViewModel.loadMoreEpisodes()
         }
     }
+
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
+
+    val curEpisodeObj =
+        remember(episodeList.episodes, episodeList.pinned, currentEpId, currentIndex) {
+            episodeList.episodes.firstOrNull { it.id == currentEpId }
+                ?: episodeList.pinned?.takeIf { it.id == currentEpId }
+                ?: Episode(id = currentEpId, index = currentIndex)
+        }
+
+    val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
+    val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
+    val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() } ?: curEpisodeObj.title?.trim()?.takeIf { it.isNotBlank() }
+    val resolvedAnimeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle
+    val headerTitle =
+        when {
+            epNumber != null && epTitle != null -> "Episode $epNumber — $epTitle"
+            epNumber != null -> "$resolvedAnimeTitle — Episode $epNumber"
+            epTitle != null -> epTitle
+            else -> resolvedAnimeTitle
+        }
+    val miniEpisodeLabel =
+        when {
+            epNumber != null && epTitle != null -> "Ep $epNumber • $epTitle"
+            epNumber != null -> "Episode $epNumber"
+            else -> headerTitle
+        }
+    val posterUrl = movie?.image_poster?.takeIf { it.isNotBlank() } ?: movie?.image_cover?.takeIf { it.isNotBlank() }
+
+    LaunchedEffect(miniEpisodeLabel, resolvedAnimeTitle, posterUrl) {
+        onMetadataResolved(miniEpisodeLabel, resolvedAnimeTitle, posterUrl)
+    }
+
+    val currentDownload by remember(currentEpId) { Downloads.itemFlow(currentEpId) }
+        .collectAsStateWithLifecycle(initialValue = Downloads.item(currentEpId))
+
+    val viewsDisplay =
+        remember(curEpisodeObj.views, movie?.views, hideStats) {
+            if (hideStats) {
+                null
+            } else {
+                val raw = curEpisodeObj.views?.takeIf { it.isNotBlank() } ?: movie?.views?.takeIf { it.isNotBlank() }
+                raw?.let { "${fmtNum(it)} x ditonton" }
+            }
+        }
+    val dateDisplay = AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() }
+    val genreTags =
+        remember(movie?.genre) {
+            movie
+                ?.genre
+                ?.split(',', '/', '•')
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.take(3)
+                .orEmpty()
+        }
+
+    val commentItems = (commentsState as? UiState.Ready)?.value.orEmpty()
+    val alertActive = movieId != null && alerts.containsKey(movieId)
 
     Box(modifier.background(screenContainerColor())) {
         LazyColumn(
@@ -290,44 +376,61 @@ internal fun PlayerWatchPage(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = bottomPad),
         ) {
-            item(key = "header") {
-                val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
-                val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
-                val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() }
-                val headerTitle =
-                    when {
-                        epNumber == null -> epTitle ?: animeTitle
-                        epTitle != null -> epTitle
-                        else -> "Episode $epNumber"
-                    }
-                val headerDetails =
-                    listOfNotNull(
-                        epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
-                        epMeta?.runtime?.let { "${it}m" },
-                        AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
-                        movie
-                            ?.favorites
-                            ?.takeIf { it.isNotBlank() && !hideStats }
-                            ?.let { "${fmtNum(it)} favorit" },
-                    )
-                WatchHeader(
+            item(key = "yt-header") {
+                YouTubeWatchHeader(
                     title = headerTitle,
-                    animeTitle = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
-                    details = headerDetails,
+                    viewsText = viewsDisplay,
+                    dateText = dateDisplay,
+                    ratingText = (epMeta?.rating?.takeIf { it.isNotBlank() } ?: movie?.score?.takeIf { it.isNotBlank() })
+                        ?.let { "★ ${it.replace('.', ',')}" },
+                    runtimeText = epMeta?.runtime?.let { "$it mnt" },
+                    hashtags = genreTags,
+                    onClick = onOpenDescription,
                 )
             }
-            item(key = "actions") {
-                WatchActionRow(
-                    poster = movie?.image_poster ?: movie?.image_cover,
+
+            item(key = "yt-channel") {
+                YouTubeChannelBar(
+                    poster = posterUrl,
+                    animeTitle = resolvedAnimeTitle,
+                    subtitle =
+                        listOfNotNull(
+                            movie?.studio?.takeIf { it.isNotBlank() } ?: movie?.type?.takeIf { it.isNotBlank() },
+                            movie
+                                ?.favorites
+                                ?.takeIf { it.isNotBlank() && !hideStats }
+                                ?.let { "${fmtNum(it)} favorit" },
+                        ).joinToString(" • "),
                     status = synced.status,
                     statusEnabled = movie != null && movieId != null,
+                    alertActive = alertActive,
+                    alertEnabled = movie != null && movieId != null,
+                    onToggleAlert = {
+                        val m = movie ?: return@YouTubeChannelBar
+                        val id = movieId ?: return@YouTubeChannelBar
+                        if (alertActive) {
+                            EpisodeAlerts.disable(id)
+                            snackbar.show(snackScope, "Notifikasi episode baru dimatikan")
+                        } else {
+                            EpisodeAlerts.enable(m.copy(id = id), episodeList.episodes.size)
+                            if (needsNotificationSetup(ctx)) NotificationRouter.pendingOpenSetup.value = true
+                            snackbar.show(snackScope, "Notifikasi episode baru diaktifkan")
+                        }
+                    },
                     onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                     onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
+                )
+            }
+
+            item(key = "yt-actions") {
+                YouTubeActionPillsRow(
+                    onPrev = onPrev,
+                    onNext = onNext,
                     onShare = {
                         if (movieId != null) {
                             shareEpisode(
                                 ctx,
-                                movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                                resolvedAnimeTitle,
                                 movieId,
                                 currentEpId,
                                 currentIndex,
@@ -336,30 +439,56 @@ internal fun PlayerWatchPage(
                             shareAnime(ctx, Movie(id = movieId, title = animeTitle))
                         }
                     },
+                    currentDownload = currentDownload,
+                    onStartDownload = { download(curEpisodeObj) },
+                    commentCount = commentItems.size.takeIf { commentsState is UiState.Ready && it > 0 },
+                    onOpenComments = onOpenComments,
                     chips = chips,
                 )
             }
-            item(key = "comments-preview") {
+
+            item(key = "yt-comments-teaser") {
                 CommentsPreviewCard(
                     state = commentsState,
                     onClick = onOpenComments,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
-            item(key = "sections") {
+
+            if (section == 0 && movieId != null) {
+                item(key = "yt-playlist-card") {
+                    YouTubeEpisodePlaylistCard(
+                        animeTitle = resolvedAnimeTitle,
+                        currentEpId = currentEpId,
+                        currentIndex = currentIndex,
+                        list = episodeList,
+                        fallbackImage = fallbackImage,
+                        aniZip = aniZip,
+                        expanded = playlistExpanded,
+                        onToggleExpanded = { playlistExpanded = !playlistExpanded },
+                        onShowAllEpisodes = { section = 1 },
+                        onSortToggle = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
+                        onPickEpisode = onPickEpisode,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
+
+            item(key = "yt-filter-chips") {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    WatchSectionToggleGroup(
+                    YouTubeFilterChipsRow(
                         labels = WATCH_SECTIONS,
                         selected = section,
                         onSelect = { section = it },
+                        modifier = Modifier.weight(1f),
                     )
-                    Spacer(Modifier.weight(1f))
-                    if (section == 0 && movieId != null) {
+                    if (section == 1 && movieId != null) {
+                        Spacer(Modifier.width(8.dp))
                         WatchSortButton(
                             newestFirst = episodeList.newestFirst,
                             onClick = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
@@ -367,27 +496,65 @@ internal fun PlayerWatchPage(
                     }
                 }
             }
-            if (section == 0) {
-                watchEpisodeItems(
-                    movieId = movieId,
-                    list = episodeList,
-                    currentEpId = currentEpId,
-                    fallbackImage = fallbackImage,
-                    malWatched = synced.watched,
-                    aniZip = aniZip,
-                    onRetry = { movieId?.let { playerViewModel.openEpisodeList(it, currentIndex, force = true) } },
-                    onLoadMore = playerViewModel::loadMoreEpisodes,
-                    onDownload = download,
-                    onPick = onPickEpisode,
-                )
-            } else {
-                watchSimilarItems(similar, similarLoading, onOpenAnime)
+
+            when (section) {
+                0 -> {
+                    watchSimilarFeedItems(
+                        similar = similar,
+                        loading = similarLoading,
+                        onOpenAnime = onOpenAnime,
+                    )
+                }
+                1 -> {
+                    watchEpisodeItems(
+                        movieId = movieId,
+                        animeTitle = resolvedAnimeTitle,
+                        list = episodeList,
+                        currentEpId = currentEpId,
+                        fallbackImage = fallbackImage,
+                        malWatched = synced.watched,
+                        aniZip = aniZip,
+                        onRetry = { movieId?.let { playerViewModel.openEpisodeList(it, currentIndex, force = true) } },
+                        onLoadMore = playerViewModel::loadMoreEpisodes,
+                        onDownload = download,
+                        onPick = onPickEpisode,
+                    )
+                }
+                else -> {
+                    watchSimilarFeedItems(
+                        similar = similar,
+                        loading = similarLoading,
+                        onOpenAnime = onOpenAnime,
+                    )
+                }
             }
         }
+
         SnackbarHost(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPad),
         )
+
+        AnimatedVisibility(
+            visible = descriptionOpen,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
+            enter = slideInVertically(tween(280, easing = FastOutSlowInEasing)) { it },
+            exit = slideOutVertically(tween(220, easing = FastOutSlowInEasing)) { it },
+        ) {
+            YouTubeDescriptionSheetPanel(
+                headerTitle = headerTitle,
+                animeTitle = resolvedAnimeTitle,
+                epNumber = epNumber,
+                epMeta = epMeta,
+                movie = movie,
+                viewsText = viewsDisplay,
+                dateText = dateDisplay,
+                hideStats = hideStats,
+                onOpenAnime = movieId?.let { id -> { onOpenAnime(id) } },
+                onClose = onCloseDescription,
+            )
+        }
+
         AnimatedVisibility(
             visible = commentsOpen,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
@@ -424,7 +591,7 @@ internal fun PlayerWatchPage(
                     ) {
                         Box(
                             Modifier
-                                .width(32.dp)
+                                .width(36.dp)
                                 .height(4.dp)
                                 .clip(CircleShape)
                                 .background(cs.onSurfaceVariant.copy(alpha = 0.4f)),
@@ -442,111 +609,702 @@ internal fun PlayerWatchPage(
     }
 }
 
-private val WATCH_SECTIONS = listOf("Episode", "Mirip")
-
-private fun Modifier.endFade(
-    enabled: Boolean,
-    width: Dp = 40.dp,
-): Modifier =
-    if (!enabled) {
-        this
-    } else {
-        this
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .drawWithContent {
-                drawContent()
-                val w = width.toPx().coerceAtMost(size.width)
-                drawRect(
-                    brush =
-                        Brush.horizontalGradient(
-                            colors = listOf(Color.Black, Color.Transparent),
-                            startX = size.width - w,
-                            endX = size.width,
-                        ),
-                    topLeft = Offset(size.width - w, 0f),
-                    size = Size(w, size.height),
-                    blendMode = BlendMode.DstIn,
-                )
-            }
-    }
-
 @Composable
-private fun WatchHeader(
+private fun YouTubeWatchHeader(
     title: String,
-    animeTitle: String,
-    details: List<String>,
+    viewsText: String?,
+    dateText: String?,
+    ratingText: String?,
+    runtimeText: String?,
+    hashtags: List<String>,
+    onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
-    var expanded by rememberSaveable(title) { mutableStateOf(false) }
-    var titleOverflow by remember(title) { mutableStateOf(false) }
-    var metaOverflow by remember(animeTitle, details) { mutableStateOf(false) }
     val metaLine =
-        remember(animeTitle, details, cs.onSurface) {
+        remember(viewsText, dateText, ratingText, runtimeText, hashtags, cs.primary, cs.onSurface, cs.onSurfaceVariant) {
             buildAnnotatedString {
-                if (animeTitle.isNotBlank()) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = cs.onSurface)) {
-                        append(animeTitle)
+                val stats = listOfNotNull(viewsText, dateText, ratingText, runtimeText)
+                withStyle(SpanStyle(color = cs.onSurfaceVariant)) {
+                    append(stats.joinToString("  •  "))
+                }
+                if (hashtags.isNotEmpty()) {
+                    if (stats.isNotEmpty()) append("  ")
+                    withStyle(SpanStyle(color = cs.primary, fontWeight = FontWeight.Medium)) {
+                        append(hashtags.joinToString(" ") { "#${it.replace(" ", "")}" })
                     }
                 }
-                details.forEach {
-                    if (length > 0) append("   ")
-                    append(it)
+                append("  ")
+                withStyle(SpanStyle(color = cs.onSurface, fontWeight = FontWeight.SemiBold)) {
+                    append("...selengkapnya")
                 }
             }
         }
+
     Column(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = hapticClick(block = { expanded = !expanded }))
-            .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 4.dp)
-            .animateContentSize(motion.defaultSpatialSpec()),
+            .clickable(onClick = hapticClick(block = onClick))
+            .padding(horizontal = 14.dp)
+            .padding(top = 12.dp, bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
             title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, lineHeight = 24.sp),
             fontWeight = FontWeight.Bold,
-            maxLines = if (expanded) Int.MAX_VALUE else 1,
-            softWrap = expanded,
-            overflow = TextOverflow.Clip,
-            onTextLayout = { if (!expanded) titleOverflow = it.hasVisualOverflow },
-            modifier = Modifier.endFade(!expanded && titleOverflow),
+            color = cs.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
-        if (expanded) {
-            if (metaLine.isNotEmpty()) {
+        Text(
+            metaLine,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, lineHeight = 17.sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun YouTubeChannelBar(
+    poster: String?,
+    animeTitle: String,
+    subtitle: String,
+    status: WatchStatus?,
+    statusEnabled: Boolean,
+    alertActive: Boolean,
+    alertEnabled: Boolean,
+    onToggleAlert: () -> Unit,
+    onStatusClick: () -> Unit,
+    onOpenAnime: (() -> Unit)?,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(24.dp))
+                .then(
+                    if (onOpenAnime != null) {
+                        Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
+                    } else {
+                        Modifier
+                    },
+                ).padding(vertical = 2.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(cs.surfaceContainerHigh),
+            ) {
+                Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    metaLine,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
+                    animeTitle,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = cs.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        if (alertEnabled) {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (alertActive) cs.primaryContainer else cs.surfaceContainerHigh)
+                    .clickable(onClick = hapticClick(block = onToggleAlert)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (alertActive) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
+                    contentDescription = if (alertActive) "Matikan notifikasi" else "Aktifkan notifikasi",
+                    tint = if (alertActive) cs.onPrimaryContainer else cs.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+        }
+
+        val saved = status != null
+        val pillBg by animateColorAsState(
+            targetValue = if (saved) cs.surfaceContainerHigh else cs.onSurface,
+            label = "ytSubBg",
+        )
+        val pillFg by animateColorAsState(
+            targetValue = if (saved) cs.onSurface else cs.surface,
+            label = "ytSubFg",
+        )
+        Row(
+            Modifier
+                .height(36.dp)
+                .clip(CircleShape)
+                .background(pillBg.copy(alpha = if (statusEnabled) 1f else 0.5f))
+                .then(
+                    if (statusEnabled) {
+                        Modifier.clickable(onClick = hapticClick(block = onStatusClick))
+                    } else {
+                        Modifier
+                    },
+                ).padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            if (saved) {
+                Icon(
+                    status?.icon ?: Icons.Outlined.BookmarkBorder,
+                    contentDescription = null,
+                    tint = pillFg,
+                    modifier = Modifier.size(16.dp),
                 )
             }
             Text(
-                "lebih sedikit",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                status?.label ?: "Simpan",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = pillFg,
+                maxLines = 1,
             )
-        } else if (metaLine.isNotEmpty() || titleOverflow) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (saved) {
+                Icon(
+                    Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = pillFg,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YouTubeActionPillsRow(
+    onPrev: (() -> Unit)?,
+    onNext: (() -> Unit)?,
+    onShare: () -> Unit,
+    currentDownload: Downloads.Item?,
+    onStartDownload: () -> Unit,
+    commentCount: Int?,
+    onOpenComments: () -> Unit,
+    chips: List<WatchChip>,
+) {
+    val cs = MaterialTheme.colorScheme
+    val ctx = LocalContext.current
+    val scroll = rememberScrollState()
+    var dlMenu by remember { mutableStateOf(false) }
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scroll)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onPrev != null || onNext != null) {
+            Row(
+                Modifier
+                    .height(36.dp)
+                    .clip(CircleShape)
+                    .background(cs.surfaceContainerHigh),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxHeight()
+                        .then(if (onPrev != null) Modifier.clickable(onClick = hapticClick(block = onPrev)) else Modifier)
+                        .padding(start = 12.dp, end = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.SkipPrevious,
+                        contentDescription = "Episode sebelumnya",
+                        tint = cs.onSurface.copy(alpha = if (onPrev != null) 1f else 0.38f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        "Sblm",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = cs.onSurface.copy(alpha = if (onPrev != null) 1f else 0.38f),
+                    )
+                }
+                Box(
+                    Modifier
+                        .width(1.dp)
+                        .height(18.dp)
+                        .background(cs.outlineVariant),
+                )
+                Row(
+                    Modifier
+                        .fillMaxHeight()
+                        .then(if (onNext != null) Modifier.clickable(onClick = hapticClick(block = onNext)) else Modifier)
+                        .padding(start = 10.dp, end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        "Lanjut",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = cs.onSurface.copy(alpha = if (onNext != null) 1f else 0.38f),
+                    )
+                    Icon(
+                        Icons.Outlined.SkipNext,
+                        contentDescription = "Episode selanjutnya",
+                        tint = cs.onSurface.copy(alpha = if (onNext != null) 1f else 0.38f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+
+        YouTubePillActionChip(
+            icon = Icons.Outlined.Share,
+            label = "Bagikan",
+            onClick = onShare,
+        )
+
+        Box {
+            val dlLabel =
+                when (currentDownload?.status) {
+                    null -> "Unduh"
+                    Downloads.Status.QUEUED -> "Antrean..."
+                    Downloads.Status.DOWNLOADING ->
+                        if (currentDownload.percent >= 0f) {
+                            "${currentDownload.percent.toInt()}%"
+                        } else {
+                            "Mengunduh"
+                        }
+                    Downloads.Status.PAUSED -> "Dijeda"
+                    Downloads.Status.COMPLETED -> "Tersimpan"
+                    Downloads.Status.FAILED -> "Gagal unduh"
+                }
+            val dlHighlighted = currentDownload?.status == Downloads.Status.COMPLETED
+            Row(
+                Modifier
+                    .height(36.dp)
+                    .clip(CircleShape)
+                    .background(if (dlHighlighted) cs.secondaryContainer else cs.surfaceContainerHigh)
+                    .clickable(
+                        onClick = hapticClick {
+                            if (currentDownload == null) onStartDownload() else dlMenu = true
+                        },
+                    ).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                when (currentDownload?.status) {
+                    null -> Icon(Icons.Outlined.Download, null, tint = cs.onSurface, modifier = Modifier.size(18.dp))
+                    Downloads.Status.QUEUED -> AppLoadingIndicator(Modifier.size(16.dp))
+                    Downloads.Status.DOWNLOADING ->
+                        if (currentDownload.percent >= 0f) {
+                            SmallWavyProgress(
+                                progress = { (currentDownload.percent / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier.size(16.dp),
+                            )
+                        } else {
+                            AppLoadingIndicator(Modifier.size(16.dp))
+                        }
+                    Downloads.Status.PAUSED ->
+                        Icon(Icons.Outlined.Pause, null, tint = cs.onSurface, modifier = Modifier.size(18.dp))
+                    Downloads.Status.COMPLETED ->
+                        Icon(
+                            Icons.Outlined.CheckCircle,
+                            null,
+                            tint = cs.onSecondaryContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    Downloads.Status.FAILED ->
+                        Icon(Icons.Outlined.Error, null, tint = cs.error, modifier = Modifier.size(18.dp))
+                }
                 Text(
-                    metaLine,
-                    style = MaterialTheme.typography.bodyMedium,
+                    dlLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = if (dlHighlighted) cs.onSecondaryContainer else cs.onSurface,
+                    maxLines = 1,
+                )
+            }
+            AppDropdownMenu(expanded = dlMenu, onDismissRequest = { dlMenu = false }) {
+                val item = currentDownload ?: return@AppDropdownMenu
+                val id = item.id
+                when (item.status) {
+                    Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
+                        DropdownMenuItem(
+                            text = { Text("Pause") },
+                            onClick = hapticClick {
+                                dlMenu = false
+                                Downloads.pause(ctx, id)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Batalkan") },
+                            onClick = hapticClick {
+                                dlMenu = false
+                                Downloads.remove(ctx, id)
+                            },
+                        )
+                    }
+                    Downloads.Status.PAUSED -> {
+                        DropdownMenuItem(
+                            text = { Text("Lanjutkan") },
+                            onClick = hapticClick {
+                                dlMenu = false
+                                Downloads.resume(ctx, id)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Hapus") },
+                            onClick = hapticClick {
+                                dlMenu = false
+                                Downloads.remove(ctx, id)
+                            },
+                        )
+                    }
+                    Downloads.Status.FAILED -> {
+                        DropdownMenuItem(
+                            text = { Text("Coba lagi") },
+                            onClick = hapticClick {
+                                dlMenu = false
+                                Downloads.retry(ctx, id)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Hapus") },
+                            onClick = hapticClick {
+                                dlMenu = false
+                                Downloads.remove(ctx, id)
+                            },
+                        )
+                    }
+                    Downloads.Status.COMPLETED ->
+                        DropdownMenuItem(
+                            text = { Text("Hapus unduhan") },
+                            onClick = hapticClick {
+                                dlMenu = false
+                                Downloads.remove(ctx, id)
+                            },
+                        )
+                }
+            }
+        }
+
+        YouTubePillActionChip(
+            icon = Icons.Outlined.Forum,
+            label = if (commentCount != null) "Komentar (${fmtNum(commentCount.toString())})" else "Komentar",
+            onClick = onOpenComments,
+        )
+
+        chips.forEach { chip ->
+            YouTubePillActionChip(
+                icon = chip.icon,
+                label = chip.label,
+                highlighted = chip.highlighted,
+                onClick = chip.onClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun YouTubePillActionChip(
+    icon: ImageVector,
+    label: String,
+    highlighted: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val bg = if (highlighted) cs.secondaryContainer else cs.surfaceContainerHigh
+    val fg = if (highlighted) cs.onSecondaryContainer else cs.onSurface
+    Row(
+        Modifier
+            .height(36.dp)
+            .clip(CircleShape)
+            .background(bg)
+            .clickable(onClick = hapticClick(block = onClick))
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            color = fg,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun YouTubeFilterChipsRow(
+    labels: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val scroll = rememberScrollState()
+    Row(
+        modifier.horizontalScroll(scroll),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        labels.forEachIndexed { index, label ->
+            val isSelected = index == selected
+            val bg by animateColorAsState(
+                targetValue = if (isSelected) cs.onSurface else cs.surfaceContainerHigh,
+                label = "ytFilterBg",
+            )
+            val fg by animateColorAsState(
+                targetValue = if (isSelected) cs.surface else cs.onSurface,
+                label = "ytFilterFg",
+            )
+            Box(
+                Modifier
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(bg)
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.Tab,
+                        onClick = hapticClick { onSelect(index) },
+                    ).padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = fg,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YouTubeEpisodePlaylistCard(
+    animeTitle: String,
+    currentEpId: String,
+    currentIndex: String?,
+    list: PlayerEpisodeList,
+    fallbackImage: String?,
+    aniZip: com.uwu.animex.data.api.AniZipInfo?,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    onShowAllEpisodes: () -> Unit,
+    onSortToggle: () -> Unit,
+    onPickEpisode: (Episode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
+    val orderedAsc =
+        remember(list.episodes, list.pinned, currentEpId) {
+            val pinnedEp = list.pinned
+            val base =
+                if (pinnedEp != null && list.episodes.none { it.id == pinnedEp.id }) {
+                    list.episodes + pinnedEp
+                } else {
+                    list.episodes
+                }
+            base.sortedBy { it.index?.trim()?.toDoubleOrNull() ?: Double.MAX_VALUE }
+        }
+    val curPos = orderedAsc.indexOfFirst { it.id == currentEpId }
+    val previewWindow =
+        remember(orderedAsc, curPos) {
+            if (orderedAsc.isEmpty()) {
+                emptyList()
+            } else {
+                val start = (if (curPos >= 0) curPos else 0).coerceAtLeast(0)
+                orderedAsc.drop(start).take(5).ifEmpty { orderedAsc.take(5) }
+            }
+        }
+    val nextUpLabel =
+        remember(orderedAsc, curPos, currentIndex) {
+            val next = if (curPos >= 0) orderedAsc.getOrNull(curPos + 1) else null
+            when {
+                next != null -> "Berikutnya: Episode ${next.index.orEmpty()}"
+                !currentIndex.isNullOrBlank() -> "Sedang diputar: Episode $currentIndex"
+                else -> "Daftar episode"
+            }
+        }
+
+    Column(
+        modifier
+            .fillMaxWidth()
+            .animateContentSize(motion.defaultSpatialSpec())
+            .clip(RoundedCornerShape(14.dp))
+            .background(cs.surfaceContainer)
+            .border(1.dp, cs.outlineVariant.copy(alpha = 0.45f), RoundedCornerShape(14.dp)),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(cs.surfaceContainerHigh.copy(alpha = 0.7f))
+                .clickable(onClick = hapticClick(block = onToggleExpanded))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.VideoLibrary,
+                contentDescription = null,
+                tint = cs.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    nextUpLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = cs.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    buildString {
+                        append(animeTitle)
+                        if (orderedAsc.isNotEmpty()) {
+                            val idxText = if (curPos >= 0) "${curPos + 1}/${orderedAsc.size}" else "${orderedAsc.size} ep"
+                            append(" • $idxText")
+                        }
+                    },
+                    style = MaterialTheme.typography.labelSmall,
                     color = cs.onSurfaceVariant,
                     maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                    onTextLayout = { metaOverflow = it.hasVisualOverflow },
-                    modifier = Modifier.weight(1f, fill = false).endFade(metaOverflow),
+                    overflow = TextOverflow.Ellipsis,
                 )
-                if (titleOverflow || metaOverflow) {
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "selengkapnya",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                    )
+            }
+            TextButton(
+                onClick = hapticClick(block = onShowAllEpisodes),
+                shapes = ButtonDefaults.shapes(),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+            ) {
+                Text("Semua", style = MaterialTheme.typography.labelLarge)
+            }
+            Icon(
+                if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
+                contentDescription = if (expanded) "Tutup daftar" else "Buka daftar",
+                tint = cs.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        if (expanded) {
+            when {
+                list.loading && previewWindow.isEmpty() -> {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        AppLoadingIndicator(Modifier.size(24.dp))
+                    }
+                }
+                previewWindow.isNotEmpty() -> {
+                    Column(Modifier.padding(vertical = 6.dp)) {
+                        previewWindow.forEach { ep ->
+                            val isCurrent = ep.id == currentEpId
+                            val meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
+                            val epTitle = meta?.title?.takeIf { it.isNotBlank() } ?: ep.title?.takeIf { it.isNotBlank() }
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        if (isCurrent) cs.primaryContainer.copy(alpha = 0.45f) else Color.Transparent,
+                                    ).clickable(onClick = hapticClick { onPickEpisode(ep) })
+                                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    if (isCurrent) "▶" else ep.index.orEmpty(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCurrent) cs.primary else cs.onSurfaceVariant,
+                                    modifier = Modifier.width(24.dp),
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Box(
+                                    Modifier
+                                        .size(96.dp, 54.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(cs.surfaceContainerHighest),
+                                ) {
+                                    Poster(
+                                        meta?.image ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
+                                        Modifier.fillMaxSize(),
+                                        radius = 8.dp,
+                                    )
+                                    meta?.runtime?.let { rt ->
+                                        Text(
+                                            "${rt}:00",
+                                            color = Color.White,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier =
+                                                Modifier
+                                                    .align(Alignment.BottomEnd)
+                                                    .padding(4.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(Color(0xCC000000))
+                                                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        if (epTitle != null) "Episode ${ep.index.orEmpty()} — $epTitle" else "Episode ${ep.index.orEmpty()}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
+                                        color = if (isCurrent) cs.primary else cs.onSurface,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    val sub =
+                                        listOfNotNull(
+                                            if (isCurrent) "Sedang diputar" else null,
+                                            AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
+                                        ).joinToString(" • ")
+                                    if (sub.isNotBlank()) {
+                                        Text(
+                                            sub,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = cs.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -554,102 +1312,279 @@ private fun WatchHeader(
 }
 
 @Composable
-private fun WatchActionRow(
-    poster: String?,
-    status: WatchStatus?,
-    statusEnabled: Boolean,
-    onStatusClick: () -> Unit,
+private fun YouTubeDescriptionSheetPanel(
+    headerTitle: String,
+    animeTitle: String,
+    epNumber: String?,
+    epMeta: AniZipEpisode?,
+    movie: Movie?,
+    viewsText: String?,
+    dateText: String?,
+    hideStats: Boolean,
     onOpenAnime: (() -> Unit)?,
-    onShare: () -> Unit,
-    chips: List<WatchChip>,
+    onClose: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val maxSlots = 3
-    val direct = if (chips.size <= maxSlots) chips else chips.take(maxSlots - 1)
-    val overflow = chips.drop(direct.size)
-    var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+    var dragY by remember { mutableFloatStateOf(0f) }
+    val dismissPx = with(LocalDensity.current) { 96.dp.toPx() }
+
+    val overview = epMeta?.overview?.trim()?.takeIf { it.isNotBlank() }
+    var showTranslated by rememberSaveable(headerTitle) { mutableStateOf(false) }
+    var translatedOverview by remember(overview) { mutableStateOf(overview?.let { Translator.cached(it) }) }
+    var translating by remember(overview) { mutableStateOf(false) }
+
+    LaunchedEffect(showTranslated, overview) {
+        if (!showTranslated || overview == null || translatedOverview != null) return@LaunchedEffect
+        translating = true
+        val res = Translator.toIndonesian(listOf(overview))
+        translatedOverview = res.firstOrNull()
+        if (translatedOverview == null) showTranslated = false
+        translating = false
+    }
+
+    BackHandler { onClose() }
+
+    Surface(
+        color = cs.background,
+        shape = RectangleShape,
+        shadowElevation = 8.dp,
+        modifier =
             Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(cs.surfaceContainerHigh)
-                .then(
-                    if (onOpenAnime != null) {
-                        Modifier.clickable(onClick = hapticClick(block = onOpenAnime))
-                    } else {
-                        Modifier
+                .fillMaxSize()
+                .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) },
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(28.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                val close = dragY > dismissPx
+                                dragY = 0f
+                                if (close) onClose()
+                            },
+                            onDragCancel = { dragY = 0f },
+                        ) { _, delta -> dragY += delta }
                     },
-                ),
-        ) {
-            Poster(poster, Modifier.fillMaxSize(), radius = 0.dp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Button(
-            onClick = hapticClick(block = onStatusClick),
-            enabled = statusEnabled,
-            shapes = ButtonDefaults.shapes(),
-            colors = ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary),
-            contentPadding = PaddingValues(horizontal = 12.dp),
-        ) {
-            Icon(
-                status?.icon ?: Icons.Outlined.BookmarkBorder,
-                contentDescription = status?.label ?: "Atur status",
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(4.dp))
-            Icon(
-                Icons.Outlined.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        direct.forEach { chip ->
-            IconButton(onClick = hapticClick(block = chip.onClick)) {
-                Icon(
-                    chip.icon,
-                    contentDescription = chip.label,
-                    tint = if (chip.highlighted) cs.primary else cs.onSurface,
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .width(36.dp)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(cs.onSurfaceVariant.copy(alpha = 0.4f)),
                 )
             }
-        }
-        IconButton(onClick = hapticClick(block = onShare)) {
-            Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = cs.onSurface)
-        }
-        if (overflow.isNotEmpty()) {
-            Box {
-                IconButton(onClick = hapticClick(block = { menuOpen = true })) {
-                    Icon(Icons.Outlined.MoreVert, contentDescription = "Lainnya")
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Deskripsi",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = hapticClick(block = onClose)) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Tutup deskripsi")
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    overflow.forEach { chip ->
-                        DropdownMenuItem(
-                            text = { Text(chip.label) },
-                            leadingIcon = {
-                                Icon(
-                                    chip.icon,
-                                    contentDescription = null,
-                                    tint = if (chip.highlighted) cs.primary else cs.onSurfaceVariant,
+            }
+            HorizontalDivider(color = cs.outlineVariant)
+
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    headerTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = cs.onSurface,
+                )
+
+                val scoreVal =
+                    (epMeta?.rating?.takeIf { it.isNotBlank() } ?: movie?.score?.takeIf { it.isNotBlank() })
+                        ?.replace('.', ',') ?: "—"
+                val countVal =
+                    if (hideStats) {
+                        "—"
+                    } else {
+                        viewsText?.substringBefore(" x")
+                            ?: movie?.favorites?.takeIf { it.isNotBlank() }?.let(::fmtNum)
+                            ?: "—"
+                    }
+                val countLabel = if (viewsText != null) "Ditonton" else "Favorit"
+                val releaseVal = dateText ?: movie?.year?.takeIf { it.isNotBlank() } ?: "—"
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(cs.surfaceContainer)
+                        .padding(vertical = 14.dp, horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    YouTubeStatColumn(value = scoreVal, label = "Penilaian")
+                    YouTubeStatColumn(value = countVal, label = countLabel)
+                    YouTubeStatColumn(value = releaseVal, label = if (epNumber != null) "Rilis Ep $epNumber" else "Rilis")
+                }
+
+                if (overview != null) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(cs.surfaceContainer)
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Ringkasan Episode",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(
+                                onClick = hapticClick { if (!translating) showTranslated = !showTranslated },
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            ) {
+                                if (translating) {
+                                    AppLoadingIndicator(Modifier.size(16.dp))
+                                } else {
+                                    Icon(Icons.Outlined.Translate, null, modifier = Modifier.size(16.dp))
+                                }
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    if (showTranslated) "Teks asli" else "Terjemahkan",
+                                    style = MaterialTheme.typography.labelMedium,
                                 )
-                            },
-                            onClick =
-                                hapticClick(
-                                    block = {
-                                        menuOpen = false
-                                        chip.onClick()
-                                    },
-                                ),
+                            }
+                        }
+                        Text(
+                            if (showTranslated) translatedOverview ?: overview else overview,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = cs.onSurfaceVariant,
                         )
                     }
                 }
+
+                val synopsis = movie?.synopsis?.trim()?.takeIf { it.isNotBlank() }
+                if (synopsis != null) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(cs.surfaceContainer)
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            "Sinopsis $animeTitle",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            synopsis,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = cs.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                val metaBadges =
+                    listOfNotNull(
+                        movie?.type?.takeIf { it.isNotBlank() }?.let { "Tipe: $it" },
+                        movie?.status?.takeIf { it.isNotBlank() }?.let { "Status: $it" },
+                        movie?.studio?.takeIf { it.isNotBlank() }?.let { "Studio: $it" },
+                        movie?.season?.takeIf { it.isNotBlank() }?.let { "Musim: $it" },
+                        movie?.duration?.takeIf { it.isNotBlank() }?.let { "Durasi: $it" },
+                    )
+                if (metaBadges.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        metaBadges.forEach { badge ->
+                            Text(
+                                badge,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = cs.onSurfaceVariant,
+                                modifier =
+                                    Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(cs.surfaceContainerHigh)
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+
+                if (onOpenAnime != null) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(cs.surfaceContainerHigh)
+                            .clickable(
+                                onClick = hapticClick {
+                                    onClose()
+                                    onOpenAnime()
+                                },
+                            ).padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Poster(
+                            movie?.image_poster ?: movie?.image_cover,
+                            Modifier.size(44.dp).clip(CircleShape),
+                            radius = 22.dp,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(animeTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Buka halaman detail anime",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = cs.primary,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun YouTubeStatColumn(
+    value: String,
+    label: String,
+) {
+    val cs = MaterialTheme.colorScheme
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = cs.onSurface,
+            maxLines = 1,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = cs.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }
 
@@ -670,122 +1605,193 @@ private fun WatchSortButton(
         animationSpec = motion.fastEffectsSpec(),
         label = "sortContainer",
     )
-    Box(
+    Row(
         modifier =
             Modifier
-                .size(40.dp)
-                .clip(CircleShape)
+                .height(34.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(container)
-                .clickable(onClick = hapticClick(block = onClick)),
-        contentAlignment = Alignment.Center,
+                .clickable(onClick = hapticClick(block = onClick))
+                .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(
             Icons.AutoMirrored.Outlined.Sort,
             contentDescription = if (newestFirst) "Urutan: terbaru dulu" else "Urutan: terlama dulu",
             tint = if (newestFirst) cs.onSurface else cs.onSecondaryContainer,
-            modifier = Modifier.size(20.dp).graphicsLayer { scaleY = flip },
+            modifier = Modifier.size(18.dp).graphicsLayer { scaleY = flip },
+        )
+        Text(
+            if (newestFirst) "Terbaru" else "Ep 1→",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = if (newestFirst) cs.onSurface else cs.onSecondaryContainer,
         )
     }
 }
 
-@Composable
-private fun WatchSectionToggleGroup(
-    labels: List<String>,
-    selected: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
-    val full = 20.dp
-    val inner = 8.dp
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        labels.forEachIndexed { i, label ->
-            val isSelected = i == selected
-            val corner by animateDpAsState(
-                targetValue = if (isSelected) full else inner,
-                animationSpec = motion.fastSpatialSpec(),
-                label = "sectionCorner",
-            )
-            val startCorner = if (i == 0) full else corner.coerceAtLeast(0.dp)
-            val endCorner = if (i == labels.lastIndex) full else corner.coerceAtLeast(0.dp)
-            val container by animateColorAsState(
-                targetValue = if (isSelected) cs.primaryContainer else cs.surfaceContainerHigh,
-                animationSpec = motion.fastEffectsSpec(),
-                label = "sectionContainer",
-            )
-            val content by animateColorAsState(
-                targetValue = if (isSelected) cs.onPrimaryContainer else cs.onSurface,
-                animationSpec = motion.fastEffectsSpec(),
-                label = "sectionContent",
-            )
-            Box(
-                modifier =
-                    Modifier
-                        .height(40.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = startCorner,
-                                bottomStart = startCorner,
-                                topEnd = endCorner,
-                                bottomEnd = endCorner,
-                            ),
-                        ).background(container)
-                        .selectable(
-                            selected = isSelected,
-                            role = Role.Tab,
-                            onClick = hapticClick(block = { onSelect(i) }),
-                        ).padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = content,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-private fun LazyListScope.watchSimilarItems(
+private fun LazyListScope.watchSimilarFeedItems(
     similar: List<com.uwu.animex.data.api.SimilarMovie>,
     loading: Boolean,
     onOpenAnime: (String) -> Unit,
 ) {
     when {
         loading && similar.isEmpty() ->
-            item(key = "recs-loading") {
-                WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp))
+            items(3, key = { "recs-loading-$it" }) {
+                WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
             }
         similar.isEmpty() ->
             item(key = "recs-empty") {
                 Text(
-                    "Belum ada rekomendasi buat anime ini.",
+                    "Belum ada rekomendasi serupa untuk anime ini.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
         else ->
             items(
                 similar,
-                key = { it.movie.id ?: it.movie.title.orEmpty() },
-                contentType = { "rec" },
+                key = { "yt-rec-${it.movie.id ?: it.movie.title.orEmpty()}" },
+                contentType = { "ytRec" },
             ) { sm ->
-                InlineHotRecCard(
+                YouTubeRecommendationCard(
                     movie = sm.movie,
                     onOpen = onOpenAnime,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(bottom = 16.dp),
                 )
             }
     }
 }
 
+@Composable
+private fun YouTubeRecommendationCard(
+    movie: Movie,
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val statusLongClick = rememberStatusLongClick(movie)
+    val openStatus = LocalOpenStatusSheet.current
+    val hideStats = rememberHideStats()
+
+    Column(
+        modifier
+            .fillMaxWidth()
+            .hapticClick(
+                onLongClick = statusLongClick,
+                onClick = { movie.id?.let(onOpen) },
+            ),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(cs.surfaceContainerHigh),
+        ) {
+            Poster(
+                movie.coverOrPoster(),
+                Modifier.fillMaxSize(),
+                radius = 12.dp,
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
+                        ),
+                    ),
+            )
+            val badgeParts =
+                listOfNotNull(
+                    movie.type?.takeIf { it.isNotBlank() },
+                    movie.episode_index?.takeIf { it.isNotBlank() }?.let { "Ep $it" },
+                    movie.score?.takeIf { it.isNotBlank() }?.let { "★ $it" },
+                )
+            if (badgeParts.isNotEmpty()) {
+                Text(
+                    badgeParts.joinToString(" • "),
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xCC000000))
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                )
+            }
+        }
+
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 4.dp, top = 10.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Box(
+                Modifier
+                    .padding(top = 2.dp)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(cs.surfaceContainerHigh),
+            ) {
+                Poster(movie.image_poster ?: movie.image_cover, Modifier.fillMaxSize(), radius = 0.dp)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    movie.title.orEmpty(),
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, lineHeight = 20.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    color = cs.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val metaParts =
+                    listOfNotNull(
+                        movie.studio?.takeIf { it.isNotBlank() }
+                            ?: movie.genre?.split(',')?.firstOrNull()?.trim()?.takeIf { it.isNotBlank() },
+                        movie.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} x ditonton" },
+                        movie.year?.takeIf { it.isNotBlank() },
+                    )
+                if (metaParts.isNotEmpty()) {
+                    Text(
+                        metaParts.joinToString(" • "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
+            IconButton(
+                onClick = hapticClick { openStatus(movie) },
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.MoreVert,
+                    contentDescription = "Opsi anime",
+                    tint = cs.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
 private fun LazyListScope.watchEpisodeItems(
     movieId: String?,
+    animeTitle: String,
     list: PlayerEpisodeList,
     currentEpId: String,
     fallbackImage: String?,
@@ -813,32 +1819,30 @@ private fun LazyListScope.watchEpisodeItems(
             val rest = if (pinned == null) list.episodes else list.episodes.filter { it.id != pinned.id }
 
             @Composable
-            fun WatchEpisodeRow(ep: Episode) {
+            fun WatchYouTubeEpisodeRow(ep: Episode) {
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
-                EpisodeRow(
+                YouTubeEpisodeListItem(
                     ep = ep,
+                    animeTitle = animeTitle,
                     fallbackImage = fallbackImage,
                     download = epDownload,
                     malWatched = malWatched,
-                    onDownload = { onDownload(ep) },
-                    meta = ep.index
-                        ?.trim()
-                        ?.toIntOrNull()
-                        ?.let { aniZip?.episodes?.get(it) },
+                    meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
                     current = ep.id == currentEpId,
-                    showProgress = false,
-                ) { onPick(ep) }
+                    onDownload = { onDownload(ep) },
+                    onClick = { onPick(ep) },
+                )
             }
 
             if (pinned != null) {
-                item(key = "episode-current", contentType = "episode") { WatchEpisodeRow(pinned) }
+                item(key = "episode-current", contentType = "episode") { WatchYouTubeEpisodeRow(pinned) }
             }
             items(
                 rest,
                 key = { it.id ?: "${it.index}-${it.title}" },
                 contentType = { "episode" },
-            ) { ep -> WatchEpisodeRow(ep) }
+            ) { ep -> WatchYouTubeEpisodeRow(ep) }
             if (list.moreError) {
                 item(key = "episodes-more-error") { WatchMessage("Gagal muat episode lainnya", onLoadMore) }
             } else if (list.loadingMore) {
@@ -847,6 +1851,194 @@ private fun LazyListScope.watchEpisodeItems(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun YouTubeEpisodeListItem(
+    ep: Episode,
+    animeTitle: String,
+    fallbackImage: String?,
+    download: Downloads.Item?,
+    malWatched: Int?,
+    meta: AniZipEpisode?,
+    current: Boolean,
+    onDownload: () -> Unit,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val hideStats = rememberHideStats()
+    val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
+        .collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
+    val progress = Progress.fractionOf(watch)
+    val doneInMal =
+        malWatched != null &&
+            (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
+    val done = Progress.isDoneWatch(watch) || doneInMal
+    val rawTitle = meta?.title?.takeIf { it.isNotBlank() } ?: ep.title?.takeIf { it.isNotBlank() }
+    val displayTitle =
+        if (rawTitle != null) {
+            "Episode ${ep.index.orEmpty()} — $rawTitle"
+        } else {
+            "Episode ${ep.index.orEmpty()}"
+        }
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(if (current) cs.primaryContainer.copy(alpha = 0.35f) else Color.Transparent)
+            .clickable(onClick = hapticClick(block = onClick))
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            Modifier
+                .size(160.dp, 90.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(cs.surfaceContainerHighest)
+                .then(
+                    if (current) {
+                        Modifier.border(2.dp, cs.primary, RoundedCornerShape(10.dp))
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
+            Poster(
+                meta?.image ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
+                Modifier.fillMaxSize(),
+                radius = 10.dp,
+                keepPrevious = true,
+            )
+
+            if (current) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color(0x88000000)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier =
+                            Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(cs.primary)
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                            tint = cs.onPrimary,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            "Diputar",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = cs.onPrimary,
+                        )
+                    }
+                }
+            } else {
+                val badgeText =
+                    meta?.runtime?.let { "${it}:00" }
+                        ?: ep.index?.takeIf { it.isNotBlank() }?.let { "EP $it" }
+                if (badgeText != null) {
+                    Text(
+                        badgeText,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xCC000000))
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                    )
+                }
+                if (done) {
+                    Row(
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xB3000000))
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(11.dp))
+                        Text("Ditonton", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            if ((done || progress > 0f) && !current) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(Color(0x55FFFFFF)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(if (done) 1f else progress.coerceIn(0f, 1f))
+                            .background(cs.primary),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(
+            Modifier
+                .weight(1f)
+                .heightIn(min = 90.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                displayTitle,
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp, lineHeight = 19.sp),
+                fontWeight = if (current) FontWeight.Bold else FontWeight.SemiBold,
+                color = if (current) cs.primary else cs.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                animeTitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = cs.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val subInfo =
+                listOfNotNull(
+                    ep.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} x ditonton" },
+                    meta?.rating?.takeIf { it.isNotBlank() }?.let { "★ ${it.replace('.', ',')}" },
+                    AniZip.formatDate(meta?.airDate) ?: ep.key_time?.takeIf { it.isNotBlank() },
+                )
+            if (subInfo.isNotEmpty()) {
+                Text(
+                    subInfo.joinToString(" • "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cs.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        DownloadButton(
+            item = download,
+            onStart = onDownload,
+        )
     }
 }
 
@@ -1008,103 +2200,19 @@ private fun rememberEpisodeDownload(
 }
 
 @Composable
-private fun InlineHotRecCard(
-    movie: Movie,
-    onOpen: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    val statusLongClick = rememberStatusLongClick(movie)
-    val hideStats = rememberHideStats()
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(cs.surfaceContainer)
-            .hapticClick(
-                onLongClick = statusLongClick,
-                onClick = { movie.id?.let(onOpen) },
-            ).padding(8.dp),
-    ) {
-        Box(Modifier.clip(RoundedCornerShape(16.dp))) {
-            Poster(
-                movie.coverOrPoster(),
-                Modifier.fillMaxWidth().height(118.dp),
-                radius = 16.dp,
-            )
-            val viewsText = movie.views?.takeIf { it.isNotBlank() && !hideStats }
-            val starText = movie.score?.takeIf { it.isNotBlank() } ?: movie.favorites.takeUnless { hideStats }
-            if (!viewsText.isNullOrBlank() || !starText.isNullOrBlank()) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                            ),
-                        ),
-                )
-                Row(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (!viewsText.isNullOrBlank()) {
-                        OverlayChip(Icons.Outlined.PlayCircleOutline, fmtNum(viewsText), cs.error)
-                    }
-                    if (!starText.isNullOrBlank()) {
-                        OverlayChip(Icons.Outlined.Star, fmtNum(starText), cs.tertiary)
-                    }
-                }
-            }
-        }
-        Text(
-            movie.genre?.takeIf { it.isNotBlank() } ?: " ",
-            color = cs.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
-        )
-        Text(
-            movie.title.orEmpty(),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = 18.sp,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
-        )
-        Text(
-            movie.synopsis.orEmpty(),
-            color = cs.onSurfaceVariant,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
-        )
-    }
-}
-
-@Composable
 private fun CommentsPreviewCard(
     state: UiState<List<UserApi.Discussion>>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
+    val session by UserSession.user.collectAsStateWithLifecycle()
     val items =
         when (state) {
             is UiState.Ready -> state.value
             else -> emptyList()
         }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(14.dp)
     val motion = MaterialTheme.motionScheme
     Column(
         modifier
@@ -1116,14 +2224,21 @@ private fun CommentsPreviewCard(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Komentar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            if (state is UiState.Ready && items.isNotEmpty()) {
+                Text(
+                    fmtNum(items.size.toString()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                )
+            }
             Spacer(Modifier.weight(1f))
             Icon(
                 Icons.Outlined.UnfoldMore,
                 contentDescription = "Buka komentar",
                 tint = cs.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
         val phase =
@@ -1141,10 +2256,10 @@ private fun CommentsPreviewCard(
             when (p) {
                 0 ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(28.dp).clip(CircleShape).defaultPlaceholder())
+                        Box(Modifier.size(26.dp).clip(CircleShape).defaultPlaceholder())
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            "Placeholder",
+                            "Memuat komentar...",
                             modifier = Modifier.weight(1f).defaultPlaceholder(),
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
@@ -1157,20 +2272,45 @@ private fun CommentsPreviewCard(
                         color = cs.onSurfaceVariant,
                     )
                 2 ->
-                    Text(
-                        "Belum ada komentar. Jadilah yang pertama!",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = cs.onSurfaceVariant,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        UserAvatar(session?.username, size = 26.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .clip(CircleShape)
+                                .background(cs.surfaceContainerHigh)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                "Tambahkan komentar...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = cs.onSurfaceVariant,
+                            )
+                        }
+                    }
                 else -> {
                     val top = items.firstOrNull()
                     if (top != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            UserAvatar(top.username, size = 28.dp)
+                            UserAvatar(top.username, size = 26.dp)
                             Spacer(Modifier.width(10.dp))
                             Text(
-                                top.body(),
+                                buildAnnotatedString {
+                                    top.username?.takeIf { it.isNotBlank() }?.let { u ->
+                                        withStyle(
+                                            SpanStyle(
+                                                color = cs.onSurfaceVariant,
+                                                fontWeight = FontWeight.Medium,
+                                            ),
+                                        ) {
+                                            append("@$u  ")
+                                        }
+                                    }
+                                    append(top.body())
+                                },
                                 style = MaterialTheme.typography.bodySmall,
+                                color = cs.onSurface,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )

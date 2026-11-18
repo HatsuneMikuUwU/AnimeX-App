@@ -8,6 +8,8 @@ import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -38,18 +41,19 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Speed
@@ -65,21 +69,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
@@ -142,6 +151,46 @@ internal fun formatTime(ms: Long): String {
 private fun clockNow(): String = SimpleDateFormat("HH:mm", Locale.US).format(Date())
 
 @Composable
+private fun YouTubeAutoplayToggle(
+    checked: Boolean,
+    onToggle: () -> Unit,
+) {
+    val trackColor by animateColorAsState(
+        targetValue = if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.85f) else Color(0x66FFFFFF),
+        label = "ytAutoplayTrack",
+    )
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 16.dp else 2.dp,
+        label = "ytAutoplayThumb",
+    )
+    Box(
+        Modifier
+            .width(36.dp)
+            .height(22.dp)
+            .clip(CircleShape)
+            .background(trackColor)
+            .clickable(onClick = hapticClick(block = onToggle)),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            Modifier
+                .offset(x = thumbOffset)
+                .size(18.dp)
+                .clip(CircleShape)
+                .background(Color.White),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (checked) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
+                contentDescription = if (checked) "Autoplay aktif" else "Autoplay mati",
+                tint = Color.Black,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+    }
+}
+
+@Composable
 fun PlayerChrome(
     player: Player,
     title: String,
@@ -168,8 +217,12 @@ fun PlayerChrome(
     epId: String,
     onOpenSpeed: () -> Unit = {},
     onOpenSleep: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     compact: Boolean = false,
+    minimized: Boolean = false,
     onToggleFullscreen: () -> Unit = {},
+    onPullDownDelta: ((Float) -> Unit)? = null,
+    onPullDownEnd: ((Boolean) -> Unit)? = null,
     onComment: (() -> Unit)? = null,
     streamUrl: String = "",
     onMessage: (String) -> Unit = {},
@@ -177,6 +230,7 @@ fun PlayerChrome(
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
+    val density = LocalDensity.current
     val activity = remember(ctx) { ctx.findActivity() }
     val audio = remember(ctx) { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val externalLauncher =
@@ -187,8 +241,13 @@ fun PlayerChrome(
             }
         }
 
+    val latestPullDelta by rememberUpdatedState(onPullDownDelta)
+    val latestPullEnd by rememberUpdatedState(onPullDownEnd)
+    val latestToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
+
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
+    val autoplayEnabled by PlayerPrefs.autoplayEnabled.collectAsStateWithLifecycle()
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
     val invertDuration by PlayerPrefs.invertDuration.collectAsStateWithLifecycle()
     val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
@@ -245,6 +304,10 @@ fun PlayerChrome(
     fun showHint(text: String) {
         hint = text
         hintKey++
+    }
+
+    LaunchedEffect(minimized) {
+        if (minimized) visible = false
     }
 
     LaunchedEffect(sleepDeadlineMs) {
@@ -387,18 +450,17 @@ fun PlayerChrome(
         onDispose { player.removeListener(listener) }
     }
 
-    LaunchedEffect(player, visible) {
+    LaunchedEffect(player, visible, minimized) {
         while (true) {
             pos = player.currentPosition.coerceAtLeast(0)
             buffered = player.bufferedPosition.coerceAtLeast(0)
             dur = player.duration.coerceAtLeast(0)
             delay(
-                if (visible) {
-                    250
-                } else if (compact) {
-                    500
-                } else {
-                    1_000
+                when {
+                    visible && !minimized -> 250
+                    minimized -> 500
+                    compact -> 500
+                    else -> 1_000
                 },
             )
         }
@@ -406,8 +468,8 @@ fun PlayerChrome(
 
     LaunchedEffect(isPlaying) { PipHelper.isPlaying = isPlaying }
 
-    LaunchedEffect(ended) { if (ended) visible = true }
-    LaunchedEffect(playWhenReady) { if (!playWhenReady) visible = true }
+    LaunchedEffect(ended) { if (ended && !minimized) visible = true }
+    LaunchedEffect(playWhenReady) { if (!playWhenReady && !minimized) visible = true }
 
     LaunchedEffect(dur) {
         if (dur > 0 && !stampsRequested) {
@@ -437,8 +499,8 @@ fun PlayerChrome(
         player.setPlaybackSpeed(if (holding) HOLD_SPEED else speed)
     }
 
-    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked, PlayerPrefs.controlsTimeoutMs.value) {
-        if (visible && isPlaying && scrubPos == null && !locked) {
+    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked, minimized, PlayerPrefs.controlsTimeoutMs.value) {
+        if (visible && !minimized && isPlaying && scrubPos == null && !locked) {
             val timeout = PlayerPrefs.controlsTimeoutMs.value
                 .toLong()
                 .coerceAtLeast(500L)
@@ -479,6 +541,15 @@ fun PlayerChrome(
         if (locked) visible = false
     }
 
+    if (minimized) {
+        if (buffering) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingIndicator(color = Color.White, modifier = Modifier.size(22.dp))
+            }
+        }
+        return
+    }
+
     val openingStamp = stamps.firstOrNull { it.type == SkipType.Opening || it.type == SkipType.MixedOpening }
     val opVisible = stampsLoaded && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
     val skipOp: () -> Unit = {
@@ -491,6 +562,9 @@ fun PlayerChrome(
         }
         poke++
     }
+
+    val pullUpFullscreenThresholdPx = with(density) { 64.dp.toPx() }
+    val pullDownMinimizeThresholdPx = with(density) { 88.dp.toPx() }
 
     val gestures: Modifier =
         if (locked) {
@@ -540,17 +614,27 @@ fun PlayerChrome(
                         },
                     )
                 }.pointerInput(player, gesturesEnabled, swapVolBright, compact) {
-                    if (!gesturesEnabled) return@pointerInput
                     var mode = 0
                     var startX = 0f
                     var accX = 0f
                     var accY = 0f
                     var startPos = 0L
                     val finish = {
-                        if (mode != 0) dragEndHaptic()
                         if (mode == 1) {
+                            dragEndHaptic()
                             swipeSeek?.let { player.seekTo(it) }
                             swipeSeek = null
+                        } else if (mode == 4) {
+                            val shouldMin = accY > pullDownMinimizeThresholdPx
+                            if (shouldMin) dragEndHaptic()
+                            latestPullEnd?.invoke(shouldMin)
+                        } else if (mode == 5) {
+                            if (accY < -pullUpFullscreenThresholdPx) {
+                                dragEndHaptic()
+                                latestToggleFullscreen()
+                            }
+                        } else if (mode != 0) {
+                            dragEndHaptic()
                         }
                         mode = 0
                         dragging = false
@@ -566,25 +650,40 @@ fun PlayerChrome(
                             dragging = true
                         },
                         onDragEnd = { finish() },
-                        onDragCancel = { finish() },
+                        onDragCancel = {
+                            if (mode == 4) latestPullEnd?.invoke(false)
+                            mode = 0
+                            swipeSeek = null
+                            dragging = false
+                            sideKey++
+                        },
                         onDrag = { change, amount ->
                             change.consume()
                             accX += amount.x
                             accY += amount.y
                             if (mode == 0) {
-                                if (abs(accX) > 24f || abs(accY) > 24f) {
-                                    mode =
-                                        when {
-                                            abs(accX) > abs(accY) -> 1
-                                            startX < size.width / 2f -> if (swapVolBright) 3 else 2
-                                            else -> if (swapVolBright) 2 else 3
+                                if (abs(accX) > 22f || abs(accY) > 22f) {
+                                    if (abs(accX) > abs(accY)) {
+                                        if (gesturesEnabled) {
+                                            mode = 1
+                                            doubleTapHaptic()
                                         }
-                                    doubleTapHaptic()
-                                    if (mode == 2) brightness = currentBrightness()
-                                    if (mode == 3) {
-                                        val sys = currentVolume()
-                                        volume = if (sys >= 1f && boostExtra > 0f) 1f + boostExtra else sys
-                                        volumeLocked = volume < 1f
+                                    } else if (compact) {
+                                        mode = if (accY > 0f) 4 else 5
+                                        if (mode == 4) latestPullDelta?.invoke(accY)
+                                    } else if (gesturesEnabled) {
+                                        mode = if (startX < size.width / 2f) {
+                                            if (swapVolBright) 3 else 2
+                                        } else {
+                                            if (swapVolBright) 2 else 3
+                                        }
+                                        doubleTapHaptic()
+                                        if (mode == 2) brightness = currentBrightness()
+                                        if (mode == 3) {
+                                            val sys = currentVolume()
+                                            volume = if (sys >= 1f && boostExtra > 0f) 1f + boostExtra else sys
+                                            volumeLocked = volume < 1f
+                                        }
                                     }
                                 }
                             } else {
@@ -623,6 +722,14 @@ fun PlayerChrome(
                                         side = if (swapVolBright) 1 else 2
                                         sideKey++
                                     }
+                                    4 -> {
+                                        latestPullDelta?.invoke(accY.coerceAtLeast(0f))
+                                    }
+                                    5 -> {
+                                        if (accY < -pullUpFullscreenThresholdPx && hint == null) {
+                                            showHint("Lepas buat layar penuh")
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -647,7 +754,7 @@ fun PlayerChrome(
                 Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .height(3.dp)
+                    .height(2.5.dp)
                     .background(Color(0x40FFFFFF)),
             ) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFrac).background(Color(0x66FFFFFF)))
@@ -663,45 +770,86 @@ fun PlayerChrome(
         AnimatedVisibility(
             visible = controlsShown,
             enter = if (reduceMotion) {
-                fadeIn(
-                    animationSpec = androidx.compose.animation.core
-                        .snap(),
-                )
+                fadeIn(animationSpec = androidx.compose.animation.core.snap())
             } else {
                 AppMotion.fadeEnter()
             },
             exit = if (reduceMotion) {
-                fadeOut(
-                    animationSpec = androidx.compose.animation.core
-                        .snap(),
-                )
+                fadeOut(animationSpec = androidx.compose.animation.core.snap())
             } else {
                 AppMotion.fadeExit()
             },
         ) {
-            Box(Modifier.fillMaxSize().background(Color(0x66000000))) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (compact) {
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0x88000000),
+                                    Color(0x4D000000),
+                                    Color(0x88000000),
+                                ),
+                            )
+                        } else {
+                            Brush.verticalGradient(listOf(Color(0x66000000), Color(0x66000000)))
+                        },
+                    ),
+            ) {
                 Row(
                     Modifier
                         .align(Alignment.TopStart)
                         .fillMaxWidth()
-                        .safeDrawingPadding()
-                        .padding(horizontal = 4.dp, vertical = if (compact) 4.dp else 8.dp),
+                        .then(if (compact) Modifier else Modifier.safeDrawingPadding())
+                        .padding(horizontal = if (compact) 6.dp else 4.dp, vertical = if (compact) 4.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OverlayButton(onBack) {
-                        Icon(
-                            if (compact) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = if (compact) "Tutup" else "Balik",
-                            tint = Color.White,
-                        )
-                    }
                     if (compact) {
+                        IconButton(onClick = hapticClick(block = onBack)) {
+                            Icon(
+                                Icons.Outlined.KeyboardArrowDown,
+                                contentDescription = "Kecilkan ke mini player",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
                         Spacer(Modifier.weight(1f))
                         if (opVisible) {
                             PillButton(Icons.Outlined.FastForward, "Lewati OP") { skipOp() }
+                            Spacer(Modifier.width(8.dp))
                         }
-                        Spacer(Modifier.width(8.dp))
+                        YouTubeAutoplayToggle(
+                            checked = autoplayEnabled,
+                            onToggle = {
+                                val next = !autoplayEnabled
+                                PlayerPrefs.setAutoplayEnabled(next)
+                                showHint(if (next) "Autoplay aktif" else "Autoplay nonaktif")
+                                poke++
+                            },
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        IconButton(
+                            onClick = hapticClick {
+                                visible = false
+                                onOpenSettings()
+                            },
+                        ) {
+                            Icon(
+                                Icons.Outlined.Settings,
+                                contentDescription = "Setelan pemutar",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
                     } else {
+                        OverlayButton(onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "Balik",
+                                tint = Color.White,
+                            )
+                        }
                         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                             Text(
                                 title,
@@ -733,13 +881,13 @@ fun PlayerChrome(
                     }
                 }
 
-                val sideBtn = if (compact) 44.dp else 56.dp
+                val sideBtn = if (compact) 42.dp else 56.dp
                 val sideIcon = if (compact) 26.dp else 32.dp
-                val mainBtn = if (compact) 60.dp else 76.dp
+                val mainBtn = if (compact) 56.dp else 76.dp
                 val mainIcon = if (compact) 34.dp else 44.dp
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 28.dp else 24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilledIconButton(
@@ -846,28 +994,53 @@ fun PlayerChrome(
                     }
                 }
 
-                Column(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .safeDrawingPadding()
-                        .padding(
-                            start = if (compact) 12.dp else 16.dp,
-                            end = if (compact) 4.dp else 16.dp,
-                            top = if (compact) 0.dp else 8.dp,
-                            bottom = if (compact) 0.dp else 8.dp,
-                        ),
-                ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (invertDuration) {
-                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
-                            } else {
-                                formatTime(scrubPos ?: pos)
-                            },
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
+                if (compact) {
+                    Column(
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth(),
+                    ) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp, end = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            val currentStr =
+                                if (invertDuration) {
+                                    "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                                } else {
+                                    formatTime(scrubPos ?: pos)
+                                }
+                            val totalStr = formatTime(dur)
+                            Text(
+                                buildAnnotatedString {
+                                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.SemiBold)) {
+                                        append(currentStr)
+                                    }
+                                    if (dur > 0) {
+                                        withStyle(SpanStyle(color = Color(0xB3FFFFFF))) {
+                                            append(" / $totalStr")
+                                        }
+                                    }
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            IconButton(
+                                onClick = hapticClick {
+                                    onToggleFullscreen()
+                                    poke++
+                                },
+                                modifier = Modifier.size(40.dp),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Fullscreen,
+                                    contentDescription = "Layar penuh",
+                                    tint = Color.White,
+                                )
+                            }
+                        }
                         SeekBar(
                             position = pos,
                             buffered = buffered,
@@ -878,33 +1051,52 @@ fun PlayerChrome(
                                 pos = t
                                 poke++
                             },
-                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                            edgeToEdge = true,
+                            stamps = stamps,
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                        Text(
-                            if (invertDuration) {
-                                formatTime(scrubPos ?: pos)
-                            } else {
-                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
-                            },
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                        if (compact) {
-                            IconButton(
-                                onClick = hapticClick {
-                                    onToggleFullscreen()
+                    }
+                } else {
+                    Column(
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .safeDrawingPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (invertDuration) {
+                                    "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                                } else {
+                                    formatTime(scrubPos ?: pos)
+                                },
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                            SeekBar(
+                                position = pos,
+                                buffered = buffered,
+                                duration = dur,
+                                onScrub = { scrubPos = it },
+                                onSeek = { t ->
+                                    player.seekTo(t)
+                                    pos = t
                                     poke++
                                 },
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Fullscreen,
-                                    contentDescription = "Layar penuh",
-                                    tint = Color.White,
-                                )
-                            }
+                                stamps = stamps,
+                                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                            )
+                            Text(
+                                if (invertDuration) {
+                                    formatTime(scrubPos ?: pos)
+                                } else {
+                                    "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                                },
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
                         }
-                    }
-                    if (!compact) {
                         Row(
                             Modifier.fillMaxWidth().horizontalScroll(pillScroll),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -972,8 +1164,8 @@ fun PlayerChrome(
             Row(
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .safeDrawingPadding()
-                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 56.dp else 96.dp) else 24.dp)
+                    .then(if (compact) Modifier else Modifier.safeDrawingPadding())
+                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 52.dp else 96.dp) else 20.dp)
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xCC000000))
                     .clickable(
@@ -1001,7 +1193,7 @@ fun PlayerChrome(
             Column(
                 Modifier
                     .align(if (forward) Alignment.CenterEnd else Alignment.CenterStart)
-                    .padding(horizontal = 56.dp)
+                    .padding(horizontal = if (compact) 36.dp else 56.dp)
                     .background(Color(0x66000000), CircleShape)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -1010,7 +1202,7 @@ fun PlayerChrome(
                     if (forward) Icons.Outlined.Forward10 else Icons.Outlined.Replay10,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(if (compact) 28.dp else 32.dp),
                 )
                 Text("${abs(seekAcc)} dtk", color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
@@ -1021,7 +1213,7 @@ fun PlayerChrome(
             Text(
                 text = formatTime(target) + "  (" + (if (delta >= 0) "+" else "") + delta + " dtk)",
                 color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
+                style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                 modifier =
                     Modifier
                         .align(Alignment.Center)
@@ -1090,22 +1282,29 @@ fun PlayerChrome(
 
         val topHint =
             when {
-                holding -> speedLabel(HOLD_SPEED)
+                holding -> "${speedLabel(HOLD_SPEED)} Mempercepat"
                 else -> hint
             }
         if (topHint != null) {
             Row(
                 Modifier
                     .align(Alignment.TopCenter)
-                    .safeDrawingPadding()
-                    .padding(top = 16.dp)
-                    .background(Color(0x99000000), RoundedCornerShape(24.dp))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .then(if (compact) Modifier else Modifier.safeDrawingPadding())
+                    .padding(top = if (compact) 10.dp else 16.dp)
+                    .background(Color(0xB3000000), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                if (holding) Icon(Icons.Outlined.FastForward, contentDescription = null, tint = Color.White)
-                Text(topHint, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                if (holding) {
+                    Icon(
+                        Icons.Outlined.FastForward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                Text(topHint, color = Color.White, style = MaterialTheme.typography.labelMedium)
             }
         }
 

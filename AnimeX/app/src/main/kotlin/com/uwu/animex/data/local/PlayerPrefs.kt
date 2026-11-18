@@ -61,7 +61,7 @@ object PlayerPrefs {
     private val _switchOnFailure = MutableStateFlow(true)
     val switchOnFailure: StateFlow<Boolean> = _switchOnFailure.asStateFlow()
 
-    private val _defaultOrientation = MutableStateFlow(PlayerOrientation.Landscape)
+    private val _defaultOrientation = MutableStateFlow(PlayerOrientation.Free)
     val defaultOrientation: StateFlow<PlayerOrientation> = _defaultOrientation.asStateFlow()
 
     private val _showLoadingCircle = MutableStateFlow(true)
@@ -124,6 +124,9 @@ object PlayerPrefs {
     private val _backgroundPlay = MutableStateFlow(false)
     val backgroundPlay: StateFlow<Boolean> = _backgroundPlay.asStateFlow()
 
+    private val _miniPlayerFloating = MutableStateFlow(false)
+    val miniPlayerFloating: StateFlow<Boolean> = _miniPlayerFloating.asStateFlow()
+
     const val DEFAULT_SKIP_INTRO_MS = 85_000
 
     private val _skipIntroMs = MutableStateFlow(DEFAULT_SKIP_INTRO_MS)
@@ -150,10 +153,10 @@ object PlayerPrefs {
 
         _progressPreference.value = sp.getFloat(PrefKeys.Player.PROGRESS_PREF, 0.85f)
         _switchOnFailure.value = sp.getBoolean(PrefKeys.Player.SWITCH_ON_FAILURE, true)
-        val orientName = sp.getString(PrefKeys.Player.ORIENTATION, PlayerOrientation.Landscape.name)
+        val orientName = sp.getString(PrefKeys.Player.ORIENTATION, PlayerOrientation.Free.name)
         _defaultOrientation.value =
             PlayerOrientation.entries.firstOrNull { it.name == orientName }
-                ?: PlayerOrientation.Landscape
+                ?: PlayerOrientation.Free
         _showLoadingCircle.value = sp.getBoolean(PrefKeys.Player.SHOW_LOADING_CIRCLE, true)
         _rememberLevels.value =
             if (sp.contains(PrefKeys.Player.REMEMBER_LEVELS)) {
@@ -182,6 +185,7 @@ object PlayerPrefs {
         _pauseOnNoisy.value = sp.getBoolean(PrefKeys.Player.PAUSE_ON_NOISY, true)
         _volumeBoost.value = sp.getBoolean(PrefKeys.Player.VOLUME_BOOST, false)
         _backgroundPlay.value = sp.getBoolean(PrefKeys.Player.BACKGROUND_PLAY, false)
+        _miniPlayerFloating.value = sp.getBoolean(PrefKeys.Player.MINI_PLAYER_FLOATING, false)
         _skipIntroMs.value = sp.getInt(PrefKeys.Player.SKIP_INTRO_MS, DEFAULT_SKIP_INTRO_MS).coerceIn(10_000, 300_000)
     }
 
@@ -324,6 +328,11 @@ object PlayerPrefs {
         edit { putBoolean(PrefKeys.Player.BACKGROUND_PLAY, value) }
     }
 
+    fun setMiniPlayerFloating(value: Boolean) {
+        _miniPlayerFloating.value = value
+        edit { putBoolean(PrefKeys.Player.MINI_PLAYER_FLOATING, value) }
+    }
+
     fun setSkipIntroMs(value: Int) {
         val v = value.coerceIn(10_000, 300_000)
         _skipIntroMs.value = v
@@ -356,6 +365,7 @@ object PlayerPrefs {
             .put("pauseOnNoisy", _pauseOnNoisy.value)
             .put("volumeBoost", _volumeBoost.value)
             .put("backgroundPlay", _backgroundPlay.value)
+            .put("miniPlayerFloating", _miniPlayerFloating.value)
             .put("skipIntroMs", _skipIntroMs.value)
 
     fun restoreJson(o: JSONObject) {
@@ -394,6 +404,7 @@ object PlayerPrefs {
         if (o.has("pauseOnNoisy")) setPauseOnNoisy(o.optBoolean("pauseOnNoisy"))
         if (o.has("volumeBoost")) setVolumeBoost(o.optBoolean("volumeBoost"))
         if (o.has("backgroundPlay")) setBackgroundPlay(o.optBoolean("backgroundPlay"))
+        if (o.has("miniPlayerFloating")) setMiniPlayerFloating(o.optBoolean("miniPlayerFloating"))
         if (o.has("skipIntroMs")) setSkipIntroMs(o.optInt("skipIntroMs", _skipIntroMs.value))
     }
 }

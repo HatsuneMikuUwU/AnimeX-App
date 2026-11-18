@@ -61,14 +61,12 @@ import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,6 +96,7 @@ import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.FloatingGlassButton
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalMiniPlayerInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.UiState
@@ -326,7 +325,7 @@ fun MainScreen(
     val backdrop = rememberBlurBackdrop()
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     Scaffold(containerColor = screenContainerColor()) { _ ->
-        val bottomInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
+        val bottomInset = (if (landscape) 0.dp else floatingTabBarSpace() + 8.dp) + LocalMiniPlayerInset.current
         Row(Modifier.fillMaxSize()) {
             if (landscape) {
                 NavigationRail(

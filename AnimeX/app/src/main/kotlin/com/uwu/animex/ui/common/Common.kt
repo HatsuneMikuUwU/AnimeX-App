@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -148,6 +147,8 @@ val LocalTopInset = compositionLocalOf { 0.dp }
 
 val LocalBottomInset = compositionLocalOf { 0.dp }
 
+val LocalMiniPlayerInset = compositionLocalOf { 0.dp }
+
 @Composable
 fun fabClearance(stacked: Dp = 0.dp): Dp = 56.dp + stacked + 16.dp + if (isLandscape()) 16.dp else 8.dp
 
@@ -162,6 +163,7 @@ fun BlurContentBox(
     contentAlignment: Alignment = Alignment.TopStart,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val miniInset = LocalMiniPlayerInset.current
     Box(
         modifier
             .fillMaxSize()
@@ -170,7 +172,7 @@ fun BlurContentBox(
     ) {
         CompositionLocalProvider(
             LocalTopInset provides pad.calculateTopPadding(),
-            LocalBottomInset provides pad.calculateBottomPadding(),
+            LocalBottomInset provides pad.calculateBottomPadding() + miniInset,
         ) { content() }
     }
 }

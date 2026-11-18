@@ -11,12 +11,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -33,6 +31,7 @@ import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
+import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.toEpisodeIndex
 import com.uwu.animex.service.PlaybackSessions
@@ -43,6 +42,7 @@ import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.LocalMiniPlayerInset
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.cuplix.CuplixAllScreen
@@ -59,8 +59,10 @@ import com.uwu.animex.ui.main.MainScreen
 import com.uwu.animex.ui.mal.MalProfileScreen
 import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
+import com.uwu.animex.ui.player.MiniPlayerController
+import com.uwu.animex.ui.player.MiniPlayerDockedSpace
 import com.uwu.animex.ui.player.PipHelper
-import com.uwu.animex.ui.player.PlayerScreen
+import com.uwu.animex.ui.player.PlayerHost
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.search.CategoryScreen
 import com.uwu.animex.ui.search.StudioScreen
@@ -78,12 +80,14 @@ fun App() {
 
     LaunchedEffect(nav) {
         nav.currentBackStack.collect { stack ->
-            val inPlayer =
+            val inCuplix =
                 stack.any {
                     val route = it.destination.route
-                    route?.startsWith("player") == true || route?.startsWith("cuplix") == true
+                    route?.startsWith("cuplix") == true
                 }
-            if (!inPlayer && PlaybackSessions.current != null) PlaybackSessions.stop()
+            if (!inCuplix && !MiniPlayerController.isActive && PlaybackSessions.current != null) {
+                PlaybackSessions.stop()
+            }
         }
     }
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -91,11 +95,26 @@ fun App() {
     val openStatusSheet = remember { { m: Movie -> statusTarget = m } }
     val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }
 
+    val openPlayer: (String, String, String?, String?, Long?) -> Unit =
+        remember {
+            { epId, title, movieId, epIndex, startAtMs ->
+                showSettings = false
+                MiniPlayerController.open(
+                    epId = epId,
+                    title = title,
+                    movieId = movieId,
+                    epIndex = epIndex,
+                    startAtMs = startAtMs,
+                )
+            }
+        }
+
     val pendingDetail by NotificationRouter.pendingDetail.collectAsStateWithLifecycle()
     LaunchedEffect(pendingDetail) {
         val id = pendingDetail ?: return@LaunchedEffect
         NotificationRouter.pendingDetail.value = null
         showSettings = false
+        if (MiniPlayerController.expanded) MiniPlayerController.minimize()
         nav.navigate("detail/${Uri.encode(id)}")
     }
 
@@ -103,13 +122,7 @@ fun App() {
     LaunchedEffect(pendingEpisode) {
         val link = pendingEpisode ?: return@LaunchedEffect
         NotificationRouter.pendingEpisode.value = null
-        showSettings = false
-        nav.navigate(
-            "player/${Uri.encode(link.epId)}?title=${Uri.encode(link.title)}" +
-                "&movieId=${Uri.encode(link.movieId)}" +
-                "&epIndex=${Uri.encode(link.epIndex.orEmpty())}" +
-                "&startAtMs=${link.startAtMs ?: -1L}",
-        )
+        openPlayer(link.epId, link.title, link.movieId, link.epIndex, link.startAtMs)
     }
 
     val pendingUpdate by NotificationRouter.pendingOpenUpdate.collectAsStateWithLifecycle()
@@ -117,6 +130,7 @@ fun App() {
         if (!pendingUpdate) return@LaunchedEffect
         NotificationRouter.pendingOpenUpdate.value = false
         showSettings = false
+        if (MiniPlayerController.expanded) MiniPlayerController.minimize()
         nav.navigate("update")
     }
 
@@ -125,6 +139,7 @@ fun App() {
         if (!pendingCenter) return@LaunchedEffect
         NotificationRouter.pendingOpenCenter.value = false
         showSettings = false
+        if (MiniPlayerController.expanded) MiniPlayerController.minimize()
         nav.navigate("notifications")
     }
 
@@ -132,6 +147,7 @@ fun App() {
     LaunchedEffect(pendingSetup) {
         if (!pendingSetup) return@LaunchedEffect
         NotificationRouter.pendingOpenSetup.value = false
+        if (MiniPlayerController.expanded) MiniPlayerController.minimize()
         nav.navigate("notification-setup")
     }
 
@@ -146,18 +162,35 @@ fun App() {
     }
 
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
+    val miniFloating by PlayerPrefs.miniPlayerFloating.collectAsStateWithLifecycle()
     val route = backEntry?.destination?.route ?: startDestination
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val playerInPip by PipHelper.inPip.collectAsStateWithLifecycle()
-    val playerFullscreen =
-        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE || playerInPip
+    val playerActive = MiniPlayerController.request != null
+    val playerExpanded = MiniPlayerController.expanded
+    val playerFullscreen = playerActive && playerExpanded && (isLandscape || playerInPip)
+
+    val hidePlayerOverlay = route.startsWith("onboarding") || route.startsWith("cuplix")
+    val hasFloatingBottomBar =
+        !isLandscape &&
+            (route == "main" || route.startsWith("detail") || route == "mal" || route == "anilist")
+
+    val miniPlayerInset =
+        if (playerActive && !playerExpanded && !miniFloating && !hidePlayerOverlay) {
+            MiniPlayerDockedSpace
+        } else {
+            0.dp
+        }
+
     val backgroundActive =
         appearance.backgroundType != BackgroundType.NONE &&
             !route.startsWith("onboarding") &&
-            !(route.startsWith("player") && playerFullscreen)
+            !playerFullscreen
 
     CompositionLocalProvider(
         LocalOpenStatusSheet provides openStatusSheet,
+        LocalMiniPlayerInset provides miniPlayerInset,
         LocalAnimatedBackgroundActive provides backgroundActive,
         LocalContentColor provides MaterialTheme.colorScheme.onBackground,
     ) {
@@ -215,11 +248,7 @@ fun App() {
                         onOpenYear = { nav.navigate("year") },
                         onOpenType = { nav.navigate("type") },
                         onPlay = { epId, title, movieId, epIndex ->
-                            nav.navigate(
-                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
-                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                            )
+                            openPlayer(epId, title, movieId, epIndex, null)
                         },
                         onPlayCuplix = { clip ->
                             CuplixFeed.start(clip)
@@ -252,11 +281,7 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpen = { nav.navigate("detail/${Uri.encode(it)}") },
                         onPlay = { epId, title, movieId, epIndex ->
-                            nav.navigate(
-                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
-                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                            )
+                            openPlayer(epId, title, movieId, epIndex, null)
                         },
                     )
                 }
@@ -290,11 +315,7 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpen = { nav.navigate("detail/${Uri.encode(it)}") },
                         onPlay = { epId, title, movieId, epIndex ->
-                            nav.navigate(
-                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
-                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                            )
+                            openPlayer(epId, title, movieId, epIndex, null)
                         },
                     )
                 }
@@ -335,11 +356,7 @@ fun App() {
                             )
                         },
                         onPlay = { epId, title, movieId, epIndex ->
-                            nav.navigate(
-                                "player/${Uri.encode(epId)}?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
-                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                            )
+                            openPlayer(epId, title, movieId, epIndex, null)
                         },
                     )
                 }
@@ -419,12 +436,13 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpenAnime = { animeId -> nav.navigate("detail/${Uri.encode(animeId)}") },
                         onPlayEpisode = { clip ->
-                            nav.navigate(
-                                "player/${Uri.encode(clip.id_episode.orEmpty())}" +
-                                    "?title=${Uri.encode(clip.anime.orEmpty())}" +
-                                    "&movieId=${Uri.encode(clip.id_movie.orEmpty())}" +
-                                    "&epIndex=${Uri.encode(clip.episode.toEpisodeIndex().orEmpty())}" +
-                                    "&startAtMs=${clip.clipStartTimeMs()}",
+                            nav.popBackStack()
+                            openPlayer(
+                                clip.id_episode.orEmpty(),
+                                clip.anime.orEmpty(),
+                                clip.id_movie?.takeIf { it.isNotBlank() },
+                                clip.episode.toEpisodeIndex(),
+                                clip.clipStartTimeMs(),
                             )
                         },
                         onNeedLogin = { nav.navigate("login") },
@@ -452,26 +470,18 @@ fun App() {
                             },
                         ),
                 ) { e ->
-                    PlayerScreen(
-                        epId = e.arguments?.getString("epId").orEmpty(),
-                        title = e.arguments?.getString("title").orEmpty(),
-                        movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
-                        epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
-                        startAtMs = e.arguments?.getLong("startAtMs")?.takeIf { it >= 0L },
-                        onBack = { nav.popBackStack() },
-                        onOpenAnime = { animeId ->
-                            nav.navigate("detail/${Uri.encode(animeId)}") {
-                                popUpTo(
-                                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}&startAtMs={startAtMs}",
-                                ) {
-                                    inclusive = true
-                                }
-                            }
-                        },
-                        onNeedLogin = { nav.navigate("login") },
-                    )
+                    LaunchedEffect(e.id) {
+                        val epIdArg = e.arguments?.getString("epId").orEmpty()
+                        val titleArg = e.arguments?.getString("title").orEmpty()
+                        val movieIdArg = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() }
+                        val epIndexArg = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() }
+                        val startAtMsArg = e.arguments?.getLong("startAtMs")?.takeIf { it >= 0L }
+                        nav.popBackStack()
+                        openPlayer(epIdArg, titleArg, movieIdArg, epIndexArg, startAtMsArg)
+                    }
                 }
             }
+
             SettingsSheet(
                 visible = showSettings && backEntry?.destination?.route == "main",
                 onDismiss = { showSettings = false },
@@ -480,6 +490,20 @@ fun App() {
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
             )
+
+            PlayerHost(
+                hasFloatingBottomBar = hasFloatingBottomBar,
+                hidden = hidePlayerOverlay,
+                onOpenAnime = { animeId ->
+                    MiniPlayerController.minimize()
+                    nav.navigate("detail/${Uri.encode(animeId)}")
+                },
+                onNeedLogin = {
+                    MiniPlayerController.minimize()
+                    nav.navigate("login")
+                },
+            )
+
             OfflineBanner(Modifier.align(Alignment.TopCenter))
 
             statusTarget?.let { target ->

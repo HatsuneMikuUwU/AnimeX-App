@@ -35,10 +35,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,10 +48,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberStableHapticAction
 
 private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90, 120)
@@ -210,8 +208,11 @@ internal fun SeekBar(
     onScrub: (Long?) -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    edgeToEdge: Boolean = false,
+    stamps: List<SkipStamp> = emptyList(),
 ) {
     val played = MaterialTheme.colorScheme.primary
+    val stampColor = Color(0xFFFFCA28)
     val scrubHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
     var drag by remember { mutableStateOf<Float?>(null) }
     val total = duration.coerceAtLeast(1L)
@@ -219,7 +220,7 @@ internal fun SeekBar(
     val bufFrac = (buffered.toFloat() / total).coerceIn(0f, 1f)
     Canvas(
         modifier
-            .height(40.dp)
+            .height(if (edgeToEdge) 24.dp else 40.dp)
             .pointerInput(duration) {
                 detectTapGestures { o ->
                     if (duration > 0) {
@@ -258,17 +259,38 @@ internal fun SeekBar(
                 )
             },
     ) {
-        val trackH = 4.dp.toPx()
-        val cy = size.height / 2f
-        val top = cy - trackH / 2f
-        val radius = CornerRadius(trackH / 2f)
-        drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
-        drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
-        drawRoundRect(played, Offset(0f, top), Size(size.width * frac, trackH), radius)
+        val activeTrackH = (if (drag != null) 5.dp else if (edgeToEdge) 3.dp else 4.dp).toPx()
+        val cy = if (edgeToEdge) size.height - activeTrackH / 2f else size.height / 2f
+        val top = cy - activeTrackH / 2f
+        val radius = if (edgeToEdge) CornerRadius.Zero else CornerRadius(activeTrackH / 2f)
+        drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, activeTrackH), radius)
+        drawRoundRect(Color(0x73FFFFFF), Offset(0f, top), Size(size.width * bufFrac, activeTrackH), radius)
+        drawRoundRect(played, Offset(0f, top), Size(size.width * frac, activeTrackH), radius)
+        if (duration > 0) {
+            stamps.forEach { st ->
+                val sx = (st.startMs.toFloat() / total).coerceIn(0f, 1f) * size.width
+                val ex = (st.endMs.toFloat() / total).coerceIn(0f, 1f) * size.width
+                if (ex > sx) {
+                    drawRect(
+                        color = stampColor.copy(alpha = 0.85f),
+                        topLeft = Offset(sx, top),
+                        size = Size((ex - sx).coerceAtLeast(3.dp.toPx()), activeTrackH),
+                    )
+                }
+            }
+        }
+        val thumbRadius =
+            when {
+                drag != null -> 8.5.dp.toPx()
+                edgeToEdge -> 6.dp.toPx()
+                else -> 7.dp.toPx()
+            }
+        val thumbX = (size.width * frac).coerceIn(thumbRadius, (size.width - thumbRadius).coerceAtLeast(thumbRadius))
+        val thumbY = if (edgeToEdge) (size.height - thumbRadius).coerceAtMost(cy) else cy
         drawCircle(
             color = played,
-            radius = (if (drag != null) 10.dp else 7.dp).toPx(),
-            center = Offset(size.width * frac, cy),
+            radius = thumbRadius,
+            center = Offset(thumbX, thumbY),
         )
     }
 }

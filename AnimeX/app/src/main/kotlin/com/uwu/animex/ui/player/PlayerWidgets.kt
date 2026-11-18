@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +32,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Refresh
@@ -51,11 +51,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -71,7 +69,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.user.UserApi
@@ -124,14 +121,14 @@ internal fun EmbedTopBar(
                 Modifier
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
-                    .safeDrawingPadding()
+                    .then(if (compact) Modifier else Modifier.safeDrawingPadding())
                     .padding(horizontal = 4.dp, vertical = if (compact) 4.dp else 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OverlayButton(onBack) {
                     Icon(
-                        if (compact) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = if (compact) "Tutup" else "Balik",
+                        if (compact) Icons.Outlined.KeyboardArrowDown else Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = if (compact) "Kecilkan ke mini player" else "Balik",
                         tint = Color.White,
                     )
                 }
@@ -460,8 +457,22 @@ internal fun PlayerLoadError(
     onRetry: () -> Unit,
     onBack: () -> Unit,
     compact: Boolean = false,
+    minimized: Boolean = false,
     extra: @Composable () -> Unit = {},
 ) {
+    if (minimized) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(onClick = hapticClick(block = onRetry)) {
+                Icon(Icons.Outlined.Refresh, contentDescription = "Coba lagi", tint = Color.White)
+            }
+        }
+        return
+    }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -504,7 +515,7 @@ internal fun PlayerLoadError(
             }
         }
         EmbedTopBar(
-            title = title,
+            title = if (compact) "" else title,
             showSources = false,
             locked = false,
             onBack = onBack,
