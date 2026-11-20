@@ -264,6 +264,7 @@ object Api {
         path: String,
         params: Map<String, String>,
         client: OkHttpClient = http,
+        headers: Map<String, String> = emptyMap(),
     ): String =
         withContext(Dispatchers.IO) {
             val url =
@@ -272,7 +273,13 @@ object Api {
                     .newBuilder()
                     .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                     .build()
-            val call = client.newCall(Request.Builder().url(url).build())
+            val req =
+                Request
+                    .Builder()
+                    .url(url)
+                    .apply { headers.forEach { (k, v) -> header(k, v) } }
+                    .build()
+            val call = client.newCall(req)
 
             val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
             try {
@@ -413,7 +420,7 @@ object Api {
         params: Map<String, String>,
         force: Boolean = false,
     ): String {
-        val volatile = NativeCore.isVolatile(path)
+        val volatile = NativeCore.isVolatile(path) || path == cuplixServerPath
         val key = cacheKey(path, params)
         val ttl = CachePolicy.ttlMs(kindOf(path))
 
@@ -446,6 +453,10 @@ object Api {
 
     private fun gateFresh(): Boolean =
         resolved && SystemClock.elapsedRealtime() - resolvedAt < GATE_TTL_MS
+
+    suspend fun ensureReady() {
+        ensureDomains()
+    }
 
     private suspend fun ensureDomains() {
         if (gateFresh()) return
@@ -572,7 +583,14 @@ object Api {
 
         try {
             val secureGate = normalizeDomain(gate)
-            val json = fetch(secureGate, NativeCore.path(NativeCore.GATE_SETUP), emptyMap(), gateHttp)
+            val json =
+                fetch(
+                    secureGate,
+                    NativeCore.path(NativeCore.GATE_SETUP),
+                    emptyMap(),
+                    gateHttp,
+                    headers = mapOf("X-No-Base-Rewrite" to "1"),
+                )
             val config = RemoteConfigParser.parse(json)
             val resolvedMainDomain =
                 config.domainApi.takeIf { it.isNotBlank() }?.let(::normalizeDomain)
@@ -1281,11 +1299,13 @@ object Api {
         val newestNum = newest.mapNotNull { it.number() }.maxOrNull()
         if (targetNum != null && newestNum != null && newestNum > 0) {
             val approxPage = ((newestNum - targetNum) / API_LIMIT).toInt().coerceAtLeast(1)
+            val triedPages = HashSet<Int>()
             for (delta in listOf(0, -1, 1, -2, 2, -3, 3)) {
                 val page = (approxPage + delta).coerceAtLeast(1)
+                if (!triedPages.add(page)) continue
                 val batch = episodes(movieId, page = page)
                 inList(batch)?.let { return it }
-                if (batch.isEmpty()) break
+                if (batch.isEmpty() && delta > 0) break
             }
         }
 

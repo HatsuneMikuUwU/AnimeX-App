@@ -6,10 +6,13 @@ import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.data.api.Api
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -27,7 +30,8 @@ object UserApi {
     private val textMedia = "text/plain".toMediaType()
     private val http get() = NetworkModule.apiClient
 
-    private fun domain(): String {
+    private suspend fun domain(): String {
+        if (Api.activeDomain.isBlank()) Api.ensureReady()
         val d = Api.activeDomain.trimEnd('/')
         if (d.isBlank()) throw ApiException.Config("Domain API belum siap")
         return "$d/"
@@ -99,16 +103,25 @@ object UserApi {
                     .build()
             }
 
-            suspend fun send(domain: String): JsonObject =
-                try {
-                    http.newCall(build(domain)).execute().use { r ->
+            suspend fun send(domain: String): JsonObject {
+                val call = http.newCall(build(domain))
+                val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
+                return try {
+                    call.execute().use { r ->
                         val text = r.body.string()
                         val obj =
                             runCatching {
                                 JsonParser.parseString(text).takeIf { it.isJsonObject }?.asJsonObject
                             }.getOrNull()
+                        val errEl = obj?.get("error")
                         val flagged =
-                            runCatching { obj?.get("error")?.asBoolean }.getOrNull() == true
+                            errEl != null &&
+                                errEl.isJsonPrimitive &&
+                                (
+                                    (errEl.asJsonPrimitive.isBoolean && errEl.asBoolean) ||
+                                        errEl.asString.equals("true", ignoreCase = true) ||
+                                        errEl.asString == "1"
+                                )
                         val message = messageOf(obj)
                         when {
                             !r.isSuccessful && message == null -> throw ApiException.Http(r.code)
@@ -120,7 +133,10 @@ object UserApi {
                     throw e
                 } catch (e: IOException) {
                     throw e.toApiException()
+                } finally {
+                    handle.dispose()
                 }
+            }
 
             val current = domain()
             if (readOnly) Api.withFallback { send(it) } else send(current)
@@ -170,7 +186,7 @@ object UserApi {
         if (id == null || key == null) {
             throw ApiException.Remote(messageOf(root) ?: fallbackMessage)
         }
-        return runCatching { fetchProfile(id, key) }
+        return runSuspendCatching { fetchProfile(id, key) }
             .getOrElse { UserProfile(id = id, keyClient = key) }
     }
 
