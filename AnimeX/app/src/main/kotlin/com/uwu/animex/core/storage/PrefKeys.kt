@@ -187,6 +187,11 @@ object PrefKeys {
         const val VOLUME_BOOST = "volume_boost"
         const val BACKGROUND_PLAY = "background_play"
         const val SKIP_INTRO_MS = "skip_intro_ms"
+        const val ANISKIP_ENABLED = "aniskip_enabled"
+        const val AUTO_SKIP_OP = "auto_skip_op"
+        const val AUTO_SKIP_ED = "auto_skip_ed"
+        const val AUTO_SKIP_RECAP = "auto_skip_recap"
+        const val ANISKIP_SUBMITTER_ID = "aniskip_submitter_id"
         const val MINI_PLAYER_FLOATING = "mini_player_floating"
     }
 
