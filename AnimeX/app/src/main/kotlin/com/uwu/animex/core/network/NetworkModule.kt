@@ -28,6 +28,7 @@ object NetworkModule {
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor(RetryInterceptor())
+            .addInterceptor(HostRateLimiterInterceptor())
             .build()
     }
 

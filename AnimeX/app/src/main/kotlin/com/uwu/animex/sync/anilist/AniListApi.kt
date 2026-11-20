@@ -374,11 +374,13 @@ class AniListApi : SyncAPI() {
         request: Request,
         retrySafe: Boolean,
     ): okhttp3.Response {
+        var attempt = 0
         var response = http.newCall(request).execute()
-        if (retrySafe && response.code == 429) {
-            val wait = (response.header("Retry-After")?.toLongOrNull() ?: 2L).coerceIn(1L, 10L)
+        while (retrySafe && response.code == 429 && attempt < 2) {
+            val wait = (response.header("Retry-After")?.toLongOrNull() ?: 2L).coerceIn(1L, 15L)
             response.close()
-            delay(wait * 1000)
+            attempt++
+            delay(wait * 1000L)
             response = http.newCall(request).execute()
         }
         return response
