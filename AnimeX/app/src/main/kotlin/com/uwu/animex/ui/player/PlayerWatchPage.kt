@@ -143,6 +143,7 @@ import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.EpisodeAlerts
+import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.mal.Mal
@@ -227,6 +228,7 @@ internal fun PlayerWatchPage(
     onOpenAnime: (String) -> Unit,
     onNeedLogin: () -> Unit,
     onMetadataResolved: (episodeTitle: String, animeTitle: String, poster: String?) -> Unit = { _, _, _ -> },
+    ambientColors: AmbientColors = AmbientColors.Neutral,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -366,11 +368,18 @@ internal fun PlayerWatchPage(
     val animatedBgActive = LocalAnimatedBackgroundActive.current
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
 
+    val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
     Box(modifier.background(cs.background)) {
         if (animatedBgActive) {
             AnimatedBackground(
                 type = rememberActiveBackground(),
                 enableParallax = appearance.backgroundParallax,
+            )
+        }
+        if (ambientColors != AmbientColors.Neutral) {
+            CinematicAmbientBackdrop(
+                colors = ambientColors,
+                reduceMotion = reduceMotion,
             )
         }
         LazyColumn(

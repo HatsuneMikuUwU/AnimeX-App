@@ -144,6 +144,9 @@ object PlayerPrefs {
     private val _autoSkipRecap = MutableStateFlow(false)
     val autoSkipRecap: StateFlow<Boolean> = _autoSkipRecap.asStateFlow()
 
+    private val _ambientMode = MutableStateFlow(true)
+    val ambientMode: StateFlow<Boolean> = _ambientMode.asStateFlow()
+
     @Synchronized
     fun init(context: Context) {
         if (appContext != null) return
@@ -203,6 +206,7 @@ object PlayerPrefs {
         _autoSkipOp.value = sp.getBoolean(PrefKeys.Player.AUTO_SKIP_OP, false)
         _autoSkipEd.value = sp.getBoolean(PrefKeys.Player.AUTO_SKIP_ED, false)
         _autoSkipRecap.value = sp.getBoolean(PrefKeys.Player.AUTO_SKIP_RECAP, false)
+        _ambientMode.value = sp.getBoolean(PrefKeys.Player.AMBIENT_MODE, true)
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -375,6 +379,11 @@ object PlayerPrefs {
         edit { putBoolean(PrefKeys.Player.AUTO_SKIP_RECAP, value) }
     }
 
+    fun setAmbientMode(value: Boolean) {
+        _ambientMode.value = value
+        edit { putBoolean(PrefKeys.Player.AMBIENT_MODE, value) }
+    }
+
     fun aniSkipSubmitterId(): String {
         val sp = appContext?.getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
         val existing = sp?.getString(PrefKeys.Player.ANISKIP_SUBMITTER_ID, null)?.takeIf { it.isNotBlank() }
@@ -416,6 +425,7 @@ object PlayerPrefs {
             .put("autoSkipOp", _autoSkipOp.value)
             .put("autoSkipEd", _autoSkipEd.value)
             .put("autoSkipRecap", _autoSkipRecap.value)
+            .put("ambientMode", _ambientMode.value)
 
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
@@ -459,5 +469,6 @@ object PlayerPrefs {
         if (o.has("autoSkipOp")) setAutoSkipOp(o.optBoolean("autoSkipOp"))
         if (o.has("autoSkipEd")) setAutoSkipEd(o.optBoolean("autoSkipEd"))
         if (o.has("autoSkipRecap")) setAutoSkipRecap(o.optBoolean("autoSkipRecap"))
+        if (o.has("ambientMode")) setAmbientMode(o.optBoolean("ambientMode"))
     }
 }

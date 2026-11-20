@@ -192,6 +192,7 @@ object PrefKeys {
         const val AUTO_SKIP_ED = "auto_skip_ed"
         const val AUTO_SKIP_RECAP = "auto_skip_recap"
         const val ANISKIP_SUBMITTER_ID = "aniskip_submitter_id"
+        const val AMBIENT_MODE = "ambient_mode"
         const val MINI_PLAYER_FLOATING = "mini_player_floating"
     }
 
