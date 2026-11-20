@@ -10,7 +10,10 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.mal.Mal
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -18,6 +21,7 @@ import okhttp3.Request
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 data class AniZipEpisode(
@@ -29,12 +33,26 @@ data class AniZipEpisode(
     val airDate: String?,
 )
 
+data class AniZipMappings(
+    val aniListId: Int? = null,
+    val malId: Int? = null,
+    val kitsuId: Int? = null,
+    val tvdbId: Int? = null,
+    val tmdbId: String? = null,
+    val imdbId: String? = null,
+    val anidbId: Int? = null,
+)
+
 data class AniZipInfo(
     val episodes: Map<Int, AniZipEpisode>,
+    val episodeCount: Int? = null,
+    val specialCount: Int? = null,
+    val mappings: AniZipMappings? = null,
 )
 
 object AniZip {
     private const val ENDPOINT = "https://api.ani.zip/mappings?"
+    private const val MAX_RETRY_ATTEMPTS = 3
 
     private val http =
         NetworkModule.client
@@ -58,6 +76,17 @@ object AniZip {
         val failed: Boolean,
     )
 
+    private sealed interface FetchResult {
+        data class Ok(
+            val info: AniZipInfo?,
+        ) : FetchResult
+
+        data class Failed(
+            val retryable: Boolean,
+            val retryAfterMs: Long = 0L,
+        ) : FetchResult
+    }
+
     private const val HIT_TTL_MS = Long.MAX_VALUE
     private val MISS_TTL_MS = TimeUnit.MINUTES.toMillis(30)
     private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
@@ -67,9 +96,20 @@ object AniZip {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Box>?) = size > 60
         }
 
-    private const val DISK_VERSION = 1
+    private val inFlight = ConcurrentHashMap<String, CompletableDeferred<AniZipInfo?>>()
+
+    private const val DISK_VERSION = 2
     private val MAX_DISK_AGE_MS = TimeUnit.DAYS.toMillis(30)
     private const val MAX_DISK_FILES = 300
+
+    private val inputDateFmt =
+        ThreadLocal.withInitial {
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+        }
+    private val outputDateFmt =
+        ThreadLocal.withInitial {
+            SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("id-ID"))
+        }
 
     @Volatile
     private var dir: File? = null
@@ -119,9 +159,22 @@ object AniZip {
             eps.add(n.toString(), o)
         }
         return JsonObject()
-            .also {
-                it.addProperty("v", DISK_VERSION)
-                it.add("episodes", eps)
+            .also { root ->
+                root.addProperty("v", DISK_VERSION)
+                info.episodeCount?.let { root.addProperty("episodeCount", it) }
+                info.specialCount?.let { root.addProperty("specialCount", it) }
+                info.mappings?.let { m ->
+                    val mo = JsonObject()
+                    m.aniListId?.let { mo.addProperty("anilist_id", it) }
+                    m.malId?.let { mo.addProperty("mal_id", it) }
+                    m.kitsuId?.let { mo.addProperty("kitsu_id", it) }
+                    m.tvdbId?.let { mo.addProperty("thetvdb_id", it) }
+                    m.tmdbId?.let { mo.addProperty("themoviedb_id", it) }
+                    m.imdbId?.let { mo.addProperty("imdb_id", it) }
+                    m.anidbId?.let { mo.addProperty("anidb_id", it) }
+                    root.add("mappings", mo)
+                }
+                root.add("episodes", eps)
             }.toString()
     }
 
@@ -132,7 +185,8 @@ object AniZip {
                 ?.takeIf { it.isJsonObject }
                 ?.asJsonObject
                 ?: return null
-        if (root.int("v") != DISK_VERSION) return null
+        val version = root.int("v")
+        if (version != 1 && version != DISK_VERSION) return null
         val node = root.nonNull("episodes")?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
         val out = HashMap<Int, AniZipEpisode>()
         for ((key, value) in node.entrySet()) {
@@ -148,7 +202,13 @@ object AniZip {
                     airDate = o.text("airDate"),
                 )
         }
-        return if (out.isEmpty()) null else AniZipInfo(out)
+        if (out.isEmpty()) return null
+        return AniZipInfo(
+            episodes = out,
+            episodeCount = root.int("episodeCount"),
+            specialCount = root.int("specialCount"),
+            mappings = parseMappings(root),
+        )
     }
 
     private suspend fun readDisk(movieId: String): AniZipInfo? =
@@ -205,7 +265,7 @@ object AniZip {
         if (node.isJsonPrimitive) return node.asString.trim().takeIf { it.isNotEmpty() }
         if (!node.isJsonObject) return null
         val titles = node.asJsonObject
-        return titles.text("en", "ja", "x-jat")
+        return titles.text("en", "x-jat", "ja")
             ?: titles.entrySet().firstNotNullOfOrNull { (_, v) ->
                 v
                     .takeIf { it.isJsonPrimitive }
@@ -238,12 +298,45 @@ object AniZip {
         ep: AniZipEpisode,
     ) {
         val prev = this[n]
-        if (prev == null ||
-            (prev.title == null && ep.title != null) ||
-            (prev.image == null && ep.image != null) ||
-            (prev.overview == null && ep.overview != null)
+        this[n] =
+            if (prev == null) {
+                ep
+            } else {
+                AniZipEpisode(
+                    title = prev.title ?: ep.title,
+                    overview = prev.overview ?: ep.overview,
+                    image = prev.image ?: ep.image,
+                    rating = prev.rating ?: ep.rating,
+                    runtime = prev.runtime ?: ep.runtime,
+                    airDate = prev.airDate ?: ep.airDate,
+                )
+            }
+    }
+
+    private fun parseMappings(root: JsonObject): AniZipMappings? {
+        val m = root.nonNull("mappings")?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
+        val mapped =
+            AniZipMappings(
+                aniListId = m.int("anilist_id"),
+                malId = m.int("mal_id"),
+                kitsuId = m.int("kitsu_id"),
+                tvdbId = m.int("thetvdb_id"),
+                tmdbId = m.text("themoviedb_id"),
+                imdbId = m.text("imdb_id"),
+                anidbId = m.int("anidb_id"),
+            )
+        return if (
+            mapped.aniListId == null &&
+            mapped.malId == null &&
+            mapped.kitsuId == null &&
+            mapped.tvdbId == null &&
+            mapped.tmdbId == null &&
+            mapped.imdbId == null &&
+            mapped.anidbId == null
         ) {
-            this[n] = ep
+            null
+        } else {
+            mapped
         }
     }
 
@@ -262,37 +355,83 @@ object AniZip {
             }
         }
         val out = HashMap(byKey)
-        byAbsolute.forEach { (n, ep) -> out.putIfAbsent(n, ep) }
-        bySeason.forEach { (n, ep) -> out.putIfAbsent(n, ep) }
+        byAbsolute.forEach { (n, ep) -> out.putBetter(n, ep) }
+        bySeason.forEach { (n, ep) -> out.putBetter(n, ep) }
         return out
+    }
+
+    private suspend fun fetchWithRetry(
+        param: String,
+        id: Int,
+    ): FetchResult {
+        var last: FetchResult = FetchResult.Failed(retryable = false)
+        for (attempt in 1..MAX_RETRY_ATTEMPTS) {
+            last = withContext(Dispatchers.IO) { fetch(param, id) }
+            if (last is FetchResult.Ok) return last
+            if (last is FetchResult.Failed && !last.retryable) return last
+            if (attempt < MAX_RETRY_ATTEMPTS) {
+                val backoffMs =
+                    if (last is FetchResult.Failed && last.retryAfterMs > 0L) {
+                        last.retryAfterMs.coerceAtMost(5_000L)
+                    } else {
+                        400L * attempt
+                    }
+                delay(backoffMs)
+            }
+        }
+        return last
     }
 
     private fun fetch(
         param: String,
         id: Int,
-    ): AniZipInfo? {
-        val req = Request
-            .Builder()
-            .url("$ENDPOINT$param=$id")
-            .header("Accept", "application/json")
-            .build()
-        val body =
+    ): FetchResult {
+        val req =
+            Request
+                .Builder()
+                .url("$ENDPOINT$param=$id")
+                .header("Accept", "application/json")
+                .build()
+        return try {
             http.newCall(req).execute().use { r ->
-                when {
-                    r.isSuccessful -> r.body.string()
-                    r.code in 400..499 && r.code != 408 && r.code != 429 -> null
-                    else -> error("ani.zip HTTP ${r.code}")
+                if (r.code == 404) return@use FetchResult.Ok(null)
+                if (r.code == 429) {
+                    val retryAfter = r.header("Retry-After")?.toLongOrNull()?.times(1000L) ?: 0L
+                    return@use FetchResult.Failed(retryable = true, retryAfterMs = retryAfter)
                 }
+                if (r.code == 408 || r.code >= 500) {
+                    return@use FetchResult.Failed(retryable = true)
+                }
+                if (!r.isSuccessful) {
+                    return@use FetchResult.Failed(retryable = false)
+                }
+                val body = r.body.string()
+                if (body.isBlank()) return@use FetchResult.Ok(null)
+                val root =
+                    runCatching { JsonParser.parseString(body) }
+                        .getOrNull()
+                        ?.takeIf { it.isJsonObject }
+                        ?.asJsonObject
+                        ?: return@use FetchResult.Ok(null)
+                val episodes = parseEpisodes(root)
+                val info =
+                    if (episodes.isEmpty()) {
+                        null
+                    } else {
+                        AniZipInfo(
+                            episodes = episodes,
+                            episodeCount = root.int("episodeCount"),
+                            specialCount = root.int("specialCount"),
+                            mappings = parseMappings(root),
+                        )
+                    }
+                FetchResult.Ok(info)
             }
-        if (body.isNullOrBlank()) return null
-        val root =
-            runCatching { JsonParser.parseString(body) }
-                .getOrNull()
-                ?.takeIf { it.isJsonObject }
-                ?.asJsonObject
-                ?: return null
-        val episodes = parseEpisodes(root)
-        return if (episodes.isEmpty()) null else AniZipInfo(episodes)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            FetchResult.Failed(retryable = true)
+        }
     }
 
     private suspend fun attempt(
@@ -307,9 +446,10 @@ object AniZip {
             )
         for (query in queries) {
             if (!tried.add(query)) continue
-            val result = runSuspendCatching { withContext(Dispatchers.IO) { fetch(query.first, query.second) } }
-            result.getOrNull()?.let { return Outcome(it, failed) }
-            if (result.isFailure) failed = true
+            when (val result = fetchWithRetry(query.first, query.second)) {
+                is FetchResult.Ok -> result.info?.let { return Outcome(it, failed) }
+                is FetchResult.Failed -> failed = true
+            }
         }
         return Outcome(null, failed)
     }
@@ -375,21 +515,37 @@ object AniZip {
             return it
         }
 
-        return gate.withPermit {
-            cached(movieId)?.let { return@withPermit it.value }
+        val fresh = CompletableDeferred<AniZipInfo?>()
+        val existing = inFlight.putIfAbsent(movieId, fresh)
+        if (existing != null) {
+            return existing.await()
+        }
 
-            val d = download(movieId)
-            val info = d.info
-            when {
-                info != null -> {
-                    cachePut(movieId, info, HIT_TTL_MS)
-                    writeDisk(movieId, info)
+        return try {
+            val loaded =
+                gate.withPermit {
+                    cached(movieId)?.let { return@withPermit it.value }
+
+                    val d = download(movieId)
+                    val info = d.info
+                    when {
+                        info != null -> {
+                            cachePut(movieId, info, HIT_TTL_MS)
+                            writeDisk(movieId, info)
+                        }
+                        d.failed -> Unit
+                        d.lookupMissed -> cachePut(movieId, null, RETRY_TTL_MS)
+                        else -> cachePut(movieId, null, MISS_TTL_MS)
+                    }
+                    info
                 }
-                d.failed -> Unit
-                d.lookupMissed -> cachePut(movieId, null, RETRY_TTL_MS)
-                else -> cachePut(movieId, null, MISS_TTL_MS)
-            }
-            info
+            fresh.complete(loaded)
+            loaded
+        } catch (t: Throwable) {
+            fresh.completeExceptionally(t)
+            throw t
+        } finally {
+            inFlight.remove(movieId, fresh)
         }
     }
 
@@ -422,8 +578,8 @@ object AniZip {
     fun formatDate(raw: String?): String? {
         val d = raw?.take(10) ?: return null
         return runCatching {
-            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(d) ?: return null
-            SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("id-ID")).format(parsed)
+            val parsed = inputDateFmt.get()?.parse(d) ?: return null
+            outputDateFmt.get()?.format(parsed)
         }.getOrNull()
     }
 }
