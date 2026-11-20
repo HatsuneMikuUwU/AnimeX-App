@@ -373,14 +373,17 @@ internal fun ExoView(
             cb(AmbientColors.Neutral)
             return@LaunchedEffect
         }
+        var smoothed: AmbientColors? = null
         while (true) {
             if (player.isPlaying || player.playbackState == Player.STATE_READY) {
                 val tv = playerViewRef?.videoSurfaceView as? TextureView
-                if (tv != null) {
-                    sampleAmbientColors(tv)?.let(cb)
+                val sampled = tv?.let { sampleAmbientColors(it) }
+                if (sampled != null) {
+                    smoothed = smoothed?.blendToward(sampled, 0.35f) ?: sampled
+                    cb(smoothed)
                 }
             }
-            delay(if (player.isPlaying) 700L else 1_500L)
+            delay(if (player.isPlaying) 450L else 1_200L)
         }
     }
 

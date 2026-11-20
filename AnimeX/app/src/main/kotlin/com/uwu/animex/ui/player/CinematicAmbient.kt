@@ -3,6 +3,7 @@ package com.uwu.animex.ui.player
 import android.graphics.Bitmap
 import android.view.TextureView
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -24,6 +25,19 @@ internal data class AmbientColors(
     val center: Color,
     val right: Color,
 ) {
+    fun blendToward(
+        target: AmbientColors,
+        fraction: Float,
+    ): AmbientColors {
+        val f = fraction.coerceIn(0f, 1f)
+        return AmbientColors(
+            top = lerp(top, target.top, f),
+            left = lerp(left, target.left, f),
+            center = lerp(center, target.center, f),
+            right = lerp(right, target.right, f),
+        )
+    }
+
     companion object {
         val Neutral =
             AmbientColors(
@@ -78,12 +92,13 @@ private fun averageRegion(
     val b = (bSum / count).toInt()
     val hsv = FloatArray(3)
     android.graphics.Color.RGBToHSV(r, g, b, hsv)
-    if (hsv[2] < 0.06f) return Color.Transparent
+    val brightnessFactor = ((hsv[2] - 0.03f) / 0.14f).coerceIn(0f, 1f)
+    if (brightnessFactor <= 0f) return Color.Transparent
     if (hsv[1] > 0.08f) {
         hsv[1] = (hsv[1] * 1.25f).coerceIn(0f, 0.92f)
     }
     hsv[2] = hsv[2].coerceIn(0.32f, 0.85f)
-    return Color(android.graphics.Color.HSVToColor(hsv))
+    return Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = brightnessFactor)
 }
 
 @Composable
@@ -92,7 +107,7 @@ internal fun CinematicAmbientBackdrop(
     reduceMotion: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val animSpec = tween<Color>(durationMillis = if (reduceMotion) 0 else 900)
+    val animSpec = tween<Color>(durationMillis = if (reduceMotion) 0 else 1_400, easing = LinearEasing)
     val left by animateColorAsState(colors.left, animationSpec = animSpec, label = "ambientLeft")
     val center by animateColorAsState(colors.center, animationSpec = animSpec, label = "ambientCenter")
     val right by animateColorAsState(colors.right, animationSpec = animSpec, label = "ambientRight")
@@ -107,31 +122,46 @@ internal fun CinematicAmbientBackdrop(
         val h = size.height
         if (w <= 0f || h <= 0f) return@Canvas
 
-        if (left != Color.Transparent) {
+        if (left.alpha > 0.005f) {
             drawRect(
                 brush =
                     Brush.radialGradient(
-                        colors = listOf(left.copy(alpha = 0.34f), left.copy(alpha = 0.12f), Color.Transparent),
+                        colors =
+                            listOf(
+                                left.copy(alpha = left.alpha * 0.34f),
+                                left.copy(alpha = left.alpha * 0.12f),
+                                Color.Transparent,
+                            ),
                         center = Offset(w * 0.18f, 0f),
                         radius = w * 0.75f,
                     ),
             )
         }
-        if (center != Color.Transparent) {
+        if (center.alpha > 0.005f) {
             drawRect(
                 brush =
                     Brush.radialGradient(
-                        colors = listOf(center.copy(alpha = 0.38f), center.copy(alpha = 0.14f), Color.Transparent),
+                        colors =
+                            listOf(
+                                center.copy(alpha = center.alpha * 0.38f),
+                                center.copy(alpha = center.alpha * 0.14f),
+                                Color.Transparent,
+                            ),
                         center = Offset(w * 0.50f, 0f),
                         radius = w * 0.82f,
                     ),
             )
         }
-        if (right != Color.Transparent) {
+        if (right.alpha > 0.005f) {
             drawRect(
                 brush =
                     Brush.radialGradient(
-                        colors = listOf(right.copy(alpha = 0.34f), right.copy(alpha = 0.12f), Color.Transparent),
+                        colors =
+                            listOf(
+                                right.copy(alpha = right.alpha * 0.34f),
+                                right.copy(alpha = right.alpha * 0.12f),
+                                Color.Transparent,
+                            ),
                         center = Offset(w * 0.82f, 0f),
                         radius = w * 0.75f,
                     ),
@@ -147,13 +177,13 @@ internal fun CinematicStatusBarGlow(
     reduceMotion: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val animSpec = tween<Color>(durationMillis = if (reduceMotion) 0 else 900)
+    val animSpec = tween<Color>(durationMillis = if (reduceMotion) 0 else 1_400, easing = LinearEasing)
     val animated by animateColorAsState(color, animationSpec = animSpec, label = "ambientTop")
     val blended =
-        if (animated == Color.Transparent) {
+        if (animated.alpha <= 0.005f) {
             Color.Black
         } else {
-            lerp(Color.Black, animated, 0.28f)
+            lerp(Color.Black, animated.copy(alpha = 1f), 0.28f * animated.alpha)
         }
     Box(modifier.background(blended.copy(alpha = alpha)))
 }

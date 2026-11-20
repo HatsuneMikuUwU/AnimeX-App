@@ -376,10 +376,25 @@ internal fun PlayerWatchPage(
                 enableParallax = appearance.backgroundParallax,
             )
         }
-        if (ambientColors != AmbientColors.Neutral) {
+        val ambientFadeRangePx = with(LocalDensity.current) { 220.dp.toPx() }
+        val ambientScrollAlpha by remember(listState, ambientFadeRangePx) {
+            derivedStateOf {
+                if (listState.firstVisibleItemIndex > 0) {
+                    0f
+                } else {
+                    (1f - listState.firstVisibleItemScrollOffset / ambientFadeRangePx).coerceIn(0f, 1f)
+                }
+            }
+        }
+        if (ambientColors != AmbientColors.Neutral && ambientScrollAlpha > 0.005f) {
             CinematicAmbientBackdrop(
                 colors = ambientColors,
                 reduceMotion = reduceMotion,
+                modifier =
+                    Modifier.graphicsLayer {
+                        alpha = ambientScrollAlpha
+                        translationY = -listState.firstVisibleItemScrollOffset * 0.45f
+                    },
             )
         }
         LazyColumn(
