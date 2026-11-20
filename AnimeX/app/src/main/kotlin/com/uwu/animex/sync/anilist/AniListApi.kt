@@ -723,7 +723,7 @@ class AniListApi : SyncAPI() {
             newStatus.status?.let { status ->
                 addProperty(
                     "status",
-                    if (newStatus.isRewatching == true && status == SyncWatchType.WATCHING) {
+                    if (newStatus.isRewatching == true && (status == SyncWatchType.WATCHING || status == SyncWatchType.COMPLETED)) {
                         "REPEATING"
                     } else {
                         listStatus(status)

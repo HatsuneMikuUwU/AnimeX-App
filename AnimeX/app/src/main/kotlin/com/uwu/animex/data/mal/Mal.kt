@@ -23,6 +23,7 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.mal.MALApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -154,6 +155,8 @@ object Mal {
                 updateAutoSync(true)
                 refreshUser()
                 MalLibrary.refresh(force = true)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _message.value = "Gagal login MAL: ${e.toUserMessage()}"
             } finally {

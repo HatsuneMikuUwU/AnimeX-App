@@ -7,6 +7,7 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.TtlCache
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.storage.PrefKeys
 import com.uwu.animex.data.api.TitleMatcher
@@ -28,6 +29,7 @@ import com.uwu.animex.sync.anilist.AniListEditData
 import com.uwu.animex.sync.anilist.AniListEditOptions
 import com.uwu.animex.sync.anilist.AniListEditUpdate
 import com.uwu.animex.sync.anilist.aniScoreToTen
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -175,8 +177,10 @@ object AniList {
 
                 updateAutoSync(true)
                 refreshUser()
-                runCatching { AniListLibrary.refresh(force = true) }
-                runCatching { refreshFavorites() }
+                runSuspendCatching { AniListLibrary.refresh(force = true) }
+                runSuspendCatching { refreshFavorites() }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _message.value = "Gagal login AniList: ${e.toUserMessage()}"
             } finally {
@@ -299,7 +303,9 @@ object AniList {
                     finishDate = status.finishDate,
                     hint = hint,
                     rewatching =
-                        status.status?.let { status.isRewatching == true && it == SyncWatchType.WATCHING },
+                        status.isRewatching?.let { rw ->
+                            rw && (status.status == null || status.status == SyncWatchType.WATCHING || status.status == SyncWatchType.COMPLETED)
+                        },
                     rewatchCount = status.rewatchCount,
                 )
             if (needsRefresh) scope.launch { AniListLibrary.refresh(force = true) }

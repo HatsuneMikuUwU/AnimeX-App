@@ -103,6 +103,7 @@ import com.uwu.animex.ui.local.LocalBookmarkList
 import com.uwu.animex.ui.local.LocalProgressCard
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 private enum class BookmarkFilter(
@@ -210,6 +211,8 @@ fun BookmarkScreen(
                             found.candidates.isNotEmpty() -> picking = entry to found.candidates
                             else -> snackbar.show(scope, "\"${entry.name}\" gak ketemu di sumber AnimeX")
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
                     } finally {
@@ -238,6 +241,8 @@ fun BookmarkScreen(
                                 "\"${entry.name}\" belum ketemu di sumber AnimeX, buka dulu buat milih yang pas",
                             )
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
                     } finally {

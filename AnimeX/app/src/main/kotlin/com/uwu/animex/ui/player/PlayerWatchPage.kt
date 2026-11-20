@@ -78,6 +78,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
@@ -425,6 +426,7 @@ internal fun PlayerWatchPage(
                     onPrev = onPrev,
                     onNext = onNext,
                     status = synced.status,
+                    rewatching = synced.rewatching,
                     statusEnabled = movie != null && movieId != null,
                     onStatusClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                     onShare = {
@@ -733,6 +735,7 @@ private fun YouTubeActionPillsRow(
     onPrev: (() -> Unit)?,
     onNext: (() -> Unit)?,
     status: WatchStatus?,
+    rewatching: Boolean,
     statusEnabled: Boolean,
     onStatusClick: () -> Unit,
     onShare: () -> Unit,
@@ -828,13 +831,13 @@ private fun YouTubeActionPillsRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Icon(
-                status?.icon ?: Icons.Outlined.BookmarkBorder,
+                if (rewatching) Icons.Outlined.Repeat else status?.icon ?: Icons.Outlined.BookmarkBorder,
                 contentDescription = null,
                 tint = cs.onSurface,
                 modifier = Modifier.size(18.dp),
             )
             Text(
-                status?.label ?: "Atur status",
+                if (rewatching) "Nonton Ulang" else status?.label ?: "Atur status",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
                 color = cs.onSurface,

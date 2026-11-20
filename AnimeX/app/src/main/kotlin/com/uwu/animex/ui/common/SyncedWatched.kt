@@ -19,6 +19,7 @@ data class SyncedWatched(
     val source: SyncSource,
     val watched: Int?,
     val status: WatchStatus? = null,
+    val rewatching: Boolean = false,
 )
 
 @Composable
@@ -48,6 +49,6 @@ fun rememberSyncedWatched(
             items.firstOrNull { it.syncId == syncId.toString() }
                 ?: return@remember SyncedWatched(source, null)
         val watched = if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
-        SyncedWatched(source, watched, item.status.toWatchStatus())
+        SyncedWatched(source, watched, item.status.toWatchStatus(), item.rewatching)
     }
 }
