@@ -35,7 +35,7 @@ object TitleMatcher {
 
     private val NOISE =
         Regex(
-            "(?i)sub(?:title)?\\s+indo(?:nesia)?|\\b(?:batch|bluray|bd|uncensored|lengkap|tamat|ongoing)\\b",
+            "(?i)sub(?:title)?\\s+indo(?:nesia)?|\\b(?:batch|bluray|bd|uncensored|lengkap|tamat|ongoing|1080p|720p|480p|360p|4k|x264|x265|hevc|mp4|mkv|dual\\s+audio|multi\\s+sub)\\b",
         )
     private val DUB_SUB = Regex("(?i)\\(?\\b[ds]ub(?:bed)?\\b\\)?")
     private val BRACKETS = Regex("\\(.*?\\)|\\[.*?]")
@@ -44,13 +44,17 @@ object TitleMatcher {
     private val ORDINAL_SEASON = Regex("(?i)\\b(\\d+)(?:st|nd|rd|th)\\s+season\\b")
     private val WORD_SEASON =
         Regex("(?i)\\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\\s+season\\b")
-    private val SEASON = Regex("(?i)\\b(?:season|musim)\\s*(\\d+)\\b")
+    private val SEASON = Regex("(?i)\\b(?:season|musim)\\s*(\\d+|II|III|IV|V|VI|VII|VIII|IX|X)\\b")
     private val SHORT_SEASON = Regex("(?i)\\bS(\\d{1,2})\\b")
     private val ORDINAL_PART = Regex("(?i)\\b(\\d+)(?:st|nd|rd|th)\\s+(?:part|cour)\\b")
-    private val PART = Regex("(?i)\\b(?:part|cour)\\s*(\\d+)\\b")
-    private val ROMAN_SEASON = Regex("\\s(II|III|IV|V|VI)(?=\\s*[:~\\-]|\\s*$)")
+    private val PART = Regex("(?i)\\b(?:part|cour)\\s*(\\d+|II|III|IV|V|VI)\\b")
+    private val ROMAN_SEASON = Regex("\\s(II|III|IV|V|VI|VII|VIII|IX|X)(?=\\s*[:~\\-]|\\s*$)")
     private val TRAILING_NUMBER = Regex("\\s+([2-6])$")
-    private val ROMANS = mapOf("II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6)
+    private val ROMANS =
+        mapOf(
+            "II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6,
+            "VII" to 7, "VIII" to 8, "IX" to 9, "X" to 10,
+        )
     private val WORD_NUMBERS =
         listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
     private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special|gekijou?ban)\\b")
@@ -66,6 +70,7 @@ object TitleMatcher {
     private val MARKS = Regex("\\p{M}+")
     private val NON_ALNUM = Regex("[^\\p{L}\\p{N}]+")
     private val PARTICLES = mapOf("wo" to "o", "ha" to "wa")
+    private val STOP_TOKENS = setOf("the", "a", "an", "of", "in", "and", "no", "wa", "ga", "wo", "o", "ni", "de", "to")
 
     private enum class Kind { MOVIE, TV, TV_SHORT, ONA, OVA, SPECIAL, MUSIC }
 
@@ -80,12 +85,24 @@ object TitleMatcher {
 
     private fun unaccent(s: String): String = Normalizer.normalize(s, Normalizer.Form.NFKD).replace(MARKS, "")
 
-    private fun collapseVowels(s: String): String = s.replace("ou", "o").replace("oo", "o").replace("uu", "u")
+    private fun collapseVowels(s: String): String =
+        s
+            .replace("ou", "o")
+            .replace("oo", "o")
+            .replace("uu", "u")
+            .replace("nb", "mb")
+            .replace("np", "mp")
+            .replace("nm", "mm")
 
-    private fun normalize(s: String?): String {
-        val tokens = unaccent(s.orEmpty()).lowercase().split(NON_ALNUM).filter { it.isNotEmpty() }
-        return collapseVowels(tokens.joinToString("") { PARTICLES[it] ?: it })
-    }
+    private fun normalizeTokens(s: String?): List<String> =
+        unaccent(s.orEmpty())
+            .replace("&", " and ")
+            .lowercase()
+            .split(NON_ALNUM)
+            .filter { it.isNotEmpty() }
+            .map { collapseVowels(PARTICLES[it] ?: it) }
+
+    private fun normalize(s: String?): String = normalizeTokens(s).joinToString("")
 
     private fun plain(s: String): String = s.replace(PUNCT, " ").replace(SPACES, " ").trim()
 
@@ -101,6 +118,7 @@ object TitleMatcher {
     private fun prepare(title: String): String =
         title
             .replace(TIMES_SIGN, " x ")
+            .replace("&", " and ")
             .replace(NOISE, " ")
             .replace(DUB_SUB, " ")
             .replace(SPACES, " ")
@@ -160,7 +178,7 @@ object TitleMatcher {
             .find(clean)
             ?.groupValues
             ?.get(1)
-            ?.toIntOrNull()
+            ?.let { raw -> raw.toIntOrNull() ?: ROMANS[raw.uppercase()] }
             ?.let { return it }
         SHORT_SEASON
             .find(clean)
@@ -193,7 +211,7 @@ object TitleMatcher {
             .find(clean)
             ?.groupValues
             ?.get(1)
-            ?.toIntOrNull()
+            ?.let { raw -> raw.toIntOrNull() ?: ROMANS[raw.uppercase()] }
     }
 
     private fun isLatin(s: String): Boolean {
@@ -221,9 +239,24 @@ object TitleMatcher {
         return Kind.entries.firstOrNull { it.name == key }
     }
 
+    private fun tokenSimilarity(
+        tokensA: List<String>,
+        tokensB: List<String>,
+    ): Double {
+        val setA = tokensA.filterNot { it in STOP_TOKENS }.toSet().ifEmpty { tokensA.toSet() }
+        val setB = tokensB.filterNot { it in STOP_TOKENS }.toSet().ifEmpty { tokensB.toSet() }
+        if (setA.size < 2 || setB.size < 2) return 0.0
+        val overlap = setA.count { it in setB }
+        if (overlap == 0) return 0.0
+        val dice = (2.0 * overlap) / (setA.size + setB.size)
+        return dice * 0.95
+    }
+
     private fun similarity(
         a: String,
         b: String,
+        tokensA: List<String> = emptyList(),
+        tokensB: List<String> = emptyList(),
     ): Double {
         if (a.isEmpty() || b.isEmpty()) return 0.0
         if (a == b) return 1.0
@@ -232,6 +265,9 @@ object TitleMatcher {
         val long = if (a.length <= b.length) b else a
         if (short.length >= PARTIAL_MIN_LENGTH && Levenshtein.partialRatio(a, b) >= 100) {
             s = max(s, PARTIAL_BASE + PARTIAL_WEIGHT * short.length / long.length)
+        }
+        if (tokensA.isNotEmpty() && tokensB.isNotEmpty()) {
+            s = max(s, tokenSimilarity(tokensA, tokensB))
         }
         return s
     }
@@ -290,7 +326,7 @@ object TitleMatcher {
 
     private class Wanted(
         val exactKeys: Set<String>,
-        val bases: List<String>,
+        val bases: List<Pair<String, List<String>>>,
         val season: Int,
         val part: Int?,
         val kinds: Set<Kind>?,
@@ -311,10 +347,11 @@ object TitleMatcher {
         title: String,
         wanted: Wanted,
     ): Double {
-        val key = normalize(strip(title))
+        val tokens = normalizeTokens(strip(title))
+        val key = tokens.joinToString("")
         if (key.isEmpty()) return 0.0
         var sim = 0.0
-        for (w in wanted.bases) sim = max(sim, similarity(w, key))
+        for ((wKey, wTokens) in wanted.bases) sim = max(sim, similarity(wKey, key, wTokens, tokens))
         return sim
     }
 
@@ -451,7 +488,13 @@ object TitleMatcher {
         val wanted =
             Wanted(
                 exactKeys = sources.map { exactKey(it) }.toSet(),
-                bases = sources.map { normalize(strip(it)) }.filter { it.length >= 2 }.distinct(),
+                bases =
+                    sources
+                        .map { s ->
+                            val tokens = normalizeTokens(strip(s))
+                            tokens.joinToString("") to tokens
+                        }.filter { it.first.length >= 2 }
+                        .distinctBy { it.first },
                 season = sources.firstNotNullOfOrNull { seasonOf(it) } ?: 1,
                 part = sources.firstNotNullOfOrNull { partOf(it) },
                 kinds = kindsOfWanted(wantedType, wantsSpecial),
@@ -480,7 +523,7 @@ object TitleMatcher {
             val s = scored.values.firstOrNull { it.item === best } ?: continue
 
             if (s.strict || s.similarity >= EARLY_SIMILARITY || index + 1 >= EARLY_QUERY_COUNT) {
-                return Result(best, listOf(best), best)
+                return decide(scored.values)
             }
         }
         return decide(scored.values)
