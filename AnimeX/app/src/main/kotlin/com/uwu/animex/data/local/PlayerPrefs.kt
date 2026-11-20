@@ -132,6 +132,18 @@ object PlayerPrefs {
     private val _skipIntroMs = MutableStateFlow(DEFAULT_SKIP_INTRO_MS)
     val skipIntroMs: StateFlow<Int> = _skipIntroMs.asStateFlow()
 
+    private val _aniSkipEnabled = MutableStateFlow(true)
+    val aniSkipEnabled: StateFlow<Boolean> = _aniSkipEnabled.asStateFlow()
+
+    private val _autoSkipOp = MutableStateFlow(false)
+    val autoSkipOp: StateFlow<Boolean> = _autoSkipOp.asStateFlow()
+
+    private val _autoSkipEd = MutableStateFlow(false)
+    val autoSkipEd: StateFlow<Boolean> = _autoSkipEd.asStateFlow()
+
+    private val _autoSkipRecap = MutableStateFlow(false)
+    val autoSkipRecap: StateFlow<Boolean> = _autoSkipRecap.asStateFlow()
+
     @Synchronized
     fun init(context: Context) {
         if (appContext != null) return
@@ -187,6 +199,10 @@ object PlayerPrefs {
         _backgroundPlay.value = sp.getBoolean(PrefKeys.Player.BACKGROUND_PLAY, false)
         _miniPlayerFloating.value = sp.getBoolean(PrefKeys.Player.MINI_PLAYER_FLOATING, true)
         _skipIntroMs.value = sp.getInt(PrefKeys.Player.SKIP_INTRO_MS, DEFAULT_SKIP_INTRO_MS).coerceIn(10_000, 300_000)
+        _aniSkipEnabled.value = sp.getBoolean(PrefKeys.Player.ANISKIP_ENABLED, true)
+        _autoSkipOp.value = sp.getBoolean(PrefKeys.Player.AUTO_SKIP_OP, false)
+        _autoSkipEd.value = sp.getBoolean(PrefKeys.Player.AUTO_SKIP_ED, false)
+        _autoSkipRecap.value = sp.getBoolean(PrefKeys.Player.AUTO_SKIP_RECAP, false)
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -339,6 +355,35 @@ object PlayerPrefs {
         edit { putInt(PrefKeys.Player.SKIP_INTRO_MS, v) }
     }
 
+    fun setAniSkipEnabled(value: Boolean) {
+        _aniSkipEnabled.value = value
+        edit { putBoolean(PrefKeys.Player.ANISKIP_ENABLED, value) }
+    }
+
+    fun setAutoSkipOp(value: Boolean) {
+        _autoSkipOp.value = value
+        edit { putBoolean(PrefKeys.Player.AUTO_SKIP_OP, value) }
+    }
+
+    fun setAutoSkipEd(value: Boolean) {
+        _autoSkipEd.value = value
+        edit { putBoolean(PrefKeys.Player.AUTO_SKIP_ED, value) }
+    }
+
+    fun setAutoSkipRecap(value: Boolean) {
+        _autoSkipRecap.value = value
+        edit { putBoolean(PrefKeys.Player.AUTO_SKIP_RECAP, value) }
+    }
+
+    fun aniSkipSubmitterId(): String {
+        val sp = appContext?.getSharedPreferences(PrefKeys.Player.FILE, Context.MODE_PRIVATE)
+        val existing = sp?.getString(PrefKeys.Player.ANISKIP_SUBMITTER_ID, null)?.takeIf { it.isNotBlank() }
+        if (existing != null) return existing
+        val generated = java.util.UUID.randomUUID().toString()
+        sp?.edit()?.putString(PrefKeys.Player.ANISKIP_SUBMITTER_ID, generated)?.apply()
+        return generated
+    }
+
     fun exportJson(): JSONObject =
         JSONObject()
             .put("quality", quality)
@@ -367,6 +412,10 @@ object PlayerPrefs {
             .put("backgroundPlay", _backgroundPlay.value)
             .put("miniPlayerFloating", _miniPlayerFloating.value)
             .put("skipIntroMs", _skipIntroMs.value)
+            .put("aniSkipEnabled", _aniSkipEnabled.value)
+            .put("autoSkipOp", _autoSkipOp.value)
+            .put("autoSkipEd", _autoSkipEd.value)
+            .put("autoSkipRecap", _autoSkipRecap.value)
 
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
@@ -406,5 +455,9 @@ object PlayerPrefs {
         if (o.has("backgroundPlay")) setBackgroundPlay(o.optBoolean("backgroundPlay"))
         if (o.has("miniPlayerFloating")) setMiniPlayerFloating(o.optBoolean("miniPlayerFloating"))
         if (o.has("skipIntroMs")) setSkipIntroMs(o.optInt("skipIntroMs", _skipIntroMs.value))
+        if (o.has("aniSkipEnabled")) setAniSkipEnabled(o.optBoolean("aniSkipEnabled"))
+        if (o.has("autoSkipOp")) setAutoSkipOp(o.optBoolean("autoSkipOp"))
+        if (o.has("autoSkipEd")) setAutoSkipEd(o.optBoolean("autoSkipEd"))
+        if (o.has("autoSkipRecap")) setAutoSkipRecap(o.optBoolean("autoSkipRecap"))
     }
 }

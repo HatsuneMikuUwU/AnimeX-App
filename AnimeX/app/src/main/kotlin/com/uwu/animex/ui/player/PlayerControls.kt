@@ -55,6 +55,8 @@ import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -207,6 +209,7 @@ fun PlayerChrome(
     onMessage: (String) -> Unit = {},
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
+    onVoteStamp: ((SkipStamp, Boolean) -> Unit)? = null,
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
@@ -233,6 +236,10 @@ fun PlayerChrome(
     val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
     val swapIndicator by PlayerPrefs.swapIndicator.collectAsStateWithLifecycle()
     val skipIntroMs by PlayerPrefs.skipIntroMs.collectAsStateWithLifecycle()
+    val aniSkipEnabled by PlayerPrefs.aniSkipEnabled.collectAsStateWithLifecycle()
+    val autoSkipOp by PlayerPrefs.autoSkipOp.collectAsStateWithLifecycle()
+    val autoSkipEd by PlayerPrefs.autoSkipEd.collectAsStateWithLifecycle()
+    val autoSkipRecap by PlayerPrefs.autoSkipRecap.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -275,10 +282,12 @@ fun PlayerChrome(
     var lockIconVisible by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(clockNow()) }
 
-    var stamps by remember { mutableStateOf<List<SkipStamp>>(emptyList()) }
-    var stampsRequested by remember { mutableStateOf(false) }
-    var stampsLoaded by remember { mutableStateOf(false) }
-    var dismissedStamp by remember { mutableStateOf<SkipStamp?>(null) }
+    var stamps by remember(epId, streamUrl) { mutableStateOf<List<SkipStamp>>(emptyList()) }
+    var stampsRequested by remember(epId, streamUrl) { mutableStateOf(false) }
+    var stampsLoaded by remember(epId, streamUrl) { mutableStateOf(false) }
+    var dismissedStamp by remember(epId, streamUrl) { mutableStateOf<SkipStamp?>(null) }
+    var autoSkippedStamps by remember(epId, streamUrl) { mutableStateOf<Set<SkipStamp>>(emptySet()) }
+    var votedStamps by remember(epId, streamUrl) { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
     fun showHint(text: String) {
         hint = text
@@ -450,7 +459,12 @@ fun PlayerChrome(
     LaunchedEffect(ended) { if (ended && !minimized) visible = true }
     LaunchedEffect(playWhenReady) { if (!playWhenReady && !minimized) visible = true }
 
-    LaunchedEffect(dur) {
+    LaunchedEffect(epId, streamUrl, dur, aniSkipEnabled) {
+        if (!aniSkipEnabled) {
+            stamps = emptyList()
+            stampsLoaded = true
+            return@LaunchedEffect
+        }
         if (dur > 0 && !stampsRequested) {
             stampsRequested = true
             stamps = runCatching { loadStamps(dur) }.getOrDefault(emptyList())
@@ -458,13 +472,33 @@ fun PlayerChrome(
         }
     }
 
-    val activeStamp = stamps.firstOrNull { pos >= it.startMs && pos < it.endMs - 1_000 && it != dismissedStamp }
-
-    LaunchedEffect(activeStamp) {
-        if (activeStamp != null) {
-            delay(STAMP_SHOW_MS)
-            dismissedStamp = activeStamp
+    val activeStamp =
+        if (aniSkipEnabled) {
+            stamps.firstOrNull { pos >= it.startMs && pos < it.endMs - 1_000 && it != dismissedStamp }
+        } else {
+            null
         }
+
+    LaunchedEffect(activeStamp, autoSkipOp, autoSkipEd, autoSkipRecap, locked) {
+        val stamp = activeStamp ?: return@LaunchedEffect
+        val shouldAutoSkip =
+            !locked &&
+                stamp !in autoSkippedStamps &&
+                when (stamp.type) {
+                    SkipType.Opening, SkipType.MixedOpening -> autoSkipOp
+                    SkipType.Ending, SkipType.MixedEnding -> autoSkipEd
+                    SkipType.Recap -> autoSkipRecap
+                }
+        if (shouldAutoSkip) {
+            autoSkippedStamps = autoSkippedStamps + stamp
+            dismissedStamp = stamp
+            player.seekTo(stamp.endMs)
+            pos = stamp.endMs
+            showHint("${stamp.type.label} otomatis")
+            return@LaunchedEffect
+        }
+        delay(STAMP_SHOW_MS)
+        dismissedStamp = stamp
     }
 
     LaunchedEffect(Unit) {
@@ -1138,30 +1172,84 @@ fun PlayerChrome(
         }
 
         if (activeStamp != null && !locked) {
+            val stampVote = activeStamp.skipId?.let { votedStamps[it] }
             Row(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .then(if (compact) Modifier else Modifier.safeDrawingPadding())
-                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 52.dp else 96.dp) else 20.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color(0xCC000000))
-                    .clickable(
-                        onClick = hapticClick {
-                            player.seekTo(activeStamp.endMs)
-                            pos = activeStamp.endMs
-                            dismissedStamp = activeStamp
-                        },
-                    ).padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 52.dp else 96.dp) else 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    Icons.Outlined.FastForward,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                if (activeStamp.skipId != null && onVoteStamp != null) {
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0xCC000000))
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.ThumbUp,
+                            contentDescription = "Upvote skip",
+                            tint = if (stampVote == true) MaterialTheme.colorScheme.primary else Color.White,
+                            modifier =
+                                Modifier
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        onClick = hapticClick {
+                                            val id = activeStamp.skipId
+                                            if (id != null && stampVote != true) {
+                                                votedStamps = votedStamps + (id to true)
+                                                onVoteStamp(activeStamp, true)
+                                            }
+                                        },
+                                    ).padding(6.dp)
+                                    .size(16.dp),
+                        )
+                        Icon(
+                            Icons.Outlined.ThumbDown,
+                            contentDescription = "Downvote skip",
+                            tint = if (stampVote == false) MaterialTheme.colorScheme.error else Color.White,
+                            modifier =
+                                Modifier
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        onClick = hapticClick {
+                                            val id = activeStamp.skipId
+                                            if (id != null && stampVote != false) {
+                                                votedStamps = votedStamps + (id to false)
+                                                onVoteStamp(activeStamp, false)
+                                                dismissedStamp = activeStamp
+                                            }
+                                        },
+                                    ).padding(6.dp)
+                                    .size(16.dp),
+                        )
+                    }
+                }
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0xCC000000))
+                        .clickable(
+                            onClick = hapticClick {
+                                player.seekTo(activeStamp.endMs)
+                                pos = activeStamp.endMs
+                                dismissedStamp = activeStamp
+                            },
+                        ).padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.FastForward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
 

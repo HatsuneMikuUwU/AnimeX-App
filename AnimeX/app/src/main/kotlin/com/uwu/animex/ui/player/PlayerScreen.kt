@@ -103,6 +103,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.AniSkip
+import com.uwu.animex.data.api.AniSkipActionResult
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.SimilarMovie
@@ -924,12 +925,25 @@ fun PlayerScreen(
                     if (crossedDone) applyResume(true)
                 },
                 loadStamps = { durMs ->
-                    val malId = Mal.malIdFor(curMovieId) ?: MalIdLookup.find(curMovieId)
-                    val ep = curIndex?.toIntOrNull()
-                    if (malId != null && ep != null) {
-                        AniSkip.stamps(malId, ep, durMs)
-                    } else {
+                    if (!PlayerPrefs.aniSkipEnabled.value) {
                         emptyList()
+                    } else {
+                        val malId = Mal.malIdFor(curMovieId) ?: MalIdLookup.find(curMovieId)
+                        val ep = curIndex?.toIntOrNull()
+                        if (malId != null && ep != null) {
+                            AniSkip.stamps(malId, ep, durMs)
+                        } else {
+                            emptyList()
+                        }
+                    }
+                },
+                onVoteStamp = { stamp, upvote ->
+                    val skipId = stamp.skipId ?: return@PlayerChrome
+                    snackScope.launch {
+                        when (val res = AniSkip.vote(skipId, upvote)) {
+                            is AniSkipActionResult.Ok -> showMessage(res.message)
+                            is AniSkipActionResult.Error -> showMessage(res.message)
+                        }
                     }
                 },
             )
