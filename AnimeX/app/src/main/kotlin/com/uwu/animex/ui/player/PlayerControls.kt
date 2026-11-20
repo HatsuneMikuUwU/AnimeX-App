@@ -8,6 +8,8 @@ import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -282,12 +284,12 @@ fun PlayerChrome(
     var lockIconVisible by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(clockNow()) }
 
-    var stamps by remember(epId, streamUrl) { mutableStateOf<List<SkipStamp>>(emptyList()) }
-    var stampsRequested by remember(epId, streamUrl) { mutableStateOf(false) }
-    var stampsLoaded by remember(epId, streamUrl) { mutableStateOf(false) }
-    var dismissedStamp by remember(epId, streamUrl) { mutableStateOf<SkipStamp?>(null) }
-    var autoSkippedStamps by remember(epId, streamUrl) { mutableStateOf<Set<SkipStamp>>(emptySet()) }
-    var votedStamps by remember(epId, streamUrl) { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var stamps by remember(epId) { mutableStateOf<List<SkipStamp>>(emptyList()) }
+    var stampsRequested by remember(epId) { mutableStateOf(false) }
+    var stampsLoaded by remember(epId) { mutableStateOf(false) }
+    var dismissedStamp by remember(epId) { mutableStateOf<SkipStamp?>(null) }
+    var autoSkippedStamps by remember(epId) { mutableStateOf<Set<SkipStamp>>(emptySet()) }
+    var votedStamps by remember(epId) { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
     fun showHint(text: String) {
         hint = text
@@ -459,8 +461,9 @@ fun PlayerChrome(
     LaunchedEffect(ended) { if (ended && !minimized) visible = true }
     LaunchedEffect(playWhenReady) { if (!playWhenReady && !minimized) visible = true }
 
-    LaunchedEffect(epId, streamUrl, dur, aniSkipEnabled) {
+    LaunchedEffect(epId, dur, aniSkipEnabled) {
         if (!aniSkipEnabled) {
+            stampsRequested = false
             stamps = emptyList()
             stampsLoaded = true
             return@LaunchedEffect
@@ -479,17 +482,19 @@ fun PlayerChrome(
             null
         }
 
-    LaunchedEffect(activeStamp, autoSkipOp, autoSkipEd, autoSkipRecap, locked) {
-        val stamp = activeStamp ?: return@LaunchedEffect
-        val shouldAutoSkip =
+    val shouldAutoSkipActive =
+        activeStamp != null &&
             !locked &&
-                stamp !in autoSkippedStamps &&
-                when (stamp.type) {
-                    SkipType.Opening, SkipType.MixedOpening -> autoSkipOp
-                    SkipType.Ending, SkipType.MixedEnding -> autoSkipEd
-                    SkipType.Recap -> autoSkipRecap
-                }
-        if (shouldAutoSkip) {
+            activeStamp !in autoSkippedStamps &&
+            when (activeStamp.type) {
+                SkipType.Opening, SkipType.MixedOpening -> autoSkipOp
+                SkipType.Ending, SkipType.MixedEnding -> autoSkipEd
+                SkipType.Recap -> autoSkipRecap
+            }
+
+    LaunchedEffect(activeStamp, shouldAutoSkipActive) {
+        val stamp = activeStamp ?: return@LaunchedEffect
+        if (shouldAutoSkipActive) {
             autoSkippedStamps = autoSkippedStamps + stamp
             dismissedStamp = stamp
             player.seekTo(stamp.endMs)
@@ -1171,17 +1176,25 @@ fun PlayerChrome(
             }
         }
 
-        if (activeStamp != null && !locked) {
-            val stampVote = activeStamp.skipId?.let { votedStamps[it] }
+        val skipTargetBottom = if (visible) (if (compact) 52.dp else 96.dp) else 20.dp
+        val skipBottomPad by animateDpAsState(
+            targetValue = skipTargetBottom,
+            animationSpec = tween(durationMillis = if (reduceMotion) 0 else 180),
+            label = "skipPillBottom",
+        )
+        val showSkipPill = activeStamp != null && !locked && !shouldAutoSkipActive
+        if (showSkipPill) {
+            val stamp = activeStamp!!
+            val stampVote = stamp.skipId?.let { votedStamps[it] }
             Row(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .then(if (compact) Modifier else Modifier.safeDrawingPadding())
-                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 52.dp else 96.dp) else 20.dp),
+                    .padding(end = 16.dp, bottom = skipBottomPad),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (activeStamp.skipId != null && onVoteStamp != null) {
+                if (stamp.skipId != null && onVoteStamp != null) {
                     Row(
                         Modifier
                             .clip(RoundedCornerShape(50))
@@ -1198,10 +1211,10 @@ fun PlayerChrome(
                                     .clip(CircleShape)
                                     .clickable(
                                         onClick = hapticClick {
-                                            val id = activeStamp.skipId
+                                            val id = stamp.skipId
                                             if (id != null && stampVote != true) {
                                                 votedStamps = votedStamps + (id to true)
-                                                onVoteStamp(activeStamp, true)
+                                                onVoteStamp(stamp, true)
                                             }
                                         },
                                     ).padding(6.dp)
@@ -1216,11 +1229,11 @@ fun PlayerChrome(
                                     .clip(CircleShape)
                                     .clickable(
                                         onClick = hapticClick {
-                                            val id = activeStamp.skipId
+                                            val id = stamp.skipId
                                             if (id != null && stampVote != false) {
                                                 votedStamps = votedStamps + (id to false)
-                                                onVoteStamp(activeStamp, false)
-                                                dismissedStamp = activeStamp
+                                                onVoteStamp(stamp, false)
+                                                dismissedStamp = stamp
                                             }
                                         },
                                     ).padding(6.dp)
@@ -1234,9 +1247,9 @@ fun PlayerChrome(
                         .background(Color(0xCC000000))
                         .clickable(
                             onClick = hapticClick {
-                                player.seekTo(activeStamp.endMs)
-                                pos = activeStamp.endMs
-                                dismissedStamp = activeStamp
+                                player.seekTo(stamp.endMs)
+                                pos = stamp.endMs
+                                dismissedStamp = stamp
                             },
                         ).padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -1248,7 +1261,7 @@ fun PlayerChrome(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                    Text(stamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
