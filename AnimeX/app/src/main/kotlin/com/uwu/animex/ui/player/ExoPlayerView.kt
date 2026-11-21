@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
-import android.view.TextureView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -123,8 +122,6 @@ internal fun ExoView(
     onEnded: () -> Unit,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     onStreamError: (PlaybackException) -> Unit = {},
-    ambientEnabled: Boolean = false,
-    onAmbientColors: ((AmbientColors) -> Unit)? = null,
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -133,8 +130,6 @@ internal fun ExoView(
     val latestOnEnded by rememberUpdatedState(onEnded)
     val latestOnProgressSaved by rememberUpdatedState(onProgressSaved)
     val latestOnStreamError by rememberUpdatedState(onStreamError)
-    val latestOnAmbientColors by rememberUpdatedState(onAmbientColors)
-    var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
 
     val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
     val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
@@ -367,26 +362,6 @@ internal fun ExoView(
         PlaybackSessions.attachController(session, controller)
         onDispose { }
     }
-    LaunchedEffect(player, playerViewRef, ambientEnabled) {
-        val cb = latestOnAmbientColors ?: return@LaunchedEffect
-        if (!ambientEnabled) {
-            cb(AmbientColors.Neutral)
-            return@LaunchedEffect
-        }
-        var smoothed: AmbientColors? = null
-        while (true) {
-            if (player.isPlaying || player.playbackState == Player.STATE_READY) {
-                val tv = playerViewRef?.videoSurfaceView as? TextureView
-                val sampled = tv?.let { sampleAmbientColors(it) }
-                if (sampled != null) {
-                    smoothed = smoothed?.blendToward(sampled, 0.35f) ?: sampled
-                    cb(smoothed)
-                }
-            }
-            delay(if (player.isPlaying) 450L else 1_200L)
-        }
-    }
-
     Box(Modifier.fillMaxSize()) {
         AndroidView(
             factory = { viewCtx ->
@@ -394,11 +369,9 @@ internal fun ExoView(
                     this.player = player
                     useController = false
                     setShutterBackgroundColor(android.graphics.Color.BLACK)
-                    playerViewRef = this
                 }
             },
             update = {
-                playerViewRef = it
                 it.player = player
                 it.resizeMode = resize.exoMode
                 it.keepScreenOn = keepOn

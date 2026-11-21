@@ -416,9 +416,6 @@ fun PlayerScreen(
     val fullscreen = expanded && (isLandscape || inPip)
     val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
     val miniFloating by PlayerPrefs.miniPlayerFloating.collectAsStateWithLifecycle()
-    val ambientMode by PlayerPrefs.ambientMode.collectAsStateWithLifecycle()
-    val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
-    var ambientColors by remember(activeEpId) { mutableStateOf(AmbientColors.Neutral) }
     var manualLock by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(inPip) {
@@ -852,8 +849,6 @@ fun PlayerScreen(
                     streamError = err.toStreamMessage()
                 }
             },
-            ambientEnabled = ambientMode && !fullscreen && expandFrac > 0.25f,
-            onAmbientColors = { ambientColors = it },
         ) { player ->
             SideEffect { playerRef = player }
             DisposableEffect(player) {
@@ -1086,14 +1081,11 @@ fun PlayerScreen(
         ) {
             Box(Modifier.fillMaxSize()) {
                 if (!fullscreen && expandFrac > 0.01f) {
-                    CinematicStatusBarGlow(
-                        color = if (ambientMode) ambientColors.top else Color.Transparent,
-                        alpha = expandFrac,
-                        reduceMotion = reduceMotion,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(statusBarTop * expandFrac),
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(statusBarTop * expandFrac)
+                            .background(Color.Black.copy(alpha = expandFrac)),
                     )
                 }
 
@@ -1127,7 +1119,6 @@ fun PlayerScreen(
                             onPickEpisode = { switchTo(it, false) },
                             onOpenAnime = onOpenAnime,
                             onNeedLogin = onNeedLogin,
-                            ambientColors = if (ambientMode) ambientColors else AmbientColors.Neutral,
                             onMetadataResolved = { epLbl, animeLbl, poster ->
                                 MiniPlayerController.syncMetadata(
                                     epId = activeEpId,
