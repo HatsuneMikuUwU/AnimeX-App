@@ -224,12 +224,14 @@ fun DiscussionScreen(
     fun loadThread(
         parent: UserApi.Discussion,
         thread: ThreadState,
+        onLoaded: (() -> Unit)? = null,
     ) {
         thread.expanded = true
         thread.loading = true
         viewModel.loadReplies(parent) { loaded ->
             thread.replies = loaded
             thread.loading = false
+            onLoaded?.invoke()
         }
     }
 
@@ -268,35 +270,47 @@ fun DiscussionScreen(
 
     LaunchedEffect(highlightedCommentId) {
         if (highlightedCommentId != null) {
-            delay(2_400L)
+            delay(3_000L)
             highlightedCommentId = null
         }
     }
 
-    LaunchedEffect(chronologicalItems, targetCommentId, targetParentId, hasMore, loadingMore, loadMoreError) {
+    val deepLinkAnchorId = targetParentId?.takeIf(String::isNotBlank) ?: targetCommentId?.takeIf(String::isNotBlank)
+    val deepLinkPending = deepLinkAnchorId != null && !deepLinkHandled
+
+    LaunchedEffect(chronologicalItems, deepLinkAnchorId, deepLinkHandled) {
         if (chronologicalItems.isEmpty()) return@LaunchedEffect
-        val anchorId = targetParentId?.takeIf(String::isNotBlank) ?: targetCommentId?.takeIf(String::isNotBlank)
-        if (anchorId != null && !deepLinkHandled) {
-            val matchIndex = chronologicalItems.indexOfFirst { it.id == anchorId }
+        if (deepLinkAnchorId != null && !deepLinkHandled) {
+            val matchIndex = chronologicalItems.indexOfFirst { it.id == deepLinkAnchorId }
             if (matchIndex >= 0) {
+                val targetItem = chronologicalItems[matchIndex]
+                val headerOffset = if (loadMoreError) 1 else if (loadingMore) 3 else 0
+                val scrollIndex = (matchIndex + headerOffset).coerceAtLeast(0)
+                listState.scrollToItem(scrollIndex)
+                if (!targetParentId.isNullOrBlank() && isEpisode) {
+                    val thread = threadOf(deepLinkAnchorId)
+                    loadThread(targetItem, thread) {
+                        highlightedCommentId = targetCommentId?.takeIf(String::isNotBlank) ?: deepLinkAnchorId
+                        snackScope.launch {
+                            val updatedIndex = chronologicalItems.indexOfFirst { it.id == deepLinkAnchorId }
+                            if (updatedIndex >= 0) {
+                                listState.animateScrollToItem(updatedIndex)
+                            }
+                        }
+                    }
+                } else {
+                    highlightedCommentId = targetCommentId?.takeIf(String::isNotBlank) ?: deepLinkAnchorId
+                }
                 deepLinkHandled = true
                 initialScrollDone = true
                 scrollOnUpdate = false
-                val headerOffset = if (loadMoreError) 1 else if (loadingMore) 3 else 0
-                listState.animateScrollToItem(matchIndex + headerOffset)
-                val targetItem = chronologicalItems[matchIndex]
-                if (!targetParentId.isNullOrBlank() && isEpisode) {
-                    val thread = threadOf(anchorId)
-                    loadThread(targetItem, thread)
-                }
-                highlightedCommentId = targetCommentId?.takeIf(String::isNotBlank) ?: anchorId
             } else if (hasMore && !loadingMore && !loadMoreError && deepLinkLoadAttempts < 5) {
                 deepLinkLoadAttempts += 1
                 viewModel.loadMore()
             } else if (!loadingMore) {
                 deepLinkHandled = true
                 if (!initialScrollDone) {
-                    listState.animateScrollToItem(chronologicalItems.lastIndex)
+                    listState.scrollToItem(chronologicalItems.lastIndex)
                     initialScrollDone = true
                 }
             }
@@ -309,8 +323,8 @@ fun DiscussionScreen(
         }
     }
 
-    LaunchedEffect(shouldLoadOlder, hasMore, loadingMore, loadMoreError, initialScrollDone) {
-        if (initialScrollDone && shouldLoadOlder && hasMore && !loadingMore && !loadMoreError) {
+    LaunchedEffect(shouldLoadOlder, hasMore, loadingMore, loadMoreError, initialScrollDone, deepLinkPending) {
+        if (initialScrollDone && !deepLinkPending && shouldLoadOlder && hasMore && !loadingMore && !loadMoreError) {
             viewModel.loadMore()
         }
     }

@@ -375,11 +375,14 @@ object AppNotifier {
 
         val nm = NotificationManagerCompat.from(context)
         nm.notify(TAG_DISCUSSIONS, notifKey.hashCode(), notif)
-        nm.notify(ID_DISCUSSIONS_SUMMARY, discussionsSummary(context))
+        nm.notify(ID_DISCUSSIONS_SUMMARY, discussionsSummary(context, open))
         return true
     }
 
-    private fun discussionsSummary(context: Context): android.app.Notification =
+    private fun discussionsSummary(
+        context: Context,
+        contentIntent: PendingIntent,
+    ): android.app.Notification =
         NotificationCompat
             .Builder(context, CHANNEL_DISCUSSIONS)
             .setSmallIcon(R.drawable.ic_stat_episode)
@@ -389,6 +392,7 @@ object AppNotifier {
             .setGroupSummary(true)
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+            .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
 
