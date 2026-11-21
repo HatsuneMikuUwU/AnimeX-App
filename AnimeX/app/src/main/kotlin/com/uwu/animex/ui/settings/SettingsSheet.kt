@@ -93,6 +93,7 @@ import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
+import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.DataBackup
@@ -192,6 +193,9 @@ private fun NotificationsGroup() {
     val cs = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     val s by NotificationPrefs.state.collectAsStateWithLifecycle()
+    val session by UserSession.user.collectAsStateWithLifecycle()
+    val loggedIn = session?.isAuthenticated == true
+    val itemCount = if (loggedIn) 6 else 5
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
 
@@ -233,7 +237,7 @@ private fun NotificationsGroup() {
                     fcmActive -> "Update app lewat Google Push, episode baru diingetin pas jam tayang"
                     else -> "Episode baru diingetin pas jam tayang. Kabar update app butuh Google Play Services"
                 },
-            shape = itemShape(0, 6),
+            shape = itemShape(0, itemCount),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -242,7 +246,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(1, 6),
+            shape = itemShape(1, itemCount),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -251,7 +255,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(2, 6),
+            shape = itemShape(2, itemCount),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
@@ -260,25 +264,27 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar saat episode anime pilihanmu tayang sesuai jadwal",
-            shape = itemShape(3, 6),
+            shape = itemShape(3, itemCount),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
         )
-        SwitchItem(
-            icon = Icons.Outlined.NotificationsActive,
-            title = "Diskusi & balasan",
-            subtitle = "Kabar komentar baru di diskusi yang kamu ikuti dan balasan komentarmu",
-            shape = itemShape(4, 6),
-            checked = s.discussions,
-            enabled = s.enabled,
-            onChange = { change { copy(discussions = it) } },
-        )
+        if (loggedIn) {
+            SwitchItem(
+                icon = Icons.Outlined.NotificationsActive,
+                title = "Diskusi & balasan",
+                subtitle = "Kabar komentar baru di diskusi yang kamu ikuti dan balasan komentarmu",
+                shape = itemShape(4, itemCount),
+                checked = s.discussions,
+                enabled = s.enabled,
+                onChange = { change { copy(discussions = it) } },
+            )
+        }
         PrefItem(
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(5, 6),
+            shape = itemShape(itemCount - 1, itemCount),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
