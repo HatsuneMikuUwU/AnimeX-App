@@ -4,7 +4,9 @@ package com.uwu.animex.ui.discussion
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
@@ -131,6 +133,7 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import com.uwu.animex.ui.viewmodel.DiscussionScope
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import kotlin.math.roundToInt
@@ -170,9 +173,11 @@ fun DiscussionScreen(
     onBack: () -> Unit,
     onNeedLogin: () -> Unit,
     scope: DiscussionScope = DiscussionScope.Movie,
+    targetCommentId: String? = null,
+    targetParentId: String? = null,
     viewModel: DiscussionViewModel =
         viewModel(
-            factory = DiscussionViewModel.factory(movieId, scope),
+            factory = DiscussionViewModel.factory(movieId, scope, movieTitle),
             key = "${scope.name}:$movieId",
         ),
 ) {
@@ -191,6 +196,9 @@ fun DiscussionScreen(
     var logoutDialog by remember { mutableStateOf(false) }
     var scrollOnUpdate by remember { mutableStateOf(false) }
     var initialScrollDone by remember { mutableStateOf(false) }
+    var deepLinkHandled by remember(targetCommentId, targetParentId) { mutableStateOf(false) }
+    var deepLinkLoadAttempts by remember(targetCommentId, targetParentId) { mutableIntStateOf(0) }
+    var highlightedCommentId by remember(targetCommentId) { mutableStateOf<String?>(null) }
     var barHeightPx by remember { mutableIntStateOf(0) }
     var replyTarget by remember { mutableStateOf<ReplyTarget?>(null) }
     val threads = remember { HashMap<String, ThreadState>() }
@@ -252,8 +260,49 @@ fun DiscussionScreen(
         if (replyTarget != null) runCatching { focusRequester.requestFocus() }
     }
 
-    LaunchedEffect(chronologicalItems) {
-        if (chronologicalItems.isNotEmpty() && (!initialScrollDone || scrollOnUpdate)) {
+    LaunchedEffect(items) {
+        if (items.isNotEmpty()) {
+            viewModel.markViewed(items)
+        }
+    }
+
+    LaunchedEffect(highlightedCommentId) {
+        if (highlightedCommentId != null) {
+            delay(2_400L)
+            highlightedCommentId = null
+        }
+    }
+
+    LaunchedEffect(chronologicalItems, targetCommentId, targetParentId, hasMore, loadingMore, loadMoreError) {
+        if (chronologicalItems.isEmpty()) return@LaunchedEffect
+        val anchorId = targetParentId?.takeIf(String::isNotBlank) ?: targetCommentId?.takeIf(String::isNotBlank)
+        if (anchorId != null && !deepLinkHandled) {
+            val matchIndex = chronologicalItems.indexOfFirst { it.id == anchorId }
+            if (matchIndex >= 0) {
+                deepLinkHandled = true
+                initialScrollDone = true
+                scrollOnUpdate = false
+                val headerOffset = if (loadMoreError) 1 else if (loadingMore) 3 else 0
+                listState.animateScrollToItem(matchIndex + headerOffset)
+                val targetItem = chronologicalItems[matchIndex]
+                if (!targetParentId.isNullOrBlank() && isEpisode) {
+                    val thread = threadOf(anchorId)
+                    loadThread(targetItem, thread)
+                }
+                highlightedCommentId = targetCommentId?.takeIf(String::isNotBlank) ?: anchorId
+            } else if (hasMore && !loadingMore && !loadMoreError && deepLinkLoadAttempts < 5) {
+                deepLinkLoadAttempts += 1
+                viewModel.loadMore()
+            } else if (!loadingMore) {
+                deepLinkHandled = true
+                if (!initialScrollDone) {
+                    listState.animateScrollToItem(chronologicalItems.lastIndex)
+                    initialScrollDone = true
+                }
+            }
+            return@LaunchedEffect
+        }
+        if (!initialScrollDone || scrollOnUpdate) {
             listState.animateScrollToItem(chronologicalItems.lastIndex)
             initialScrollDone = true
             scrollOnUpdate = false
@@ -387,6 +436,7 @@ fun DiscussionScreen(
                                             }
                                         },
                                         onReact = { item, type -> viewModel.react(item, type) },
+                                        highlightedId = highlightedCommentId,
                                         modifier = animateItemExpressive(),
                                     )
                                 }
@@ -751,16 +801,22 @@ private fun ReplyItem(
     reply: UserApi.Discussion,
     canReply: Boolean,
     onReply: () -> Unit,
+    highlighted: Boolean = false,
     readOnly: Boolean = false,
 ) {
     val cs = MaterialTheme.colorScheme
     val time = reply.time ?: reply.createdAt
+    val bubbleColor by animateColorAsState(
+        targetValue = if (highlighted) cs.tertiaryContainer else cs.surfaceContainer,
+        animationSpec = tween(durationMillis = 450),
+        label = "reply-highlight",
+    )
     SwipeToReply(enabled = canReply, onReply = onReply) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             UserAvatar(reply.username, size = ReplyAvatarSize)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Surface(color = cs.surfaceContainer, shape = RoundedCornerShape(18.dp)) {
+                Surface(color = bubbleColor, shape = RoundedCornerShape(18.dp)) {
                     Column(
                         Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -811,6 +867,7 @@ internal fun DiscussionRow(
     onReport: (UserApi.Discussion, () -> Unit) -> Unit,
     onReact: (UserApi.Discussion, String) -> Unit,
     modifier: Modifier = Modifier,
+    highlightedId: String? = null,
     readOnly: Boolean = false,
     socialActions: Boolean = isEpisode,
 ) {
@@ -867,9 +924,20 @@ internal fun DiscussionRow(
                 )
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
+                    val isHighlighted = !highlightedId.isNullOrBlank() && discussion.id == highlightedId
+                    val bubbleColor by animateColorAsState(
+                        targetValue =
+                            when {
+                                isHighlighted -> cs.tertiaryContainer
+                                isMine -> cs.primaryContainer
+                                else -> cs.surfaceContainer
+                            },
+                        animationSpec = tween(durationMillis = 450),
+                        label = "discussion-highlight",
+                    )
                     Box {
                         Surface(
-                            color = if (isMine) cs.primaryContainer else cs.surfaceContainer,
+                            color = bubbleColor,
                             shape = BubbleShape,
                             modifier =
                                 Modifier
@@ -1007,6 +1075,7 @@ internal fun DiscussionRow(
                             thread.replies.forEach { reply ->
                                 ReplyItem(
                                     reply = reply,
+                                    highlighted = !highlightedId.isNullOrBlank() && reply.id == highlightedId,
                                     readOnly = readOnly,
                                     canReply = canReply,
                                     onReply = {

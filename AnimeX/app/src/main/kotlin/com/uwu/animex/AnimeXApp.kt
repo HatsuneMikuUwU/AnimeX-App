@@ -24,6 +24,7 @@ import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.data.user.UserSession
+import com.uwu.animex.notifications.discussion.DiscussionNotificationService
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.sync.AccountManager
@@ -57,6 +58,7 @@ class AnimeXApp :
         TrackerOutbox.init(this)
         BackgroundNotifications.sync(this)
         EpisodeNotificationService.init(this)
+        DiscussionNotificationService.init(this)
 
         AppScope.io.launch {
             delay(MAINTENANCE_DELAY_MS)

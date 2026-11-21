@@ -103,3 +103,30 @@ data class CuplixSavedEntity(
     val clipJson: String,
     @ColumnInfo(defaultValue = "0") val savedAt: Long = System.currentTimeMillis(),
 )
+
+@Entity(
+    tableName = "watched_discussions",
+    indices = [Index(value = ["updatedAt"])],
+)
+data class WatchedDiscussionEntity(
+    @PrimaryKey val discussionKey: String,
+    val scope: String,
+    val targetId: String,
+    val title: String? = null,
+    val lastSeenCommentId: String? = null,
+    @ColumnInfo(defaultValue = "0") val muted: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(
+    tableName = "watched_comments",
+    indices = [Index(value = ["updatedAt"])],
+)
+data class WatchedCommentEntity(
+    @PrimaryKey val commentId: String,
+    val episodeId: String,
+    val title: String? = null,
+    val lastSeenReplyId: String? = null,
+    @ColumnInfo(defaultValue = "0") val muted: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
+)

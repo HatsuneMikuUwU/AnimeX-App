@@ -153,6 +153,30 @@ fun App() {
         nav.navigate("notification-setup")
     }
 
+    val pendingDiscussion by NotificationRouter.pendingDiscussion.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingDiscussion) {
+        val link = pendingDiscussion ?: return@LaunchedEffect
+        NotificationRouter.pendingDiscussion.value = null
+        showSettings = false
+        if (MiniPlayerController.expanded) MiniPlayerController.minimize()
+        val encodedId = Uri.encode(link.targetId)
+        val encodedTitle = Uri.encode(link.title.orEmpty())
+        val encodedComment = Uri.encode(link.targetCommentId)
+        when (link.scope) {
+            com.uwu.animex.ui.viewmodel.DiscussionScope.Episode -> {
+                val encodedParent = Uri.encode(link.parentCommentId.orEmpty())
+                nav.navigate(
+                    "episode-comment/$encodedId?title=$encodedTitle&commentId=$encodedComment&parentId=$encodedParent",
+                )
+            }
+            else -> {
+                nav.navigate(
+                    "discussion/$encodedId?title=$encodedTitle&commentId=$encodedComment",
+                )
+            }
+        }
+    }
+
     UpdateCheckerHost()
 
     fun openFilter(
@@ -363,10 +387,14 @@ fun App() {
                     )
                 }
                 composable(
-                    "discussion/{id}?title={title}",
+                    "discussion/{id}?title={title}&commentId={commentId}",
                     arguments =
                         listOf(
                             navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("commentId") {
                                 type = NavType.StringType
                                 defaultValue = ""
                             },
@@ -375,15 +403,24 @@ fun App() {
                     DiscussionScreen(
                         movieId = e.arguments?.getString("id").orEmpty(),
                         movieTitle = e.arguments?.getString("title").orEmpty().ifBlank { null },
+                        targetCommentId = e.arguments?.getString("commentId").orEmpty().ifBlank { null },
                         onBack = { nav.popBackStack() },
                         onNeedLogin = { nav.navigate("login") },
                     )
                 }
                 composable(
-                    "episode-comment/{id}?title={title}",
+                    "episode-comment/{id}?title={title}&commentId={commentId}&parentId={parentId}",
                     arguments =
                         listOf(
                             navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("commentId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("parentId") {
                                 type = NavType.StringType
                                 defaultValue = ""
                             },
@@ -393,6 +430,8 @@ fun App() {
                         movieId = e.arguments?.getString("id").orEmpty(),
                         movieTitle = e.arguments?.getString("title").orEmpty().ifBlank { null },
                         scope = com.uwu.animex.ui.viewmodel.DiscussionScope.Episode,
+                        targetCommentId = e.arguments?.getString("commentId").orEmpty().ifBlank { null },
+                        targetParentId = e.arguments?.getString("parentId").orEmpty().ifBlank { null },
                         onBack = { nav.popBackStack() },
                         onNeedLogin = { nav.navigate("login") },
                     )

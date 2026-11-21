@@ -6,6 +6,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.user.UserApi
+import com.uwu.animex.data.user.UserSession
+import com.uwu.animex.notifications.discussion.DiscussionNotificationService
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -67,6 +69,7 @@ private class DiscussionPager(
 class DiscussionViewModel private constructor(
     private val targetId: String,
     private val scope: DiscussionScope,
+    private val title: String?,
     private val pager: DiscussionPager,
 ) : LoadViewModel<List<UserApi.Discussion>>(
         loader = { force -> pager.loadFirst(force) },
@@ -74,7 +77,8 @@ class DiscussionViewModel private constructor(
     constructor(
         targetId: String,
         scope: DiscussionScope = DiscussionScope.Movie,
-    ) : this(targetId, scope, DiscussionPager(targetId, scope))
+        title: String? = null,
+    ) : this(targetId, scope, title, DiscussionPager(targetId, scope))
 
     init {
         pager.onReset = {
@@ -142,13 +146,40 @@ class DiscussionViewModel private constructor(
         _sending.value = true
         viewModelScope.launch {
             try {
+                var postedId: String? = null
                 when (scope) {
-                    DiscussionScope.Movie -> UserApi.discussionPost(targetId, text)
+                    DiscussionScope.Movie -> postedId = UserApi.discussionPost(targetId, text).id
                     DiscussionScope.Episode -> UserApi.episodeCommentPost(targetId, text)
                     DiscussionScope.Cuplix -> UserApi.cuplixCommentPost(targetId, text)
                 }
                 onSent()
-                reloadLoadedPages()
+                val refreshed = pager.reloadLoadedPages()
+                updateReadyValue(refreshed)
+                val myUserId = UserSession.userId()
+                val latestId = postedId ?: refreshed.firstOrNull()?.id
+                DiscussionNotificationService.trackCommentedDiscussion(
+                    scope = scope,
+                    targetId = targetId,
+                    title = title,
+                    latestCommentId = latestId,
+                )
+                if (scope == DiscussionScope.Episode) {
+                    val ownCommentId =
+                        postedId?.takeIf(String::isNotBlank)
+                            ?: refreshed
+                                .firstOrNull { item ->
+                                    !item.id.isNullOrBlank() &&
+                                        !myUserId.isNullOrBlank() &&
+                                        item.userId == myUserId
+                                }?.id
+                    if (!ownCommentId.isNullOrBlank()) {
+                        DiscussionNotificationService.trackOwnedOrRepliedComment(
+                            episodeId = targetId,
+                            title = title,
+                            commentId = ownCommentId,
+                        )
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -211,6 +242,11 @@ class DiscussionViewModel private constructor(
         )
     }
 
+    fun markViewed(items: List<UserApi.Discussion>) {
+        val newestId = items.firstOrNull()?.id ?: return
+        DiscussionNotificationService.markDiscussionRead(scope, targetId, newestId)
+    }
+
     fun loadReplies(
         discussion: UserApi.Discussion,
         onLoaded: (List<UserApi.Discussion>) -> Unit,
@@ -219,7 +255,9 @@ class DiscussionViewModel private constructor(
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
         viewModelScope.launch {
             try {
-                onLoaded(UserApi.episodeCommentReplies(id))
+                val loaded = UserApi.episodeCommentReplies(id)
+                DiscussionNotificationService.markRepliesRead(id, loaded.firstOrNull()?.id)
+                onLoaded(loaded)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -238,6 +276,21 @@ class DiscussionViewModel private constructor(
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
         performAction(refreshAfter = true, onSuccess = onSuccess) {
             UserApi.episodeCommentReply(id, text.trim())
+            val replies = runCatching { UserApi.episodeCommentReplies(id, page = 1) }.getOrNull().orEmpty()
+            val latestReplyId = replies.firstOrNull()?.id
+            val latestThreadId = (state.value as? UiState.Ready)?.value?.firstOrNull()?.id
+            DiscussionNotificationService.trackCommentedDiscussion(
+                scope = scope,
+                targetId = targetId,
+                title = title,
+                latestCommentId = latestThreadId,
+            )
+            DiscussionNotificationService.trackOwnedOrRepliedComment(
+                episodeId = targetId,
+                title = title,
+                commentId = id,
+                latestReplyId = latestReplyId,
+            )
         }
     }
 
@@ -318,10 +371,11 @@ class DiscussionViewModel private constructor(
         fun factory(
             targetId: String,
             scope: DiscussionScope = DiscussionScope.Movie,
+            title: String? = null,
         ): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {
-                    DiscussionViewModel(targetId, scope)
+                    DiscussionViewModel(targetId, scope, title)
                 }
             }
     }

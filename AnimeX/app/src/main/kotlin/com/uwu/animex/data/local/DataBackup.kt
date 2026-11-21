@@ -112,7 +112,8 @@ object DataBackup {
                             .put("enabled", n.enabled)
                             .put("episodes", n.episodes)
                             .put("appUpdates", n.appUpdates)
-                            .put("prereleases", n.prereleases),
+                            .put("prereleases", n.prereleases)
+                            .put("discussions", n.discussions),
                     ).put(
                         "cuplix",
                         JSONObject()
@@ -200,6 +201,7 @@ object DataBackup {
                         episodes = notifications.optBoolean("episodes", episodes),
                         appUpdates = notifications.optBoolean("appUpdates", appUpdates),
                         prereleases = notifications.optBoolean("prereleases", prereleases),
+                        discussions = notifications.optBoolean("discussions", discussions),
                     )
                 }
             }

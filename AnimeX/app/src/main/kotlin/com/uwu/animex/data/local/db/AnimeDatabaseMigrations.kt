@@ -250,9 +250,29 @@ internal object AnimeDatabaseMigrations {
     private const val CUPLIX_SAVED_INDEX =
         "CREATE INDEX IF NOT EXISTS `index_cuplix_saved_savedAt` ON `cuplix_saved` (`savedAt`)"
 
-    val all: Array<Migration> = (1..9)
+    private const val WATCHED_DISCUSSIONS_SQL =
+        "CREATE TABLE IF NOT EXISTS `watched_discussions` (`discussionKey` TEXT NOT NULL, " +
+            "`scope` TEXT NOT NULL, `targetId` TEXT NOT NULL, `title` TEXT, `lastSeenCommentId` TEXT, " +
+            "`muted` INTEGER NOT NULL DEFAULT 0, `updatedAt` INTEGER NOT NULL DEFAULT 0, " +
+            "PRIMARY KEY(`discussionKey`))"
+
+    private const val WATCHED_DISCUSSIONS_INDEX =
+        "CREATE INDEX IF NOT EXISTS `index_watched_discussions_updatedAt` " +
+            "ON `watched_discussions` (`updatedAt`)"
+
+    private const val WATCHED_COMMENTS_SQL =
+        "CREATE TABLE IF NOT EXISTS `watched_comments` (`commentId` TEXT NOT NULL, " +
+            "`episodeId` TEXT NOT NULL, `title` TEXT, `lastSeenReplyId` TEXT, " +
+            "`muted` INTEGER NOT NULL DEFAULT 0, `updatedAt` INTEGER NOT NULL DEFAULT 0, " +
+            "PRIMARY KEY(`commentId`))"
+
+    private const val WATCHED_COMMENTS_INDEX =
+        "CREATE INDEX IF NOT EXISTS `index_watched_comments_updatedAt` " +
+            "ON `watched_comments` (`updatedAt`)"
+
+    val all: Array<Migration> = (1..10)
         .map { from ->
-            object : Migration(from, 10) {
+            object : Migration(from, 11) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     tables.forEach { table -> ensureTableSchema(db, table, forceRebuild = from < 6) }
                     tables.flatMap { it.indexes }.forEach { db.execSQL(it) }
@@ -261,6 +281,10 @@ internal object AnimeDatabaseMigrations {
                     db.execSQL(CUPLIX_WATCHED_INDEX)
                     db.execSQL(CUPLIX_SAVED_SQL)
                     db.execSQL(CUPLIX_SAVED_INDEX)
+                    db.execSQL(WATCHED_DISCUSSIONS_SQL)
+                    db.execSQL(WATCHED_DISCUSSIONS_INDEX)
+                    db.execSQL(WATCHED_COMMENTS_SQL)
+                    db.execSQL(WATCHED_COMMENTS_INDEX)
                 }
             }
         }.toTypedArray()
