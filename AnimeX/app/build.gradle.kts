@@ -52,7 +52,11 @@ val appVersionCode = 42
 
 android {
     namespace = "com.uwu.animex"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
 
     defaultConfig {
         applicationId = "com.uwu.animex"
