@@ -1,13 +1,13 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import org.json.JSONArray
-import org.json.JSONObject
 
 enum class HomeSection(
     val key: String,
@@ -68,12 +68,17 @@ object HomeSectionPrefs {
         persist()
     }
 
-    fun exportJson(): JSONObject =
-        JSONObject()
-            .put("order", JSONArray(_layout.value.order.map { it.key }))
+    fun exportJson(): JsonObject =
+        JsonObject().apply {
+            add("order", JsonArray().apply { _layout.value.order.forEach { add(it.key) } })
+        }
 
-    fun restoreJson(o: JSONObject) {
-        val order = o.optJSONArray("order")?.let { arr -> parse((0 until arr.length()).joinToString(",") { arr.optString(it) }) }
+    fun restoreJson(o: JsonObject) {
+        val order =
+            o
+                .getAsJsonArray("order")
+                ?.mapNotNull { el -> el.takeIf { it.isJsonPrimitive }?.asString }
+                ?.let { keys -> parse(keys.joinToString(",")) }
         _layout.value = build(order.orEmpty())
         persist()
     }
