@@ -43,6 +43,7 @@ internal object ApiTransport {
     private const val MAX_OLDEST_AGE_MS = 30L * 24 * 60 * 60 * 1000L
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
+    private val cuplixServerPath: String by lazy { NativeCore.path(NativeCore.FYP_SERVER) }
     val gson = Gson()
     private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
     private val cache = ResponseCache()
@@ -194,7 +195,7 @@ internal object ApiTransport {
         }
     }
 
-    fun peekDetail(id: String): DetailResult? {
+    fun peekDetail(id: String): Api.DetailResult? {
         val data =
             peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
         val movie = data.movie ?: return null
@@ -406,6 +407,11 @@ internal object ApiTransport {
     ) {
         withContext(Dispatchers.IO) { cache.remove(cacheKey(path, params)) }
     }
+
+    fun JsonObject.movieArray(): List<Movie> =
+        listOf("movie", "movies", "items", "data", "list", "results")
+            .firstNotNullOfOrNull { key -> movies(key).takeIf { it.isNotEmpty() } }
+            ?: emptyList()
 
     fun JsonObject.movies(key: String): List<Movie> =
         runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()

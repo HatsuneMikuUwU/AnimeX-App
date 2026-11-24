@@ -7,7 +7,13 @@ import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.security.NativeCore
+import com.google.gson.JsonParseException
+import com.google.gson.JsonParser
+import com.uwu.animex.core.network.ApiException
+import com.uwu.animex.data.api.ApiTransport.movieArray
 import com.uwu.animex.data.api.ApiTransport.movies
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.CuplixListData
@@ -75,7 +81,7 @@ internal object ApiHomeEndpoints {
                         ApiTransport.getData(
                             NativeCore.path(NativeCore.HOME_LIST),
                             mapOf(
-                                "limit" to "$Api.API_LIMIT",
+                                "limit" to "${Api.API_LIMIT}",
                             ),
                             force,
                         )
@@ -170,7 +176,7 @@ internal object ApiHomeEndpoints {
     ): List<Cuplix> {
         val params =
             buildMap {
-                put("limit", "$Api.API_LIMIT")
+                put("limit", "${Api.API_LIMIT}")
                 if (page > 1) put("page", page.toString())
             }
         val data =
@@ -183,12 +189,6 @@ internal object ApiHomeEndpoints {
         return data?.fyp.orEmpty()
     }
 
-    data class CuplixPage(
-        val clips: List<Cuplix>,
-        val cursor: Map<String, String>,
-        val idFyp: String = "",
-    )
-
     suspend fun cuplixScroll(
         sort: String,
         cursor: Map<String, String> = emptyMap(),
@@ -197,7 +197,7 @@ internal object ApiHomeEndpoints {
         movieIds: String = "",
         force: Boolean = true,
         limit: Int = Api.API_LIMIT,
-    ): CuplixPage {
+    ): Api.CuplixPage {
         val params =
             buildMap {
                 put("limit", limit.coerceAtLeast(1).toString())
@@ -207,16 +207,16 @@ internal object ApiHomeEndpoints {
                 put("movie_ids", movieIds)
                 CUPLIX_CURSOR_KEYS.forEach { key -> put(key, cursor[key].orEmpty()) }
             }
-        val json = fetchCached(cuplixScrollPath, params, force)
+        val json = ApiTransport.fetchCached(cuplixScrollPath, params, force)
         return withContext(Dispatchers.Default) {
             val root =
                 try {
                     JsonParser.parseString(json).asJsonObject
                 } catch (e: JsonParseException) {
-                    invalidateCachedResponse(cuplixScrollPath, params)
+                    ApiTransport.invalidateCachedResponse(cuplixScrollPath, params)
                     throw ApiException.Parse(e)
                 } catch (e: IllegalStateException) {
-                    invalidateCachedResponse(cuplixScrollPath, params)
+                    ApiTransport.invalidateCachedResponse(cuplixScrollPath, params)
                     throw ApiException.Parse(e)
                 }
             val err = root.get("error")
@@ -229,7 +229,7 @@ internal object ApiHomeEndpoints {
                             err.asString.equals("true", ignoreCase = true)
                     )
             if (isError) {
-                invalidateCachedResponse(cuplixScrollPath, params)
+                ApiTransport.invalidateCachedResponse(cuplixScrollPath, params)
                 throw ApiException.Remote(root.get("message")?.takeIf { it.isJsonPrimitive }?.asString ?: "API error")
             }
             val data = root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
@@ -242,7 +242,7 @@ internal object ApiHomeEndpoints {
                         try {
                             ApiTransport.gson.fromJson(array, Array<Cuplix>::class.java)?.toList().orEmpty()
                         } catch (e: JsonParseException) {
-                            invalidateCachedResponse(cuplixScrollPath, params)
+                            ApiTransport.invalidateCachedResponse(cuplixScrollPath, params)
                             throw ApiException.Parse(e)
                         }
                     parsed
@@ -266,7 +266,7 @@ internal object ApiHomeEndpoints {
                 ?.asString
                 ?.trim()
                 .orEmpty()
-            CuplixPage(clips, nextCursor, idFyp)
+            Api.CuplixPage(clips, nextCursor, idFyp)
         }
     }
 
@@ -285,27 +285,20 @@ internal object ApiHomeEndpoints {
 
     private fun homeListParams(page: Int): Map<String, String> =
         buildMap {
-            put("limit", "$Api.API_LIMIT")
+            put("limit", "${Api.API_LIMIT}")
             if (page > 0) put("page", "$page")
         }
 
     private val SCHEDULE_DAYS: List<String> by lazy { NativeCore.scheduleDays().toList() }
 
-    private fun JsonObject.movieArray(): List<Movie> {
-        val arr =
-            listOf("movie", "movies", "list", "items", "results")
-                .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
-                ?: return emptyList()
-        return runCatching { ApiTransport.gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
-    }
 
     private suspend fun scheduleForDay(
         day: String,
         force: Boolean = false,
     ): List<Movie> {
         val path = NativeCore.path(NativeCore.SCHEDULE)
-        val params = mapOf("day" to day, "page" to "1", "limit" to "$Api.API_LIMIT")
-        val json = fetchCached(path, params, force)
+        val params = mapOf("day" to day, "page" to "1", "limit" to "${Api.API_LIMIT}")
+        val json = ApiTransport.fetchCached(path, params, force)
         val parsed: List<Movie>? =
             withContext(Dispatchers.Default) {
                 runCatching {
@@ -327,7 +320,7 @@ internal object ApiHomeEndpoints {
                     data.movieArray().map { it.copy(day = day) }
                 }.getOrNull()
             }
-        if (parsed == null) invalidateCachedResponse(path, params)
+        if (parsed == null) ApiTransport.invalidateCachedResponse(path, params)
         return parsed.orEmpty()
     }
 

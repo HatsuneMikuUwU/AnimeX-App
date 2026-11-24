@@ -2,7 +2,10 @@ package com.uwu.animex.data.api
 
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.network.ApiException
+import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
+import com.uwu.animex.data.api.ApiTransport.movieArray
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.EpisodeListData
@@ -70,16 +73,10 @@ internal object ApiCatalogEndpoints {
 
     suspend fun detail(id: String): Movie? = detailFull(id).movie
 
-    data class DetailResult(
-        val movie: Movie?,
-        val seasons: List<Movie> = emptyList(),
-        val episode: Episode? = null,
-    )
-
     suspend fun detailFull(
         id: String,
         force: Boolean = false,
-    ): DetailResult {
+    ): Api.DetailResult {
         val data =
             ApiTransport.get<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java, force = force)
         return DetailResult(
@@ -147,16 +144,6 @@ internal object ApiCatalogEndpoints {
     suspend fun hasServers(episodeId: String?): Boolean =
         episodeId != null && runSuspendCatching { servers(episodeId) }.getOrNull()?.isNotEmpty() == true
 
-    sealed class NextEpisodeLookup {
-        data class Exists(
-            val episode: Episode,
-        ) : NextEpisodeLookup()
-
-        data object NoNext : NextEpisodeLookup()
-
-        data object Unknown : NextEpisodeLookup()
-    }
-
     private fun Episode.number(): Double? = index.toEpisodeIndex()?.toDoubleOrNull()
 
     private fun Episode.matches(target: String): Boolean {
@@ -215,18 +202,18 @@ internal object ApiCatalogEndpoints {
         movieId: String,
         index: String?,
         requireServers: Boolean = false,
-    ): NextEpisodeLookup {
-        val current = index.toEpisodeIndex()?.toDoubleOrNull() ?: return NextEpisodeLookup.Unknown
+    ): Api.NextEpisodeLookup {
+        val current = index.toEpisodeIndex()?.toDoubleOrNull() ?: return Api.NextEpisodeLookup.Unknown
         val key = "$movieId:$current:${if (requireServers) "s" else "c"}"
         ApiTransport.nextCache.get(key)?.let { hit ->
-            if (hit.episode != null) return NextEpisodeLookup.Exists(hit.episode)
+            if (hit.episode != null) return Api.NextEpisodeLookup.Exists(hit.episode)
         }
 
         var newest =
             runSuspendCatching { episodes(movieId) }.getOrElse {
-                return NextEpisodeLookup.Unknown
+                return Api.NextEpisodeLookup.Unknown
             }
-        var newestNum = newest.mapNotNull { it.number() }.maxOrNull() ?: return NextEpisodeLookup.Unknown
+        var newestNum = newest.mapNotNull { it.number() }.maxOrNull() ?: return Api.NextEpisodeLookup.Unknown
         if (current >= newestNum) {
             val fresh = runSuspendCatching { episodes(movieId, force = true) }.getOrNull().orEmpty()
             val freshNum = fresh.mapNotNull { it.number() }.maxOrNull()
@@ -235,17 +222,17 @@ internal object ApiCatalogEndpoints {
                 newestNum = freshNum
             }
         }
-        if (current >= newestNum) return NextEpisodeLookup.NoNext
+        if (current >= newestNum) return Api.NextEpisodeLookup.NoNext
 
         val found =
             runSuspendCatching { neighborEpisode(movieId, current, forward = true, newest = newest) }.getOrNull()
-                ?: return NextEpisodeLookup.Unknown
+                ?: return Api.NextEpisodeLookup.Unknown
         if (requireServers && !hasServers(found.id)) {
-            return NextEpisodeLookup.Unknown
+            return Api.NextEpisodeLookup.Unknown
         }
 
         ApiTransport.nextCache.put(key, ApiTransport.NextHit(found))
-        return NextEpisodeLookup.Exists(found)
+        return Api.NextEpisodeLookup.Exists(found)
     }
 
     suspend fun nextEpisode(
@@ -253,7 +240,7 @@ internal object ApiCatalogEndpoints {
         index: String?,
     ): Episode? =
         when (val r = lookupNextEpisode(movieId, index, requireServers = true)) {
-            is NextEpisodeLookup.Exists -> r.episode
+            is Api.NextEpisodeLookup.Exists -> r.episode
             else -> null
         }
 
@@ -393,7 +380,7 @@ internal object ApiCatalogEndpoints {
         force: Boolean = false,
         preview: Boolean = true,
     ): ExploreData {
-        val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "$Api.API_LIMIT")
+        val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "${Api.API_LIMIT}")
         val primary = runSuspendCatching { ApiTransport.getData(NativeCore.path(NativeCore.EXPLORE_DATA), params, force) }
         val d = primary.getOrNull()
         if (d != null) {
@@ -478,7 +465,7 @@ internal object ApiCatalogEndpoints {
                 "page" to "$p",
                 "sort" to sort.lowercase(),
                 "genre_in" to genreIn.trim(),
-                "limit" to "$Api.API_LIMIT",
+                "limit" to "${Api.API_LIMIT}",
             )
         if (yearFlag == "1") {
             params["season"] = season.lowercase().trim()

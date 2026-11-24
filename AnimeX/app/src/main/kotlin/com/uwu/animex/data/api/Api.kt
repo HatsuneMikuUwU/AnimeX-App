@@ -2,8 +2,8 @@ package com.uwu.animex.data.api
 
 import android.content.Context
 import com.uwu.animex.data.model.Cuplix
-import com.uwu.animex.data.model.CuplixNext
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
@@ -19,6 +19,28 @@ object Api {
         val hasMore: Boolean,
         val latest: Int,
     )
+
+    data class CuplixPage(
+        val clips: List<Cuplix>,
+        val cursor: Map<String, String>,
+        val idFyp: String = "",
+    )
+
+    data class DetailResult(
+        val movie: Movie?,
+        val seasons: List<Movie> = emptyList(),
+        val episode: Episode? = null,
+    )
+
+    sealed class NextEpisodeLookup {
+        data class Exists(
+            val episode: Episode,
+        ) : NextEpisodeLookup()
+
+        data object NoNext : NextEpisodeLookup()
+
+        data object Unknown : NextEpisodeLookup()
+    }
 
     val activeDomain: String
         get() = ApiDomainManager.activeDomain
@@ -61,42 +83,44 @@ object Api {
     suspend fun home(force: Boolean = false): HomeData = ApiHomeEndpoints.home(force)
 
     suspend fun homeMovies(
-        kind: String,
-        page: Int = 1,
+        section: String,
+        page: Int = 0,
         force: Boolean = false,
-    ): List<Movie> = ApiHomeEndpoints.homeMovies(kind, page, force)
+    ): List<Movie> = ApiHomeEndpoints.homeMovies(section, page, force)
 
     suspend fun newEpisodes(
-        page: Int = 1,
+        page: Int = 0,
         force: Boolean = false,
     ): List<Movie> = ApiHomeEndpoints.newEpisodes(page, force)
 
     suspend fun homeCuplix(
-        limit: Int = 12,
         force: Boolean = false,
-    ): List<Cuplix> = ApiHomeEndpoints.homeCuplix(limit, force)
+        page: Int = 1,
+    ): List<Cuplix> = ApiHomeEndpoints.homeCuplix(force, page)
 
     suspend fun cuplixScroll(
         sort: String,
-        cursor: CuplixNext? = null,
-        limit: Int = 10,
+        cursor: Map<String, String> = emptyMap(),
+        keyIdFyp: String = "",
+        idUserFyp: String = "",
+        movieIds: String = "",
         force: Boolean = false,
-    ): Pair<List<Cuplix>, CuplixNext> = ApiHomeEndpoints.cuplixScroll(sort, cursor, limit, force)
+    ): CuplixPage = ApiHomeEndpoints.cuplixScroll(sort, cursor, keyIdFyp, idUserFyp, movieIds, force)
 
     suspend fun cuplixServers(clipId: String): List<Server> = ApiHomeEndpoints.cuplixServers(clipId)
 
     suspend fun schedule(force: Boolean = false): List<Movie> = ApiHomeEndpoints.schedule(force)
 
     suspend fun search(
-        query: String,
-        page: Int = 1,
+        q: String,
+        page: Int = 0,
         force: Boolean = false,
-    ): List<Movie> = ApiCatalogEndpoints.search(query, page, force)
+    ): List<Movie> = ApiCatalogEndpoints.search(q, page, force)
 
     suspend fun suggest(
-        query: String,
-        force: Boolean = false,
-    ): List<Movie> = ApiCatalogEndpoints.suggest(query, force)
+        q: String,
+        limit: Int = 6,
+    ): List<Movie> = ApiCatalogEndpoints.suggest(q, limit)
 
     suspend fun detail(id: String): Movie? = ApiCatalogEndpoints.detail(id)
 
@@ -107,40 +131,37 @@ object Api {
 
     suspend fun episodes(
         id: String,
-        page: Int = 1,
+        page: Int? = null,
         force: Boolean = false,
     ): List<Episode> = ApiCatalogEndpoints.episodes(id, page, force)
 
     suspend fun trailers(
-        id: String,
+        movieId: String,
         force: Boolean = false,
-    ): List<Trailer> = ApiCatalogEndpoints.trailers(id, force)
+    ): List<Trailer> = ApiCatalogEndpoints.trailers(movieId, force)
 
     suspend fun hasServers(episodeId: String?): Boolean = ApiCatalogEndpoints.hasServers(episodeId)
 
     suspend fun lookupNextEpisode(
         movieId: String,
-        currentEpisodeId: String,
-        currentIndex: String?,
-    ): Episode? = ApiCatalogEndpoints.lookupNextEpisode(movieId, currentEpisodeId, currentIndex)
+        index: String?,
+        requireServers: Boolean = false,
+    ): NextEpisodeLookup = ApiCatalogEndpoints.lookupNextEpisode(movieId, index, requireServers)
 
     suspend fun nextEpisode(
         movieId: String,
-        currentEpisodeId: String,
-        currentIndex: String?,
-    ): Episode? = ApiCatalogEndpoints.nextEpisode(movieId, currentEpisodeId, currentIndex)
+        index: String?,
+    ): Episode? = ApiCatalogEndpoints.nextEpisode(movieId, index)
 
     suspend fun previousEpisode(
         movieId: String,
-        currentEpisodeId: String,
-        currentIndex: String?,
-    ): Episode? = ApiCatalogEndpoints.previousEpisode(movieId, currentEpisodeId, currentIndex)
+        index: String?,
+    ): Episode? = ApiCatalogEndpoints.previousEpisode(movieId, index)
 
     suspend fun findEpisode(
         movieId: String,
-        episodeId: String?,
-        episodeIndex: String?,
-    ): Episode? = ApiCatalogEndpoints.findEpisode(movieId, episodeId, episodeIndex)
+        index: String,
+    ): Episode? = ApiCatalogEndpoints.findEpisode(movieId, index)
 
     suspend fun allEpisodes(id: String): List<Episode> = ApiCatalogEndpoints.allEpisodes(id)
 
@@ -157,9 +178,9 @@ object Api {
     ): List<Server> = ApiCatalogEndpoints.servers(episodeId, force)
 
     suspend fun explore(
-        kind: String,
         force: Boolean = false,
-    ): List<ExploreItem> = ApiCatalogEndpoints.explore(kind, force)
+        preview: Boolean = true,
+    ): ExploreData = ApiCatalogEndpoints.explore(force, preview)
 
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> =
         ApiCatalogEndpoints.exploreGenres(force)
@@ -172,8 +193,10 @@ object Api {
 
     suspend fun exploreMovies(
         kind: String,
-        value: String,
-        page: Int = 1,
+        idOrName: String,
+        title: String = "",
+        page: Int = 0,
         force: Boolean = false,
-    ): List<Movie> = ApiCatalogEndpoints.exploreMovies(kind, value, page, force)
+        sort: String = "views",
+    ): List<Movie> = ApiCatalogEndpoints.exploreMovies(kind, idOrName, title, page, force, sort)
 }

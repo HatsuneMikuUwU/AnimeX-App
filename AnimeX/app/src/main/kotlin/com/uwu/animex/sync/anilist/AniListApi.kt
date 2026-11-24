@@ -442,7 +442,10 @@ class AniListApi : SyncAPI() {
         return true
     }
 
-    suspend fun profile(auth: AuthData?): Pair<AniListUser, ListStats>? = fetchProfile(auth)
+    suspend fun profile(
+        auth: AuthData?,
+        previous: ListStats? = null,
+    ): AniListUser = fetchProfile(auth, previous)
 
     suspend fun history(auth: AuthData?): List<ProfileHistoryItem> = fetchHistory(auth)
 
