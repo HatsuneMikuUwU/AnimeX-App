@@ -56,8 +56,6 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.theme.appBackgroundColor
-import com.uwu.animex.ui.theme.appCardColor
 
 private const val PREVIEW_LIMIT = 3
 
@@ -177,7 +175,7 @@ internal fun ImageSearchResults(
     onPick: (TraceMoe.Result) -> Unit,
 ) {
     if (results.isEmpty()) return
-    Surface(Modifier.fillMaxSize(), color = appBackgroundColor()) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding =
@@ -232,7 +230,7 @@ private fun TopResultCard(
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(24.dp))
-                .background(appCardColor()),
+                .background(MaterialTheme.colorScheme.surfaceContainer),
         ) {
             AsyncImage(
                 model = hit.image,
@@ -300,7 +298,7 @@ private fun ResultRowCard(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(appCardColor())
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(enabled = enabled, onClick = hapticClick(block = onClick), role = Role.Button)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,

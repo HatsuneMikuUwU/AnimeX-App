@@ -61,7 +61,6 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.UiScaled
-import com.uwu.animex.ui.theme.appBackgroundColor
 
 private val cropOptions =
     listOf(
@@ -111,14 +110,14 @@ fun ImageCropScreen(
             ),
     ) {
         UiScaled {
-            Surface(Modifier.fillMaxSize(), color = appBackgroundColor()) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 val source = bitmap
                 val imageCrop = source?.let { rememberSaveableImageCrop(it) }
 
                 Scaffold(
                     modifier = Modifier.padding(systemBarsPadding),
                     contentWindowInsets = WindowInsets(0),
-                    containerColor = appBackgroundColor(),
+                    containerColor = MaterialTheme.colorScheme.background,
                     topBar = {
                         TopAppBar(
                             title = { Text("Sesuaikan gambar", fontWeight = FontWeight.Bold) },
@@ -154,7 +153,7 @@ fun ImageCropScreen(
                             windowInsets = WindowInsets(0),
                             colors =
                                 TopAppBarDefaults.topAppBarColors(
-                                    containerColor = appBackgroundColor(),
+                                    containerColor = MaterialTheme.colorScheme.background,
                                 ),
                         )
                     },

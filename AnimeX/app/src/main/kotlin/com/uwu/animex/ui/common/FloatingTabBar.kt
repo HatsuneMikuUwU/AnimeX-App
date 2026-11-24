@@ -74,8 +74,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.BarEffect
 import com.uwu.animex.ui.theme.GlassStyle
-import com.uwu.animex.ui.theme.appBackgroundColor
-import com.uwu.animex.ui.theme.appCardBaseColor
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.bottomScrim
 import com.uwu.animex.ui.theme.resolveGlassStyle
@@ -99,7 +97,7 @@ fun FloatingTabBarFade(
     modifier: Modifier = Modifier,
     extra: Dp = 24.dp,
 ) {
-    val bg = appBackgroundColor()
+    val bg = MaterialTheme.colorScheme.background
     val total = floatingTabBarSpace() + extra
     val brush = remember(bg) { bottomScrim(bg) }
     Box(
@@ -179,7 +177,7 @@ fun <T> FloatingTabBar(
     onSelected: (index: Int) -> Unit,
     backdrop: LayerBackdrop?,
     modifier: Modifier = Modifier,
-    containerColor: Color = appCardBaseColor(),
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     indicatorColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     activeContentColor: Color = indicatorColor,

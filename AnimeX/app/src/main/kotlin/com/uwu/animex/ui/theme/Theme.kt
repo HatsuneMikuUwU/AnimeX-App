@@ -9,7 +9,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
@@ -147,7 +146,6 @@ fun AppTheme(
         typography = AppTypography,
         animate = settings.animateColorChange,
         animationSpec = colorSpec,
-    ) {
-        CompositionLocalProvider(LocalAmoledSurfaces provides (darkTheme && settings.amoled), content = content)
-    }
+        content = content,
+    )
 }

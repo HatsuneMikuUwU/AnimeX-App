@@ -71,7 +71,6 @@ import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
 import com.uwu.animex.ui.settings.SettingsSheet
-import com.uwu.animex.ui.theme.appBackgroundColor
 import com.uwu.animex.ui.tracker.TrackerEditSheet
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
@@ -221,7 +220,7 @@ fun App() {
         LocalAnimatedBackgroundActive provides backgroundActive,
         LocalContentColor provides MaterialTheme.colorScheme.onBackground,
     ) {
-        Box(Modifier.fillMaxSize().background(appBackgroundColor())) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             AnimatedVisibility(
                 visible = backgroundActive,
                 enter = AppMotion.fadeEnter(),

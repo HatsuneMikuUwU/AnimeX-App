@@ -70,7 +70,6 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ShadowIcon
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.theme.appCardColor
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 
 @Composable
@@ -347,7 +346,7 @@ private fun DownloadCard(
     Card(
         onClick = hapticClick(block = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = appCardColor()),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -400,7 +399,7 @@ private fun DownloadGroupCard(
     Card(
         onClick = hapticClick { expanded = !expanded },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = appCardColor()),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
     ) {
         Column {

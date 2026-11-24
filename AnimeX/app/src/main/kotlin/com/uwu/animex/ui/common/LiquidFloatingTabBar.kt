@@ -64,7 +64,6 @@ import com.uwu.animex.ui.liquid.lens
 import com.uwu.animex.ui.liquid.rememberCombinedBackdrop
 import com.uwu.animex.ui.liquid.rememberGravityRotatedHighlight
 import com.uwu.animex.ui.liquid.vibrancy
-import com.uwu.animex.ui.theme.appCardBaseColor
 import com.uwu.animex.ui.theme.drawGlassStroke
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -87,7 +86,7 @@ fun <T> LiquidFloatingTabBar(
     onSelected: (index: Int) -> Unit,
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
-    containerColor: Color = appCardBaseColor(),
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     indicatorColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     activeContentColor: Color = indicatorColor,

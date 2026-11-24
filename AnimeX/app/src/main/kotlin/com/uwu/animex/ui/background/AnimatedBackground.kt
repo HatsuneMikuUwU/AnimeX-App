@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import com.uwu.animex.ui.theme.appBackgroundColor
 
 enum class BackgroundType(
     val label: String,
@@ -41,7 +40,7 @@ val LocalAnimatedBackgroundActive = staticCompositionLocalOf { false }
 
 @Composable
 fun screenContainerColor(): Color =
-    if (LocalAnimatedBackgroundActive.current) Color.Transparent else appBackgroundColor()
+    if (LocalAnimatedBackgroundActive.current) Color.Transparent else MaterialTheme.colorScheme.background
 
 @Composable
 fun AnimatedBackground(

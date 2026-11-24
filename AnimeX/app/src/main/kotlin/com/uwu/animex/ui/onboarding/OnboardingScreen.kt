@@ -86,7 +86,6 @@ import com.uwu.animex.notifications.AlarmManagerScheduler
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
-import com.uwu.animex.ui.theme.appBackgroundColor
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -200,7 +199,7 @@ fun OnboardingScreen(
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = appBackgroundColor()) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
             Row(
                 modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 12.dp),
