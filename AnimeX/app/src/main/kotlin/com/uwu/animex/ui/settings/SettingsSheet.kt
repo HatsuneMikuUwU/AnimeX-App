@@ -106,6 +106,7 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.clearLoadCache
+import com.uwu.animex.ui.theme.appBackgroundColor
 import kotlinx.coroutines.launch
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
@@ -148,7 +149,7 @@ fun SettingsSheet(
                         .fillMaxWidth(0.85f)
                         .widthIn(max = 480.dp),
                 shape = RoundedCornerShape(topStart = GroupCorner, bottomStart = GroupCorner),
-                color = cs.background,
+                color = appBackgroundColor(),
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Column(
