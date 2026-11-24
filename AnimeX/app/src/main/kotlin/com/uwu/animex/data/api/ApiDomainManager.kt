@@ -96,7 +96,7 @@ internal object ApiDomainManager {
         ensureDomains()
     }
 
-    private suspend fun ensureDomains() {
+    internal suspend fun ensureDomains() {
         if (gateFresh()) return
 
         if (hasSavedDomain && activeDomain.isNotBlank()) {

@@ -198,5 +198,7 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
         sort: String = "views",
-    ): List<Movie> = ApiCatalogEndpoints.exploreMovies(kind, idOrName, title, page, force, sort)
+        season: String = "",
+        genreIn: String = "",
+    ): List<Movie> = ApiCatalogEndpoints.exploreMovies(kind, idOrName, title, page, force, sort, season, genreIn)
 }

@@ -78,6 +78,35 @@ class AniListApi : SyncAPI() {
 
     @Volatile private var scoreFormat: String? = null
 
+    private fun AniMedia.toResult(): SyncResult {
+        mediaListEntry?.id?.let { entryIds[id] = it }
+        return buildResult()
+    }
+
+    private fun AniMedia.buildResult(): SyncResult =
+        SyncResult(
+            id = id.toString(),
+            title = displayTitle(this),
+            totalEpisodes = episodes?.takeIf { it > 0 },
+            synonyms = listOfNotNull(title?.romaji, title?.english, title?.native).distinct(),
+            posterUrl = coverImage?.extraLarge ?: coverImage?.large,
+            publicScore = averageScore?.toDouble(),
+            synopsis = description,
+            myStatus = mediaListEntry?.let { entry ->
+                SyncStatus(
+                    status = watchType(entry.status),
+                    score = scoreToUi(entry.score),
+                    watchedEpisodes = entry.progress,
+                    maxEpisodes = episodes?.takeIf { it > 0 },
+                    startDate = entry.startedAt.toIso(),
+                    finishDate = entry.completedAt.toIso(),
+                    isRewatching = entry.status == "REPEATING",
+                    rewatchCount = entry.repeat,
+                    comments = entry.notes,
+                )
+            },
+        )
+
     private fun scoreToUi(score: Double?): Int? = score?.let { aniScoreToTen(scoreFormat, it) }
 
     private fun scoreToAniList(score: Int): Float {
@@ -172,7 +201,7 @@ class AniListApi : SyncAPI() {
             }
         }
 
-    private val entryIds = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+    internal val entryIds = java.util.concurrent.ConcurrentHashMap<Int, Int>()
 
     private fun variableInt(value: Int): JsonObject = JsonObject().apply { addProperty("id", value) }
 

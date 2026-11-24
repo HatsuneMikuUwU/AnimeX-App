@@ -285,7 +285,7 @@ private fun ReplyItem(
     )
     SwipeToReply(enabled = canReply, onReply = onReply) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            UserAvatar(reply.username, size = DiscussionDiscussionReplyAvatarSize)
+            UserAvatar(reply.username, size = DiscussionReplyAvatarSize)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Surface(color = bubbleColor, shape = RoundedCornerShape(18.dp)) {

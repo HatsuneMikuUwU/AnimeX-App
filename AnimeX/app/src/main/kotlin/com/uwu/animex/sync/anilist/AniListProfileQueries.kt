@@ -18,6 +18,7 @@ import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlin.math.roundToInt
 
 private const val LIST_CHUNK_SIZE = 500
 private const val MAX_CHUNKS = 40

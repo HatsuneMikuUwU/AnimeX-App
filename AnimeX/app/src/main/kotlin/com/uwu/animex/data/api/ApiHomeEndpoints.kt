@@ -10,6 +10,7 @@ import com.uwu.animex.core.security.NativeCore
 import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.uwu.animex.core.network.ApiException
+import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.data.api.ApiTransport.movieArray
 import com.uwu.animex.data.api.ApiTransport.movies
 import kotlinx.coroutines.Dispatchers

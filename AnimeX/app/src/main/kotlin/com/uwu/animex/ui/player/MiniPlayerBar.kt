@@ -183,6 +183,7 @@ internal fun BoxScope.MiniPlayerBar(
     toggleMiniPlayback: () -> Unit,
     goNext: () -> Unit,
     closeCompletely: () -> Unit,
+    onExpand: (() -> Unit)?,
 ) {
     var dismissDragX by dismissDragXState
     var dismissDragY by dismissDragYState

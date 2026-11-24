@@ -988,6 +988,7 @@ fun PlayerScreen(
                     toggleMiniPlayback = ::toggleMiniPlayback,
                     goNext = { goNext(true) },
                     closeCompletely = closeCompletely,
+                    onExpand = onExpand,
                 )
             }
         }

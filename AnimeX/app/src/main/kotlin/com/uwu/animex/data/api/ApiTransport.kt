@@ -21,6 +21,7 @@ import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.EpisodeListData
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.MovieDetailData
 import kotlinx.coroutines.CancellationException
@@ -199,7 +200,7 @@ internal object ApiTransport {
         val data =
             peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
         val movie = data.movie ?: return null
-        return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
+        return Api.DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
     }
 
     fun peekEpisodes(id: String): List<Episode>? =
@@ -287,7 +288,7 @@ internal object ApiTransport {
         }
 
         return try {
-            ensureDomains()
+            ApiDomainManager.ensureDomains()
             val body = ApiDomainManager.withFallback { domain -> fetchShared(key, domain, path, params) }
             networkPaths.add(path)
             if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
@@ -299,7 +300,7 @@ internal object ApiTransport {
                 val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
                 if (stale != null) return stale
             }
-            throw e.normalized()
+            throw normalizeException(e)
         }
     }
 

@@ -174,35 +174,6 @@ internal fun displayTitle(media: AniMedia): String =
         ?: media.title?.romaji?.takeIf { it.isNotBlank() }
         ?: media.title?.native.orEmpty()
 
-internal fun AniMedia.toResult(): SyncResult {
-    mediaListEntry?.id?.let { entryIds[id] = it }
-    return buildResult()
-}
-
-internal fun AniMedia.buildResult(): SyncResult =
-    SyncResult(
-        id = id.toString(),
-        title = displayTitle(this),
-        totalEpisodes = episodes?.takeIf { it > 0 },
-        synonyms = listOfNotNull(title?.romaji, title?.english, title?.native).distinct(),
-        posterUrl = coverImage?.extraLarge ?: coverImage?.large,
-        publicScore = averageScore?.toDouble(),
-        synopsis = description,
-        myStatus = mediaListEntry?.let { entry ->
-            SyncStatus(
-                status = watchType(entry.status),
-                score = scoreToUi(entry.score),
-                watchedEpisodes = entry.progress,
-                maxEpisodes = episodes?.takeIf { it > 0 },
-                startDate = entry.startedAt.toIso(),
-                finishDate = entry.completedAt.toIso(),
-                isRewatching = entry.status == "REPEATING",
-                rewatchCount = entry.repeat,
-                comments = entry.notes,
-            )
-        },
-    )
-
 internal fun AniDate?.toIso(): String? {
     val y = this?.year?.takeIf { it > 0 } ?: return null
     val m = month?.takeIf { it > 0 } ?: return "%04d".format(y)

@@ -79,7 +79,7 @@ internal object ApiCatalogEndpoints {
     ): Api.DetailResult {
         val data =
             ApiTransport.get<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java, force = force)
-        return DetailResult(
+        return Api.DetailResult(
             movie = data?.movie,
             seasons = data?.season.orEmpty(),
             episode = data?.episode,
