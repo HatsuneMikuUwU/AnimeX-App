@@ -63,6 +63,7 @@ import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.rememberStatusLongClick
+import com.uwu.animex.ui.theme.appCardColor
 
 @Composable
 internal fun SeasonListTab(
@@ -122,7 +123,7 @@ internal fun SeasonCard(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .hapticClick(
                 onLongClick = statusLongClick,
                 onClick = onClick,
@@ -281,7 +282,7 @@ internal fun TrailerCard(
         modifier
             .fillMaxWidth()
             .clip(InfoCardShape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .clickable(onClick = hapticClick(block = onClick), role = Role.Button)
             .padding(8.dp),
     ) {

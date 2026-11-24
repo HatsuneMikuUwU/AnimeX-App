@@ -65,6 +65,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.theme.appCardColor
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -186,7 +187,7 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
 }
 
 @Composable
-fun Modifier.cardBackground(): Modifier = background(MaterialTheme.colorScheme.surfaceContainer)
+fun Modifier.cardBackground(): Modifier = background(appCardColor())
 
 @Composable
 internal fun OverlayChip(

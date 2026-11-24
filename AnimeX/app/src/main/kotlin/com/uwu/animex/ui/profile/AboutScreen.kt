@@ -73,6 +73,7 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
+import com.uwu.animex.ui.theme.appCardColor
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 
 private const val REPO_URL = "https://github.com/HatsuneMikuUwU/AnimeX-App"
@@ -350,7 +351,7 @@ private fun LinkGroup(links: List<AboutLink>) {
             Surface(
                 onClick = hapticClick(block = link.onClick),
                 shape = groupedShape(i, links.size),
-                color = cs.surfaceContainer,
+                color = appCardColor(),
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),

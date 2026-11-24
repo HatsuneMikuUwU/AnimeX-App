@@ -50,6 +50,7 @@ import com.uwu.animex.data.tracker.ListStat
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.theme.appCardColor
 import java.util.Locale
 import kotlin.math.roundToLong
 
@@ -166,7 +167,7 @@ private fun StatCard(
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
-            .background(cs.surfaceContainer)
+            .background(appCardColor())
             .padding(20.dp),
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

@@ -42,6 +42,7 @@ import com.eygraber.compose.placeholder.material3.placeholder
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.HomeSection
 import com.uwu.animex.data.local.HomeSectionPrefs
+import com.uwu.animex.ui.theme.appCardColor
 
 fun Modifier.defaultPlaceholder(visible: Boolean = true): Modifier =
     composed {
@@ -90,7 +91,7 @@ fun PosterCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -108,7 +109,7 @@ fun NewTitleCardPlaceholder(
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -132,7 +133,7 @@ fun EpisodeRowPlaceholder(
             .fillMaxWidth()
             .padding(horizontal = horizontalPadding, vertical = 4.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .padding(8.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -161,7 +162,7 @@ fun DiscussionRowPlaceholder(
                 Modifier
                     .fillMaxWidth(fraction)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .background(appCardColor())
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -246,7 +247,7 @@ private fun ContinueCardPlaceholder(modifier: Modifier = Modifier) {
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -275,7 +276,7 @@ fun HotCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .padding(8.dp),
     ) {
         Ph(Modifier.fillMaxWidth().height(150.dp), RoundedCornerShape(16.dp))
@@ -297,7 +298,7 @@ fun WaitingCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .padding(8.dp),
     ) {
         Ph(Modifier.fillMaxWidth().height(118.dp), RoundedCornerShape(16.dp))
@@ -318,7 +319,7 @@ internal fun CuplixCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(appCardColor())
             .padding(8.dp),
     ) {
         Ph(Modifier.fillMaxWidth().aspectRatio(CUPLIX_POSTER_RATIO), RoundedCornerShape(16.dp))

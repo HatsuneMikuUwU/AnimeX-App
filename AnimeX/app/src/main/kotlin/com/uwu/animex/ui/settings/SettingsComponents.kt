@@ -65,6 +65,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.toggleHaptic
+import com.uwu.animex.ui.theme.appCardColor
 
 private val ItemOuter = 19.dp
 
@@ -184,7 +185,7 @@ internal fun SettingGroup(
     var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "group-chevron")
     val toggle = hapticClick { expanded = !expanded }
-    val groupColor = cs.surfaceContainer
+    val groupColor = appCardColor()
 
     Column(
         Modifier

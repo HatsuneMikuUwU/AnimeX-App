@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.ui.theme.appBackgroundColor
+import com.uwu.animex.ui.theme.appCardBaseColor
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import com.uwu.animex.ui.theme.topScrim
@@ -58,8 +60,9 @@ fun FloatingTopBar(
     onTrailingClick: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
-    val brush = remember(cs.background) { topScrim(cs.background) }
-    val container = cs.surfaceContainer
+    val background = appBackgroundColor()
+    val brush = remember(background) { topScrim(background) }
+    val container = appCardBaseColor()
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
 

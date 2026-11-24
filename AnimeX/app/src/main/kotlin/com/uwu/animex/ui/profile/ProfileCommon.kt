@@ -90,6 +90,7 @@ import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.detail.DetailActionButton
+import com.uwu.animex.ui.theme.appCardColor
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -347,7 +348,7 @@ private fun InfoPill(
     Row(
         Modifier
             .clip(CircleShape)
-            .background(cs.surfaceContainer)
+            .background(appCardColor())
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -411,7 +412,7 @@ internal fun DonutCard(
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
-            .background(scheme.surfaceContainer)
+            .background(appCardColor())
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

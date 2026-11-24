@@ -116,6 +116,8 @@ import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
 import com.uwu.animex.ui.theme.GlassStyle
 import com.uwu.animex.ui.theme.UiScaled
+import com.uwu.animex.ui.theme.appBackgroundColor
+import com.uwu.animex.ui.theme.appCardBaseColor
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.resolveGlassStyle
@@ -433,7 +435,7 @@ fun MainScreen(
                             Column(
                                 Modifier
                                     .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.background),
+                                    .background(appBackgroundColor()),
                             ) {
                                 if (landscape) {
                                     Row(
@@ -471,7 +473,7 @@ fun MainScreen(
                 }
 
                 if (!landscape && barHeightPx > 0f) {
-                    val bg = MaterialTheme.colorScheme.background
+                    val bg = appBackgroundColor()
                     val fadeHeight = maxOf(floatingTabBarSpace() + MAIN_FADE_EXTRA, topInset + 16.dp)
                     val fadeBrush = remember(bg) { topScrim(bg) }
                     Box(
@@ -512,14 +514,14 @@ fun MainScreen(
                                         style = searchGlassStyle,
                                         backdrop = backdrop,
                                         shape = SearchBarDefaults.inputFieldShape,
-                                        container = MaterialTheme.colorScheme.surfaceContainer,
+                                        container = appCardBaseColor(),
                                         drawFlatBackground = false,
                                     ),
                             colors =
                                 SearchBarDefaults.colors(
                                     containerColor =
                                         if (searchGlassStyle == GlassStyle.Flat) {
-                                            MaterialTheme.colorScheme.surfaceContainer
+                                            appCardBaseColor()
                                         } else {
                                             Color.Transparent
                                         },

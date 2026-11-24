@@ -65,6 +65,7 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.theme.appCardColor
 
 @Composable
 internal fun EpisodeRow(
@@ -148,7 +149,7 @@ internal fun EpisodeRow(
         colors =
             CardDefaults.cardColors(
                 containerColor =
-                    if (current) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                    if (current) MaterialTheme.colorScheme.primaryContainer else appCardColor(),
             ),
         modifier =
             modifier

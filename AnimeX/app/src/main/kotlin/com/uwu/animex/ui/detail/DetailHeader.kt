@@ -76,6 +76,7 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.releaseYearLabel
+import com.uwu.animex.ui.theme.appCardColor
 import kotlinx.coroutines.flow.map
 
 @Composable
@@ -262,7 +263,7 @@ internal fun StatStrip(
     inset: Dp = 16.dp,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val neutral = scheme.surfaceContainer
+    val neutral = appCardColor()
     val onNeutral = scheme.onSurface
     val hideStats = com.uwu.animex.ui.common
         .rememberHideStats()
@@ -417,7 +418,7 @@ internal fun InfoTile(
 ) {
     Surface(
         shape = InfoCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = appCardColor(),
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -439,7 +440,7 @@ internal fun SynonymsTile(
 ) {
     Surface(
         shape = InfoCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = appCardColor(),
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -477,7 +478,7 @@ internal fun ExpandableSynopsis(
     var overflowing by remember(text) { mutableStateOf(false) }
     Surface(
         shape = InfoCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = appCardColor(),
         modifier = modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {

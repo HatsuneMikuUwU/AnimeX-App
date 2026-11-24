@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -16,6 +15,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.ui.theme.appCardBaseColor
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -35,7 +35,7 @@ fun FloatingGlassButton(
         modifier =
             modifier
                 .size(size)
-                .barGlass(glassStyle, backdrop, CircleShape, MaterialTheme.colorScheme.surfaceContainer)
+                .barGlass(glassStyle, backdrop, CircleShape, appCardBaseColor())
                 .clip(CircleShape)
                 .semantics { this.contentDescription = contentDescription }
                 .clickable(role = Role.Button, onClick = onClick),

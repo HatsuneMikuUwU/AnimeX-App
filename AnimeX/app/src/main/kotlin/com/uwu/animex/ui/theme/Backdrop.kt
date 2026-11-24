@@ -25,7 +25,7 @@ import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 @Composable
 fun rememberBlurBackdrop(
     enabled: Boolean = true,
-    background: Color = MaterialTheme.colorScheme.background,
+    background: Color = appBackgroundColor(),
 ): LayerBackdrop? {
     val blurSetting by Appearance.settings.collectAsStateWithLifecycle()
     if (

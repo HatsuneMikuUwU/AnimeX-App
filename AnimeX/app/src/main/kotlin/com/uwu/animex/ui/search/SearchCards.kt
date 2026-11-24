@@ -51,6 +51,7 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.theme.appCardColor
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -198,7 +199,7 @@ fun GenreCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainer
+    val surfaceFallback = appCardColor()
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
         modifier
@@ -260,7 +261,7 @@ fun YearCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainer
+    val surfaceFallback = appCardColor()
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     val density = LocalDensity.current
     BoxWithConstraints(

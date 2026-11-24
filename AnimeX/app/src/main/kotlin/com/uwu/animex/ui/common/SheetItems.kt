@@ -28,6 +28,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.uwu.animex.ui.theme.appCardColor
 
 private val ItemOuter = 19.dp
 
@@ -80,7 +81,7 @@ fun SheetItemSurface(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
-    container: Color = MaterialTheme.colorScheme.surfaceContainer,
+    container: Color = appCardColor(),
     hapticType: HapticFeedbackType = HapticFeedbackType.ContextClick,
     content: @Composable () -> Unit,
 ) {
@@ -113,7 +114,7 @@ fun SheetOptionItem(
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
-    val container = if (selected) cs.primaryContainer else cs.surfaceContainer
+    val container = if (selected) cs.primaryContainer else appCardColor()
     val content =
         when {
             selected -> cs.onPrimaryContainer
