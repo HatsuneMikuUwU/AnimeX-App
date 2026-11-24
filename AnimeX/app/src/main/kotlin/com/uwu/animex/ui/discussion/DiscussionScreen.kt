@@ -138,14 +138,19 @@ import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import kotlin.math.roundToInt
 
-internal val DiscussionInputBarHeight = 56.dp
-internal val DiscussionInputBarFade = 24.dp
-internal val DiscussionAvatarSize = 36.dp
-internal val DiscussionReplyAvatarSize = 28.dp
-internal val DiscussionThreadIndent = DiscussionAvatarSize + 8.dp
-internal val DiscussionSwipeTrigger = 64.dp
-internal val DiscussionBubbleShape = RoundedCornerShape(20.dp)
+private val InputBarHeight = 56.dp
 
+private val InputBarFade = 24.dp
+
+private val AvatarSize = 36.dp
+
+private val ReplyAvatarSize = 28.dp
+
+private val ThreadIndent = AvatarSize + 8.dp
+
+private val SwipeTrigger = 64.dp
+
+private val BubbleShape = RoundedCornerShape(20.dp)
 
 @Stable
 internal class ThreadState {
@@ -512,3 +517,654 @@ fun DiscussionScreen(
     }
 }
 
+@Composable
+private fun DiscussionInputBar(
+    draft: String,
+    onDraftChange: (String) -> Unit,
+    loggedIn: Boolean,
+    sending: Boolean,
+    backdrop: LayerBackdrop?,
+    onSend: (String) -> Unit,
+    onNeedLogin: () -> Unit,
+    replyTo: ReplyTarget?,
+    onCancelReply: () -> Unit,
+    focusRequester: FocusRequester,
+    placeholder: String = "Tulis diskusi...",
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
+    val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
+    val brush = remember(cs.background) { bottomScrim(cs.background) }
+    val shape = RoundedCornerShape(InputBarHeight / 2)
+    val previewShape = CircleShape
+    val canSend = loggedIn && !sending && draft.isNotBlank()
+
+    Box(
+        modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val extra = InputBarFade.toPx()
+                drawRect(brush, topLeft = Offset(0f, -extra), size = Size(size.width, size.height + extra))
+            }.navigationBarsPadding()
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 8.dp),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Column(Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
+            AnimatedContent(
+                targetState = replyTo,
+                transitionSpec = {
+                    (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
+                },
+                label = "reply-preview",
+            ) { target ->
+                if (target != null) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .barGlass(glassStyle, backdrop, previewShape, cs.surfaceContainer)
+                            .clip(previewShape)
+                            .padding(start = 20.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier
+                                .width(3.dp)
+                                .height(32.dp)
+                                .clip(CircleShape)
+                                .background(cs.primary),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Membalas ${target.username}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = cs.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                target.snippet.replace('\n', ' '),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = cs.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        IconButton(onClick = hapticClick(block = onCancelReply)) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Batal membalas",
+                                tint = cs.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = InputBarHeight)
+                        .barGlass(glassStyle, backdrop, shape, cs.surfaceContainer, strokeCornerRadius = InputBarHeight / 2)
+                        .clip(shape)
+                        .then(if (loggedIn) Modifier else Modifier.hapticClick(onClick = onNeedLogin))
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (loggedIn) {
+                        BasicTextField(
+                            value = draft,
+                            onValueChange = onDraftChange,
+                            enabled = !sending,
+                            maxLines = 4,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = cs.onSurface),
+                            cursorBrush = SolidColor(cs.primary),
+                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                            decorationBox = { inner ->
+                                if (draft.isEmpty()) {
+                                    Text(
+                                        placeholder,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = cs.onSurfaceVariant,
+                                    )
+                                }
+                                inner()
+                            },
+                        )
+                    } else {
+                        Text(
+                            "Login untuk ikut diskusi",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = cs.onSurfaceVariant,
+                        )
+                    }
+                }
+                FloatingGlassButton(
+                    contentDescription = if (loggedIn) "Kirim" else "Login",
+                    onClick =
+                        hapticClick {
+                            if (!loggedIn) {
+                                onNeedLogin()
+                            } else if (canSend) {
+                                onSend(draft.trim())
+                            }
+                        },
+                    backdrop = backdrop,
+                    size = InputBarHeight,
+                ) {
+                    when {
+                        sending -> AppLoadingIndicator(Modifier.size(24.dp))
+                        !loggedIn -> Icon(
+                            Icons.AutoMirrored.Outlined.Login,
+                            contentDescription = null,
+                            tint = cs.onSurface,
+                        )
+                        else ->
+                            Icon(
+                                Icons.AutoMirrored.Outlined.Send,
+                                contentDescription = null,
+                                tint = if (canSend) cs.primary else cs.onSurface.copy(alpha = 0.38f),
+                            )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwipeToReply(
+    enabled: Boolean,
+    onReply: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val triggerPx = with(LocalDensity.current) { SwipeTrigger.toPx() }
+    val maxPx = triggerPx * 1.35f
+    val scope = rememberCoroutineScope()
+    var offset by remember { mutableFloatStateOf(0f) }
+    val passed by remember(triggerPx) { derivedStateOf { offset <= -triggerPx } }
+    val tick = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
+    val latestReply by rememberUpdatedState(onReply)
+
+    Box(
+        modifier
+            .fillMaxWidth()
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                var crossed = false
+                val settle: () -> Unit = {
+                    scope.launch {
+                        animate(
+                            initialValue = offset,
+                            targetValue = 0f,
+                            animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
+                        ) { value, _ -> offset = value }
+                    }
+                }
+                detectHorizontalDragGestures(
+                    onDragStart = { crossed = false },
+                    onDragEnd = {
+                        val triggered = offset <= -triggerPx
+                        settle()
+                        if (triggered) latestReply()
+                    },
+                    onDragCancel = { settle() },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        val step = if (offset <= -triggerPx) dragAmount * 0.4f else dragAmount
+                        offset = (offset + step).coerceIn(-maxPx, 0f)
+                        val nowCrossed = offset <= -triggerPx
+                        if (nowCrossed && !crossed) tick()
+                        crossed = nowCrossed
+                    },
+                )
+            },
+    ) {
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 8.dp)
+                .size(36.dp)
+                .graphicsLayer {
+                    val progress = (-offset / triggerPx).coerceIn(0f, 1f)
+                    alpha = progress
+                    scaleX = 0.6f + 0.4f * progress
+                    scaleY = scaleX
+                }.background(if (passed) cs.primary else cs.surfaceContainerHighest, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Outlined.Reply,
+                contentDescription = null,
+                tint = if (passed) cs.onPrimary else cs.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Box(Modifier.offset { IntOffset(offset.roundToInt(), 0) }) { content() }
+    }
+}
+
+@Composable
+private fun ActionLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    active: Boolean = false,
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val color = if (active) cs.primary else cs.onSurfaceVariant
+    Row(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .then(if (enabled && !readOnly) Modifier.hapticClick(onClick = onClick) else Modifier)
+            .alpha(if (enabled || readOnly) 1f else 0.38f)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (icon != null) Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+        if (text.isNotEmpty()) {
+            Text(
+                text,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                color = color,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThreadToggle(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .then(if (enabled) Modifier.hapticClick(onClick = onClick) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = cs.primary,
+        )
+    }
+}
+
+@Composable
+private fun ReplyItem(
+    reply: UserApi.Discussion,
+    canReply: Boolean,
+    onReply: () -> Unit,
+    highlighted: Boolean = false,
+    readOnly: Boolean = false,
+) {
+    val cs = MaterialTheme.colorScheme
+    val time = reply.time ?: reply.createdAt
+    val bubbleColor by animateColorAsState(
+        targetValue = if (highlighted) cs.tertiaryContainer else cs.surfaceContainer,
+        animationSpec = tween(durationMillis = 450),
+        label = "reply-highlight",
+    )
+    SwipeToReply(enabled = canReply, onReply = onReply) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            UserAvatar(reply.username, size = ReplyAvatarSize)
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Surface(color = bubbleColor, shape = RoundedCornerShape(18.dp)) {
+                    Column(
+                        Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            reply.username ?: "User",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = cs.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (reply.body().isNotBlank()) {
+                            Text(reply.body(), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                Row(Modifier.padding(start = 6.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (!time.isNullOrBlank()) {
+                        Text(
+                            time,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = cs.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false).padding(horizontal = 8.dp),
+                        )
+                    }
+                    if (!readOnly) ActionLabel("Balas", enabled = canReply, onClick = onReply)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DiscussionRow(
+    discussion: UserApi.Discussion,
+    currentUserId: String?,
+    loggedIn: Boolean,
+    isEpisode: Boolean,
+    actionBusy: Boolean,
+    thread: ThreadState?,
+    onToggleReplies: () -> Unit,
+    onStartReply: (ReplyTarget) -> Unit,
+    onEdit: (UserApi.Discussion, String, () -> Unit) -> Unit,
+    onDelete: (UserApi.Discussion, () -> Unit) -> Unit,
+    onReport: (UserApi.Discussion, () -> Unit) -> Unit,
+    onReact: (UserApi.Discussion, String) -> Unit,
+    modifier: Modifier = Modifier,
+    highlightedId: String? = null,
+    readOnly: Boolean = false,
+    socialActions: Boolean = isEpisode,
+) {
+    val cs = MaterialTheme.colorScheme
+    val isMine = !currentUserId.isNullOrBlank() && discussion.userId == currentUserId
+    val hasId = !discussion.id.isNullOrBlank()
+    var actionsExpanded by remember(discussion.id) { mutableStateOf(false) }
+    var editDialog by remember(discussion.id) { mutableStateOf(false) }
+    var deleteDialog by remember(discussion.id) { mutableStateOf(false) }
+    var reportDialog by remember(discussion.id) { mutableStateOf(false) }
+    var editText by remember(discussion.id, discussion.body()) { mutableStateOf(discussion.body()) }
+    val canOpenActions = !readOnly && loggedIn && hasId && !actionBusy
+    val canReply = !readOnly && socialActions && loggedIn && hasId && !actionBusy
+    val replyCount = discussion.replyCount?.toIntOrNull() ?: 0
+    val expanded = thread?.expanded == true
+    val showThreadLine =
+        thread != null && thread.expanded && !thread.loading && thread.replies.isNotEmpty()
+    val lineColor = cs.outlineVariant
+    val liked = discussion.reaction.equals("Y", true)
+    val disliked = discussion.reaction.equals("N", true)
+    val reactEnabled = loggedIn && hasId
+    val time = discussion.time ?: discussion.createdAt
+    val meta =
+        listOfNotNull(
+            time?.takeIf { it.isNotBlank() },
+            "diedit".takeIf { !discussion.timeUpdated.isNullOrBlank() },
+        ).joinToString(" · ")
+    val replyToComment = {
+        onStartReply(ReplyTarget(discussion, discussion.username ?: "User", discussion.body(), false))
+    }
+
+    Column(
+        modifier
+            .fillMaxWidth()
+            .drawBehind {
+                if (showThreadLine) {
+                    val x = AvatarSize.toPx() / 2
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, AvatarSize.toPx() + 6.dp.toPx()),
+                        end = Offset(x, size.height - 12.dp.toPx()),
+                        strokeWidth = 2.dp.toPx(),
+                        cap = StrokeCap.Round,
+                    )
+                }
+            },
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        SwipeToReply(enabled = canReply, onReply = replyToComment) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                UserAvatar(
+                    discussion.username,
+                    size = AvatarSize,
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    val isHighlighted = !highlightedId.isNullOrBlank() && discussion.id == highlightedId
+                    val bubbleColor by animateColorAsState(
+                        targetValue =
+                            when {
+                                isHighlighted -> cs.tertiaryContainer
+                                isMine -> cs.primaryContainer
+                                else -> cs.surfaceContainer
+                            },
+                        animationSpec = tween(durationMillis = 450),
+                        label = "discussion-highlight",
+                    )
+                    Box {
+                        Surface(
+                            color = bubbleColor,
+                            shape = BubbleShape,
+                            modifier =
+                                Modifier
+                                    .clip(BubbleShape)
+                                    .hapticClick(
+                                        onLongClick = { if (canOpenActions) actionsExpanded = true },
+                                        onClick = {},
+                                    ),
+                        ) {
+                            Column(
+                                Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        discussion.username ?: "User",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isMine) cs.onPrimaryContainer else cs.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false),
+                                    )
+                                    if (discussion.type.equals("A", true)) {
+                                        Text("Admin", style = MaterialTheme.typography.labelSmall, color = cs.tertiary)
+                                    }
+                                    if (!discussion.pro.isNullOrBlank() && discussion.pro != "0") {
+                                        Text("PRO", style = MaterialTheme.typography.labelSmall, color = cs.tertiary)
+                                    }
+                                    discussion.rank?.toIntOrNull()?.takeIf { it in 1..10 }?.let { rank ->
+                                        Text(
+                                            "R$rank",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = cs.secondary,
+                                        )
+                                    }
+                                }
+                                if (discussion.body().isNotBlank()) {
+                                    Text(discussion.body(), style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        }
+                        DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
+                            if (isMine) {
+                                DropdownMenuItem(
+                                    text = { Text("Edit") },
+                                    enabled = !actionBusy,
+                                    onClick = {
+                                        actionsExpanded = false
+                                        editText = discussion.body()
+                                        editDialog = true
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Hapus") },
+                                    enabled = !actionBusy,
+                                    onClick = {
+                                        actionsExpanded = false
+                                        deleteDialog = true
+                                    },
+                                )
+                            } else {
+                                DropdownMenuItem(
+                                    text = { Text("Laporkan") },
+                                    enabled = !actionBusy,
+                                    onClick = {
+                                        actionsExpanded = false
+                                        reportDialog = true
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    Row(Modifier.padding(start = 6.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (meta.isNotEmpty()) {
+                            Text(
+                                meta,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = cs.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false).padding(horizontal = 8.dp),
+                            )
+                        }
+                        if (socialActions) {
+                            if (!readOnly) ActionLabel("Balas", enabled = canReply, onClick = replyToComment)
+                            ActionLabel(
+                                text = discussion.likeCount ?: "0",
+                                icon = if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                                active = liked,
+                                enabled = reactEnabled,
+                                readOnly = readOnly,
+                                onClick = { onReact(discussion, if (liked) "-" else "Y") },
+                            )
+                            ActionLabel(
+                                text = discussion.dislikeCount ?: "0",
+                                icon = if (disliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
+                                active = disliked,
+                                enabled = reactEnabled,
+                                readOnly = readOnly,
+                                onClick = { onReact(discussion, if (disliked) "-" else "N") },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (socialActions && (replyCount > 0 || expanded)) {
+            Column(
+                Modifier.fillMaxWidth().padding(start = ThreadIndent),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (!expanded) {
+                    ThreadToggle("Lihat $replyCount balasan", enabled = hasId, onClick = onToggleReplies)
+                } else {
+                    when {
+                        thread.loading ->
+                            Text(
+                                "Memuat balasan...",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = cs.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            )
+                        thread.replies.isEmpty() ->
+                            Text(
+                                "Belum ada balasan",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = cs.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            )
+                        else -> {
+                            thread.replies.forEach { reply ->
+                                ReplyItem(
+                                    reply = reply,
+                                    highlighted = !highlightedId.isNullOrBlank() && reply.id == highlightedId,
+                                    readOnly = readOnly,
+                                    canReply = canReply,
+                                    onReply = {
+                                        onStartReply(
+                                            ReplyTarget(
+                                                parent = discussion,
+                                                username = reply.username ?: "User",
+                                                snippet = reply.body(),
+                                                mention = true,
+                                            ),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    ThreadToggle("Sembunyikan balasan", enabled = true, onClick = onToggleReplies)
+                }
+            }
+        }
+    }
+
+    if (editDialog) {
+        AppDialog(
+            icon = Icons.Outlined.Edit,
+            title = if (isEpisode) "Edit komentar" else "Edit diskusi",
+            onDismiss = { if (!actionBusy) editDialog = false },
+            text = {
+                OutlinedTextField(
+                    value = editText,
+                    onValueChange = { editText = it },
+                    label = { Text("Teks") },
+                    minLines = 2,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                DialogConfirmButton("Simpan") {
+                    if (!actionBusy && editText.isNotBlank() && editText.trim() != discussion.body().trim()) {
+                        onEdit(discussion, editText.trim()) { editDialog = false }
+                    }
+                }
+            },
+            dismissButton = { DialogCancelButton { if (!actionBusy) editDialog = false } },
+        )
+    }
+
+    if (deleteDialog) {
+        AppDialog(
+            icon = Icons.Outlined.Delete,
+            title = if (isEpisode) "Hapus komentar?" else "Hapus diskusi?",
+            onDismiss = { if (!actionBusy) deleteDialog = false },
+            text = { Text("Tindakan ini tidak dapat dibatalkan.") },
+            confirmButton = {
+                DialogDestructiveButton("Hapus") {
+                    if (!actionBusy) onDelete(discussion) { deleteDialog = false }
+                }
+            },
+            dismissButton = { DialogCancelButton { if (!actionBusy) deleteDialog = false } },
+        )
+    }
+
+    if (reportDialog) {
+        AppDialog(
+            icon = Icons.Outlined.Flag,
+            title = if (isEpisode) "Laporkan komentar?" else "Laporkan diskusi?",
+            onDismiss = { if (!actionBusy) reportDialog = false },
+            text = { Text("Laporan akan dikirim ke moderator untuk ditinjau.") },
+            confirmButton = {
+                DialogConfirmButton("Laporkan") {
+                    if (!actionBusy) onReport(discussion) { reportDialog = false }
+                }
+            },
+            dismissButton = { DialogCancelButton { if (!actionBusy) reportDialog = false } },
+        )
+    }
+}

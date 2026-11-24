@@ -1,17 +1,160 @@
 package com.uwu.animex.data.api
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.os.SystemClock
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParseException
+import com.google.gson.JsonParser
+import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.AppScope
+import com.uwu.animex.core.cache.CacheKind
+import com.uwu.animex.core.cache.CachePolicy
+import com.uwu.animex.core.cache.ResponseCache
+import com.uwu.animex.core.cache.TtlCache
+import com.uwu.animex.core.cache.canonicalCacheKey
+import com.uwu.animex.core.network.ApiException
+import com.uwu.animex.core.network.ConnectivityMonitor
+import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.core.network.UrlSecurity
+import com.uwu.animex.core.network.runSuspendCatching
+import com.uwu.animex.core.network.toApiException
+import com.uwu.animex.core.security.NativeCore
+import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.core.storage.PrefKeys
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.model.Cuplix
+import com.uwu.animex.data.model.CuplixListData
+import com.uwu.animex.data.model.CuplixNext
+import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.EpisodeListData
 import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.MovieDetailData
+import com.uwu.animex.data.model.MovieListData
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.model.Slider
+import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
+import com.uwu.animex.data.model.TrailerListData
+import com.uwu.animex.data.model.toEpisodeIndex
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.IOException
+import java.lang.reflect.Type
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 object Api {
     const val API_LIMIT = 30
+
+    private val CUPLIX_CURSOR_KEYS =
+        listOf(
+            "cursor_new_time",
+            "cursor_new_id",
+            "cursor_likes_count",
+            "cursor_likes_id",
+            "cursor_old_time",
+            "cursor_old_id",
+            "cursor_views_count",
+            "cursor_views_id",
+            "cursor_episode_time_start",
+            "cursor_episode_id",
+            "cursor_episode_index",
+        )
+
+    private const val MAX_EPISODE_PAGES = 100
+    private const val MAX_OLDEST_FILES = 64
+    private const val MAX_OLDEST_AGE_MS = 30L * 24 * 60 * 60 * 1000L
+    private const val MAX_NEIGHBOR_PAGES = 6
+    private const val GATE_RETRY_MS = 60 * 1000L
+    private const val GATE_TTL_MS = 6 * 60 * 60 * 1000L
+    private const val RESTORE_MAX_MS = 10 * 60 * 1000L
+    private const val GATE_TIMEOUT_S = 15L
+
+    private val http: OkHttpClient get() = NetworkModule.apiClient
+    private val gateHttp: OkHttpClient by lazy {
+        NetworkModule.apiClient
+            .newBuilder()
+            .callTimeout(GATE_TIMEOUT_S, TimeUnit.SECONDS)
+            .build()
+    }
+    private val homeCuplixPath: String by lazy { NativeCore.path(NativeCore.HOME_CUPLIX) }
+    private val cuplixScrollPath: String by lazy { NativeCore.path(NativeCore.FYP_SCROLL) }
+    private val cuplixServerPath: String by lazy { NativeCore.path(NativeCore.FYP_SERVER) }
+    private val gson = Gson()
+    private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
+    private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
+    private val cache = ResponseCache()
+    private var prefs: SharedPreferences? = null
+
+    @Volatile
+    var activeDomain: String = ""
+        private set
+
+    @Volatile
+    var remoteConfig: RemoteConfig = RemoteConfig.EMPTY
+        private set
+
+    @Volatile
+    private var mainDomain: String = ""
+
+    @Volatile
+    private var alphaDomain: String = ""
+
+    @Volatile
+    private var fallbackAt = 0L
+
+    @Volatile
+    private var resolved = false
+
+    @Volatile
+    private var hasSavedDomain = false
+
+    @Volatile
+    private var lastGateFailure = 0L
+
+    @Volatile
+    private var resolvedAt = 0L
+
+    @Volatile
+    private var lastForcedGateAt = 0L
+
+    @Volatile
+    private var restoreDelayMs = GATE_RETRY_MS
+
+    @Volatile
+    private var restoring = false
+    private val mutex = Mutex()
+
+    private class NextHit(
+        val episode: Episode?,
+    )
+
+    private val nextCache =
+        TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
+    private val lastPageCache =
+        TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
 
     class OldestEpisodes(
         val episodes: List<Episode>,
@@ -20,17 +163,1006 @@ object Api {
         val latest: Int,
     )
 
+    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = Long.MAX_VALUE)
+
+    @Volatile
+    private var oldestDir: File? = null
+
+    private fun oldestFile(id: String): File? {
+        val dir = oldestDir ?: return null
+        return File(dir, id.replace(unsafeFileChars, "_") + ".json")
+    }
+
+    fun cachedOldestEpisodes(id: String): OldestEpisodes? {
+        oldestCache.get(id)?.let { return it }
+        val file = oldestFile(id)?.takeIf { it.exists() } ?: return null
+        val loaded =
+            runCatching { gson.fromJson(file.readText(), OldestEpisodes::class.java) }
+                .getOrNull()
+        if (loaded == null) {
+            file.delete()
+            return null
+        }
+        oldestCache.put(id, loaded)
+        return loaded
+    }
+
+    fun cacheOldestEpisodes(
+        id: String,
+        state: OldestEpisodes,
+    ) {
+        oldestCache.put(id, state)
+        val file = oldestFile(id) ?: return
+        val json = gson.toJson(state)
+        AppScope.io.launch {
+            runCatching {
+                val tmp = File(file.parentFile, file.name + ".tmp")
+                tmp.writeText(json)
+                if (!tmp.renameTo(file)) {
+                    file.delete()
+                    tmp.renameTo(file)
+                }
+            }
+        }
+    }
+
+    private val inflight = HashMap<String, Deferred<String>>()
+
+    private const val HOME_CUPLIX_SORT = "scroll_likes"
+    private const val HOME_CUPLIX_TIMEOUT_MS = 4_000L
+    private val cuplixTokenSeq = AtomicLong(0L)
+
+    private class HomeCuplixPage(
+        val clips: List<Cuplix>,
+        val next: CuplixNext,
+    )
+
+    @Volatile
+    private var homeMem: HomeData? = null
+
+    @Volatile
+    private var homeMemAt = 0L
+
+    @Synchronized
+    fun init(context: Context) {
+        if (prefs != null) return
+        val app = context.applicationContext
+        prefs = app.getSharedPreferences(PrefKeys.Api.FILE, Context.MODE_PRIVATE)
+        cache.init(File(app.cacheDir, "api_cache"))
+        oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
+
+        val saved =
+            prefs?.getString(PrefKeys.Api.DOMAIN, null)?.takeIf { it.isNotBlank() }?.let { value ->
+                runCatching { normalizeDomain(value) }.getOrNull()
+            }
+        hasSavedDomain = saved != null
+        activeDomain = saved ?: ""
+        mainDomain = activeDomain
+        alphaDomain =
+            prefs?.getString(PrefKeys.Api.DOMAIN_ALPHA, null)?.takeIf { it.isNotBlank() }?.let { value ->
+                runCatching { normalizeDomain(value) }.getOrNull()
+            } ?: ""
+    }
+
+    fun clearCache() {
+        cache.clear()
+        nextCache.clear()
+        lastPageCache.clear()
+        oldestCache.clear()
+        oldestDir?.listFiles()?.forEach { it.delete() }
+        homeMem = null
+        homeMemAt = 0L
+        CuplixFeed.clear()
+        CuplixHomeFeed.clear()
+        CuplixAllFeed.clear()
+    }
+
+    private fun normalizeDomain(raw: String): String = ApiDomainConfig.normalize(raw)
+
+    private suspend fun fetch(
+        domain: String,
+        path: String,
+        params: Map<String, String>,
+        client: OkHttpClient = http,
+        headers: Map<String, String> = emptyMap(),
+    ): String =
+        withContext(Dispatchers.IO) {
+            val url =
+                (domain + path)
+                    .toHttpUrl()
+                    .newBuilder()
+                    .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
+                    .build()
+            val req =
+                Request
+                    .Builder()
+                    .url(url)
+                    .apply { headers.forEach { (k, v) -> header(k, v) } }
+                    .build()
+            val call = client.newCall(req)
+
+            val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
+            try {
+                call.execute().use { r ->
+                    val body = r.body.string()
+                    if (!r.isSuccessful) throw ApiException.Http(r.code)
+                    body
+                }
+            } catch (e: IOException) {
+                throw e.toApiException()
+            } finally {
+                handle.dispose()
+            }
+        }
+
+    private suspend fun fetchShared(
+        key: String,
+        domain: String,
+        path: String,
+        params: Map<String, String>,
+    ): String {
+        val inflightKey = "$domain|$key"
+        val deferred =
+            synchronized(inflight) {
+                inflight.getOrPut(inflightKey) {
+                    AppScope.io.async(start = CoroutineStart.LAZY) {
+                        try {
+                            fetch(domain, path, params)
+                        } finally {
+                            synchronized(inflight) { inflight.remove(inflightKey) }
+                        }
+                    }
+                }
+            }
+        deferred.start()
+        return deferred.await()
+    }
+
+    private val networkPaths: MutableSet<String> = java.util.concurrent.ConcurrentHashMap
+        .newKeySet()
+
+    fun fetchedThisSession(pathPart: String): Boolean = networkPaths.any { pathPart in it }
+
+    private fun cacheKey(
+        path: String,
+        params: Map<String, String>,
+    ): String = canonicalCacheKey(path, params)
+
+    private fun <T> peek(
+        path: String,
+        type: Type,
+        params: Map<String, String> = emptyMap(),
+    ): T? {
+        val json = cache.getMemoryAny(cacheKey(path, params)) ?: return null
+        return try {
+            val env: Envelope<T>? =
+                gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+            if (env == null || env.error == true) null else env.data
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun peekDetail(id: String): DetailResult? {
+        val data =
+            peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
+        val movie = data.movie ?: return null
+        return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
+    }
+
+    fun peekEpisodes(id: String): List<Episode>? =
+        peek<EpisodeListData>(NativeCore.path(NativeCore.EPISODE_LIST, id), EpisodeListData::class.java)?.episode
+
+    private val kindRules: List<Pair<String, CacheKind>> by lazy {
+        val rules = ArrayList<Pair<String, CacheKind>>()
+
+        fun add(
+            op: Int,
+            kind: CacheKind,
+        ) {
+            NativeCore.path(op).takeIf { it.isNotBlank() }?.let { rules += it to kind }
+        }
+        add(NativeCore.HOME_LIST, CacheKind.HOME)
+        add(NativeCore.HOME_SECTION, CacheKind.HOME)
+        add(NativeCore.HOME_NEW_EPISODE, CacheKind.HOME)
+        add(NativeCore.HOME_CUPLIX, CacheKind.HOME)
+        add(NativeCore.FYP_SCROLL, CacheKind.HOME)
+        add(NativeCore.SCHEDULE, CacheKind.LIST)
+        add(NativeCore.EXPLORE_MOVIE, CacheKind.SEARCH)
+        add(NativeCore.FIND, CacheKind.SEARCH)
+        add(NativeCore.DETAIL, CacheKind.DETAIL)
+        add(NativeCore.EPISODE_LIST, CacheKind.EPISODES)
+        add(NativeCore.TRAILER_MOVIE, CacheKind.LIST)
+        add(NativeCore.TRAILER_GLOBAL, CacheKind.LIST)
+        add(NativeCore.EXPLORE_DATA, CacheKind.LIST)
+        add(NativeCore.EXPLORE_GENRE, CacheKind.STABLE)
+        add(NativeCore.EXPLORE_YEAR, CacheKind.STABLE)
+        runCatching { NativeCore.searchPlan() }.getOrNull()?.forEach { entry ->
+            entry.substringBefore('|').takeIf { it.isNotBlank() }?.let { rules += it to CacheKind.SEARCH }
+        }
+        rules.sortedByDescending { it.first.length }
+    }
+
+    private fun kindOf(path: String): CacheKind =
+        kindRules.firstOrNull { path.startsWith(it.first) }?.second ?: CacheKind.LIST
+
+    fun oldestEpisodesSizeBytes(): Long =
+        oldestDir
+            ?.listFiles()
+            ?.filter { it.isFile }
+            ?.sumOf { it.length() }
+            ?: 0L
+
+    fun trimCache() {
+        cache.trim()
+        val dir = oldestDir ?: return
+        val files = dir.listFiles() ?: return
+        val now = System.currentTimeMillis()
+        val jsonFiles = ArrayList<File>(files.size)
+        for (f in files) {
+            if (!f.isFile) continue
+            if (f.name.endsWith(".tmp") || now - f.lastModified() > MAX_OLDEST_AGE_MS) {
+                f.delete()
+            } else {
+                jsonFiles += f
+            }
+        }
+        if (jsonFiles.size > MAX_OLDEST_FILES) {
+            jsonFiles
+                .sortedByDescending { it.lastModified() }
+                .drop(MAX_OLDEST_FILES)
+                .forEach { it.delete() }
+        }
+    }
+
+    private suspend fun fetchCached(
+        path: String,
+        params: Map<String, String>,
+        force: Boolean = false,
+    ): String {
+        val volatile = NativeCore.isVolatile(path) || path == cuplixServerPath
+        val key = cacheKey(path, params)
+        val ttl = CachePolicy.ttlMs(kindOf(path))
+
+        if (!volatile && !force) {
+            if (ttl > 0L) {
+                cache.getMemory(key, ttl)?.let { return it }
+                withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+            }
+            if (!ConnectivityMonitor.isOnline()) {
+                withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
+            }
+        }
+
+        return try {
+            ensureDomains()
+            val body = withFallback { domain -> fetchShared(key, domain, path, params) }
+            networkPaths.add(path)
+            if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
+            body
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (!volatile && !force) {
+                val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
+                if (stale != null) return stale
+            }
+            throw e.normalized()
+        }
+    }
+
+    private fun gateFresh(): Boolean =
+        resolved && SystemClock.elapsedRealtime() - resolvedAt < GATE_TTL_MS
+
+    suspend fun ensureReady() {
+        ensureDomains()
+    }
+
+    private suspend fun ensureDomains() {
+        if (gateFresh()) return
+
+        if (hasSavedDomain && activeDomain.isNotBlank()) {
+            if (Secrets.apiGateUrl.isNotBlank()) refreshDomainsInBackground()
+            return
+        }
+        mutex.withLock { resolveDomainsLocked() }
+    }
+
+    private fun restoreMainIfDue() {
+        val before = activeDomain
+        activeDomain =
+            ApiDomainPolicy.restoreMainDomain(
+                currentDomain = activeDomain,
+                mainDomain = mainDomain,
+                alphaDomain = alphaDomain,
+                fallbackAt = fallbackAt,
+                now = SystemClock.elapsedRealtime(),
+                retryAfterMs = restoreDelayMs,
+            )
+        if (activeDomain != before) restoring = true
+    }
+
+    private fun onDomainSuccess(domain: String) {
+        if (domain == mainDomain) {
+            restoring = false
+            restoreDelayMs = GATE_RETRY_MS
+        }
+    }
+
+    private fun switchTo(domain: String) {
+        activeDomain = domain
+        if (domain == mainDomain) {
+            restoring = false
+            restoreDelayMs = GATE_RETRY_MS
+            return
+        }
+        fallbackAt = SystemClock.elapsedRealtime()
+        restoreDelayMs =
+            if (restoring) (restoreDelayMs * 2).coerceAtMost(RESTORE_MAX_MS) else GATE_RETRY_MS
+        restoring = false
+    }
+
+    suspend fun <T> withFallback(block: suspend (domain: String) -> T): T {
+        restoreMainIfDue()
+        val first = activeDomain
+        val failure: Exception =
+            try {
+                return block(first).also { onDomainSuccess(first) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e
+            }
+        if (!ApiDomainPolicy.isDomainDown(failure)) throw failure
+
+        val tried = mutableSetOf(first)
+        ApiDomainPolicy.fallbackDomain(first, mainDomain, alphaDomain, failure)?.let { other ->
+            tried += other
+            try {
+                return block(other).also { switchTo(other) }
+            } catch (c: CancellationException) {
+                throw c
+            } catch (_: Exception) {
+            }
+        }
+
+        refreshGateAfterFailure()
+        for (domain in listOf(mainDomain, alphaDomain)) {
+            if (domain.isBlank() || !tried.add(domain)) continue
+            try {
+                return block(domain).also { switchTo(domain) }
+            } catch (c: CancellationException) {
+                throw c
+            } catch (_: Exception) {
+            }
+        }
+        throw failure
+    }
+
+    private suspend fun refreshGateAfterFailure() {
+        if (Secrets.apiGateUrl.isBlank()) return
+        mutex.withLock {
+            val now = SystemClock.elapsedRealtime()
+            if (lastForcedGateAt != 0L && now - lastForcedGateAt < GATE_RETRY_MS) return
+            lastForcedGateAt = now
+            resolveDomainsLocked(force = true)
+        }
+    }
+
+    @Volatile
+    private var refreshing = false
+
+    private fun refreshDomainsInBackground() {
+        val throttled =
+            lastGateFailure != 0L && SystemClock.elapsedRealtime() - lastGateFailure < GATE_RETRY_MS
+        if (refreshing || throttled) return
+        refreshing = true
+        AppScope.io.launch {
+            try {
+                mutex.withLock { resolveDomainsLocked() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            } finally {
+                refreshing = false
+            }
+        }
+    }
+
+    private suspend fun resolveDomainsLocked(force: Boolean = false) {
+        if (!force && gateFresh()) return
+        val gate = Secrets.apiGateUrl
+        if (gate.isBlank()) {
+            if (activeDomain.isNotBlank()) return
+            throw ApiException.Config("API_GATE_URL belum diisi (env atau api.gate di local.properties)")
+        }
+
+        val now = SystemClock.elapsedRealtime()
+        val throttled = lastGateFailure != 0L && now - lastGateFailure < GATE_RETRY_MS
+        if (throttled && activeDomain.isNotBlank()) return
+
+        try {
+            val secureGate = normalizeDomain(gate)
+            val json =
+                fetch(
+                    secureGate,
+                    NativeCore.path(NativeCore.GATE_SETUP),
+                    emptyMap(),
+                    gateHttp,
+                    headers = mapOf("X-No-Base-Rewrite" to "1"),
+                )
+            val config = RemoteConfigParser.parse(json)
+            val resolvedMainDomain =
+                config.domainApi.takeIf { it.isNotBlank() }?.let(::normalizeDomain)
+                    ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
+            val resolvedAlphaDomain =
+                config.domainApiAlpha
+                    ?.let { runCatching { normalizeDomain(it) }.getOrNull() }
+                    ?.takeIf { it != resolvedMainDomain }
+                    ?: ""
+            remoteConfig = config
+            activeDomain = resolvedMainDomain
+            mainDomain = resolvedMainDomain
+            alphaDomain = resolvedAlphaDomain
+            prefs
+                ?.edit()
+                ?.also { editor ->
+                    editor.putString(PrefKeys.Api.DOMAIN, resolvedMainDomain)
+                    if (resolvedAlphaDomain.isBlank()) {
+                        editor.remove(PrefKeys.Api.DOMAIN_ALPHA)
+                    } else {
+                        editor.putString(PrefKeys.Api.DOMAIN_ALPHA, resolvedAlphaDomain)
+                    }
+                }?.apply()
+            lastGateFailure = 0L
+            hasSavedDomain = true
+            resolved = true
+            resolvedAt = SystemClock.elapsedRealtime()
+            restoring = false
+            restoreDelayMs = GATE_RETRY_MS
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            lastGateFailure = now
+            if (activeDomain.isBlank()) throw e.normalized()
+        }
+    }
+
+    private fun Exception.normalized(): Exception =
+        when (this) {
+            is ApiException -> this
+            is IOException -> toApiException()
+            is JsonParseException,
+            is IllegalStateException,
+            is ClassCastException,
+            is UnsupportedOperationException,
+            -> ApiException.Parse(this)
+            else -> this
+        }
+
+    private suspend fun <T> firstNonEmpty(attempts: List<suspend () -> List<T>>): List<T> {
+        var failure: Exception? = null
+        var succeeded = false
+        for (attempt in attempts) {
+            try {
+                val list = attempt()
+                succeeded = true
+                if (list.isNotEmpty()) return list
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ApiException.Offline) {
+                throw e
+            } catch (e: Exception) {
+                if (failure == null) failure = e
+            }
+        }
+        val err = failure
+        if (!succeeded && err != null) throw err
+        return emptyList()
+    }
+
+    private suspend fun <T> firstNonEmpty(vararg attempts: suspend () -> List<T>): List<T> =
+        firstNonEmpty(attempts.toList())
+
+    private suspend fun <T> get(
+        path: String,
+        type: Type,
+        params: Map<String, String> = emptyMap(),
+        force: Boolean = false,
+    ): T? {
+        val json = fetchCached(path, params, force)
+        return withContext(Dispatchers.Default) {
+            val env: Envelope<T>? =
+                try {
+                    gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+                } catch (e: JsonParseException) {
+                    invalidateCachedResponse(path, params)
+                    throw ApiException.Parse(e)
+                }
+            if (env == null) {
+                invalidateCachedResponse(path, params)
+                throw ApiException.Parse()
+            }
+            if (env.error == true) {
+                invalidateCachedResponse(path, params)
+                throw ApiException.Remote(env.message ?: "API error")
+            }
+            env.data
+        }
+    }
+
+    private suspend fun getData(
+        path: String,
+        params: Map<String, String> = emptyMap(),
+        force: Boolean = false,
+    ): JsonObject? {
+        val json = fetchCached(path, params, force)
+        return withContext(Dispatchers.Default) {
+            val root =
+                try {
+                    JsonParser.parseString(json).asJsonObject
+                } catch (e: JsonParseException) {
+                    invalidateCachedResponse(path, params)
+                    throw ApiException.Parse(e)
+                } catch (e: IllegalStateException) {
+                    invalidateCachedResponse(path, params)
+                    throw ApiException.Parse(e)
+                }
+            val err = root.get("error")
+            val isError =
+                when {
+                    err == null || err.isJsonNull -> false
+                    err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
+                    err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
+                    else -> false
+                }
+            if (isError) {
+                invalidateCachedResponse(path, params)
+                throw ApiException.Remote(
+                    root.get("message")?.takeIf { it.isJsonPrimitive }?.asString ?: "API error",
+                )
+            }
+            root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+        }
+    }
+
+    private suspend fun invalidateCachedResponse(
+        path: String,
+        params: Map<String, String>,
+    ) {
+        withContext(Dispatchers.IO) { cache.remove(cacheKey(path, params)) }
+    }
+
+    private fun JsonObject.movies(key: String): List<Movie> =
+        runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
+
+    fun absUrl(path: String?): String? {
+        val raw = path?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val hasScheme = absoluteUrlScheme.containsMatchIn(raw)
+        val candidate =
+            when {
+                raw.startsWith("//") -> "https:$raw"
+                hasScheme -> raw
+                activeDomain.isBlank() -> return null
+                else -> activeDomain.trimEnd('/') + "/" + raw.trimStart('/')
+            }
+        return UrlSecurity.secureOrNull(candidate)
+    }
+
+    suspend fun home(force: Boolean = false): HomeData {
+        val cached = homeMem
+        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
+            return cached
+        }
+        val (listResult, cuplixPage) =
+            coroutineScope {
+                val cuplixJob = async { fetchHomeCuplix(force) }
+                val list =
+                    runSuspendCatching {
+                        getData(
+                            NativeCore.path(NativeCore.HOME_LIST),
+                            mapOf(
+                                "limit" to "$API_LIMIT",
+                            ),
+                            force,
+                        )
+                    }
+                val page =
+                    if (list.getOrNull() != null) {
+                        cuplixJob.await()
+                    } else {
+                        cuplixJob.cancel()
+                        null
+                    }
+                list to page
+            }
+        val d =
+            listResult.getOrElse { e ->
+                if (cached != null) return cached
+                throw e
+            } ?: return cached ?: HomeData()
+        val h =
+            withContext(Dispatchers.Default) {
+                val sliders =
+                    runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
+                        .getOrNull()
+                        .orEmpty()
+                        .filter { !it.image.isNullOrBlank() }
+                        .take(10)
+                HomeData(
+                    slider = sliders,
+                    history = d.movies("history"),
+                    update = d.movies("update"),
+                    hot = d.movies("hot"),
+                    new = d.movies("new"),
+                    today = d.movies("today"),
+                    random = d.movies("random"),
+                    waiting = d.movies("waiting"),
+                    popular = d.movies("popular"),
+                    cuplix = cuplixPage?.clips ?: cached?.cuplix.orEmpty(),
+                    cuplixNext = if (cuplixPage != null) cuplixPage.next else cached?.cuplixNext,
+                    cuplixToken =
+                        if (cuplixPage != null) {
+                            cuplixTokenSeq.incrementAndGet()
+                        } else {
+                            cached?.cuplixToken ?: 0L
+                        },
+                )
+            }
+        homeMem = h
+        homeMemAt = SystemClock.elapsedRealtime()
+        return h
+    }
+
+    private suspend fun fetchHomeCuplix(force: Boolean): HomeCuplixPage? {
+        if (!CuplixPrefs.enabled.value) return null
+        return withTimeoutOrNull(HOME_CUPLIX_TIMEOUT_MS) {
+            val scroll = runSuspendCatching { cuplixScroll(sort = HOME_CUPLIX_SORT, force = force) }.getOrNull()
+            if (scroll != null && scroll.clips.isNotEmpty()) {
+                return@withTimeoutOrNull HomeCuplixPage(scroll.clips, CuplixNext(scroll.cursor, scroll.idFyp))
+            }
+            val legacy = runSuspendCatching { homeCuplix(force = force) }.getOrNull().orEmpty()
+            if (legacy.isNotEmpty()) HomeCuplixPage(legacy, CuplixNext(legacy = true)) else null
+        }
+    }
+
+    suspend fun homeMovies(
+        section: String,
+        page: Int = 0,
+        force: Boolean = false,
+    ): List<Movie> {
+        val path = NativeCore.path(NativeCore.HOME_SECTION, section)
+        val params = homeListParams(page)
+        return firstNonEmpty(
+            { get<MovieListData>(path, MovieListData::class.java, params, force)?.movie.orEmpty() },
+            { getData(path, params, force)?.movieArray().orEmpty() },
+        )
+    }
+
+    suspend fun newEpisodes(
+        page: Int = 0,
+        force: Boolean = false,
+    ): List<Movie> {
+        val path = NativeCore.path(NativeCore.HOME_NEW_EPISODE)
+        val params = homeListParams(page)
+        return firstNonEmpty(
+            { get<MovieListData>(path, MovieListData::class.java, params, force)?.movie.orEmpty() },
+            { getData(path, params, force)?.movieArray().orEmpty() },
+        )
+    }
+
+    suspend fun homeCuplix(
+        force: Boolean = false,
+        page: Int = 1,
+    ): List<Cuplix> {
+        val params =
+            buildMap {
+                put("limit", "$API_LIMIT")
+                if (page > 1) put("page", page.toString())
+            }
+        val data =
+            get<CuplixListData>(
+                homeCuplixPath,
+                CuplixListData::class.java,
+                params,
+                force,
+            )
+        return data?.fyp.orEmpty()
+    }
+
     data class CuplixPage(
         val clips: List<Cuplix>,
         val cursor: Map<String, String>,
         val idFyp: String = "",
     )
 
+    suspend fun cuplixScroll(
+        sort: String,
+        cursor: Map<String, String> = emptyMap(),
+        keyIdFyp: String = "",
+        idUserFyp: String = "",
+        movieIds: String = "",
+        force: Boolean = true,
+        limit: Int = API_LIMIT,
+    ): CuplixPage {
+        val params =
+            buildMap {
+                put("limit", limit.coerceAtLeast(1).toString())
+                put("sort", sort)
+                put("key_id_fyp", keyIdFyp)
+                put("id_user_fyp", idUserFyp)
+                put("movie_ids", movieIds)
+                CUPLIX_CURSOR_KEYS.forEach { key -> put(key, cursor[key].orEmpty()) }
+            }
+        val json = fetchCached(cuplixScrollPath, params, force)
+        return withContext(Dispatchers.Default) {
+            val root =
+                try {
+                    JsonParser.parseString(json).asJsonObject
+                } catch (e: JsonParseException) {
+                    invalidateCachedResponse(cuplixScrollPath, params)
+                    throw ApiException.Parse(e)
+                } catch (e: IllegalStateException) {
+                    invalidateCachedResponse(cuplixScrollPath, params)
+                    throw ApiException.Parse(e)
+                }
+            val err = root.get("error")
+            val isError =
+                err != null &&
+                    err.isJsonPrimitive &&
+                    (
+                        (err.asJsonPrimitive.isBoolean && err.asBoolean) ||
+                            err.asJsonPrimitive.isString &&
+                            err.asString.equals("true", ignoreCase = true)
+                    )
+            if (isError) {
+                invalidateCachedResponse(cuplixScrollPath, params)
+                throw ApiException.Remote(root.get("message")?.takeIf { it.isJsonPrimitive }?.asString ?: "API error")
+            }
+            val data = root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+            val array = data?.get("fyp")?.takeIf { it.isJsonArray }?.asJsonArray
+            val clips =
+                if (array == null) {
+                    emptyList()
+                } else {
+                    val parsed =
+                        try {
+                            gson.fromJson(array, Array<Cuplix>::class.java)?.toList().orEmpty()
+                        } catch (e: JsonParseException) {
+                            invalidateCachedResponse(cuplixScrollPath, params)
+                            throw ApiException.Parse(e)
+                        }
+                    parsed
+                }
+            val nextCursor =
+                buildMap {
+                    data?.get("cursor")?.takeIf { it.isJsonObject }?.asJsonObject?.entrySet()?.forEach { (k, v) ->
+                        put(
+                            k,
+                            v
+                                .takeIf { it.isJsonPrimitive }
+                                ?.asString
+                                ?.trim()
+                                .orEmpty(),
+                        )
+                    }
+                }
+            val idFyp = data
+                ?.get("id_fyp")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString
+                ?.trim()
+                .orEmpty()
+            CuplixPage(clips, nextCursor, idFyp)
+        }
+    }
+
+    suspend fun cuplixServers(clipId: String): List<Server> =
+        get<StreamData>(
+            cuplixServerPath,
+            StreamData::class.java,
+            mapOf("id_fyp" to clipId),
+            force = true,
+        )?.server
+            .orEmpty()
+            .filter { !it.link.isNullOrBlank() }
+            .mapNotNull { server ->
+                UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
+            }
+
+    private fun homeListParams(page: Int): Map<String, String> =
+        buildMap {
+            put("limit", "$API_LIMIT")
+            if (page > 0) put("page", "$page")
+        }
+
+    private val SCHEDULE_DAYS: List<String> by lazy { NativeCore.scheduleDays().toList() }
+
+    private fun JsonObject.movieArray(): List<Movie> {
+        val arr =
+            listOf("movie", "movies", "list", "items", "results")
+                .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+                ?: return emptyList()
+        return runCatching { gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
+    }
+
+    private suspend fun scheduleForDay(
+        day: String,
+        force: Boolean = false,
+    ): List<Movie> {
+        val path = NativeCore.path(NativeCore.SCHEDULE)
+        val params = mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT")
+        val json = fetchCached(path, params, force)
+        val parsed: List<Movie>? =
+            withContext(Dispatchers.Default) {
+                runCatching {
+                    val root = JsonParser.parseString(json).asJsonObject
+                    val err = root.get("error")
+                    val isErr =
+                        err != null &&
+                            err.isJsonPrimitive &&
+                            (
+                                (err.asJsonPrimitive.isBoolean && err.asBoolean) ||
+                                    (err.asJsonPrimitive.isString && err.asString.equals("true", ignoreCase = true))
+                            )
+                    if (isErr) {
+                        return@runCatching null
+                    }
+                    val data =
+                        root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+                            ?: return@runCatching emptyList<Movie>()
+                    data.movieArray().map { it.copy(day = day) }
+                }.getOrNull()
+            }
+        if (parsed == null) invalidateCachedResponse(path, params)
+        return parsed.orEmpty()
+    }
+
+    suspend fun schedule(force: Boolean = false): List<Movie> =
+        coroutineScope {
+            val results =
+                SCHEDULE_DAYS
+                    .map { day ->
+                        async {
+                            val fresh = runSuspendCatching { scheduleForDay(day, force) }
+                            if (force && fresh.isFailure) {
+                                runSuspendCatching { scheduleForDay(day, false) }
+                            } else {
+                                fresh
+                            }
+                        }
+                    }.awaitAll()
+            val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
+            if (list.isEmpty()) {
+                results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
+                throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
+            }
+            list
+        }
+
+    suspend fun search(
+        q: String,
+        page: Int = 0,
+        force: Boolean = false,
+    ): List<Movie> {
+        val query = q.trim()
+        if (query.isBlank()) return emptyList()
+        val p = page.coerceAtLeast(0)
+
+        val attempts =
+            buildList<suspend () -> List<Movie>> {
+                for (entry in NativeCore.searchPlan()) {
+                    val (searchPath, key, sortFlag) = entry.split('|')
+                    add {
+                        val params = linkedMapOf(key to query, "page" to "$p")
+                        if (sortFlag == "1") params["sort"] = "views"
+                        getData(searchPath, params, force)?.movieArray().orEmpty()
+                    }
+                }
+            }
+        return firstNonEmpty(attempts).distinctBy { it.id }
+    }
+
+    suspend fun suggest(
+        q: String,
+        limit: Int = 6,
+    ): List<Movie> {
+        val query = q.trim()
+        if (query.length < 2) return emptyList()
+        return runSuspendCatching {
+            getData(
+                NativeCore.path(NativeCore.EXPLORE_MOVIE),
+                mapOf("keyword" to query, "page" to "0", "sort" to "views"),
+            )?.movieArray().orEmpty()
+        }.getOrNull()
+            .orEmpty()
+            .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
+            .distinctBy {
+                it.title
+                    .orEmpty()
+                    .trim()
+                    .lowercase()
+            }.take(limit)
+    }
+
+    suspend fun detail(id: String): Movie? = detailFull(id).movie
+
     data class DetailResult(
         val movie: Movie?,
         val seasons: List<Movie> = emptyList(),
         val episode: Episode? = null,
     )
+
+    suspend fun detailFull(
+        id: String,
+        force: Boolean = false,
+    ): DetailResult {
+        val data =
+            get<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java, force = force)
+        return DetailResult(
+            movie = data?.movie,
+            seasons = data?.season.orEmpty(),
+            episode = data?.episode,
+        )
+    }
+
+    suspend fun episodes(
+        id: String,
+        page: Int? = null,
+        force: Boolean = false,
+    ): List<Episode> {
+        val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
+        return get<EpisodeListData>(
+            NativeCore.path(NativeCore.EPISODE_LIST, id),
+            EpisodeListData::class.java,
+            params,
+            force,
+        )?.episode.orEmpty()
+    }
+
+    suspend fun trailers(
+        movieId: String,
+        force: Boolean = false,
+    ): List<Trailer> {
+        val params = mapOf("id_movie" to movieId)
+        return firstNonEmpty(
+            {
+                get<TrailerListData>(
+                    NativeCore.path(NativeCore.TRAILER_MOVIE),
+                    TrailerListData::class.java,
+                    params,
+                    force,
+                )?.trailer
+                    .orEmpty()
+            },
+            {
+                getData(NativeCore.path(NativeCore.TRAILER_MOVIE), params, force)?.trailerArray().orEmpty()
+            },
+            {
+                get<TrailerListData>(
+                    NativeCore.path(NativeCore.TRAILER_GLOBAL),
+                    TrailerListData::class.java,
+                    params,
+                    force,
+                )?.trailer
+                    .orEmpty()
+            },
+            {
+                getData(NativeCore.path(NativeCore.TRAILER_GLOBAL), params, force)?.trailerArray().orEmpty()
+            },
+        )
+    }
+
+    private fun JsonObject.trailerArray(): List<Trailer> {
+        val arr =
+            listOf("trailer", "trailers", "list", "items", "results", "data")
+                .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+                ?: return emptyList()
+        return runCatching { gson.fromJson(arr, Array<Trailer>::class.java)?.toList() }.getOrNull().orEmpty()
+    }
+
+    suspend fun hasServers(episodeId: String?): Boolean =
+        episodeId != null && runSuspendCatching { servers(episodeId) }.getOrNull()?.isNotEmpty() == true
 
     sealed class NextEpisodeLookup {
         data class Exists(
@@ -42,154 +1174,305 @@ object Api {
         data object Unknown : NextEpisodeLookup()
     }
 
-    val activeDomain: String
-        get() = ApiDomainManager.activeDomain
+    private fun Episode.number(): Double? = index.toEpisodeIndex()?.toDoubleOrNull()
 
-    val remoteConfig: RemoteConfig
-        get() = ApiDomainManager.remoteConfig
-
-    @Synchronized
-    fun init(context: Context) {
-        val app = context.applicationContext
-        ApiTransport.init(app)
-        ApiDomainManager.init(app)
+    private fun Episode.matches(target: String): Boolean {
+        val own = index?.trim()?.takeIf { it.isNotEmpty() } ?: return false
+        if (own == target) return true
+        val ownNum = own.toDoubleOrNull() ?: return false
+        return ownNum == target.toDoubleOrNull()
     }
 
-    fun cachedOldestEpisodes(id: String): OldestEpisodes? = ApiTransport.cachedOldestEpisodes(id)
-
-    fun cacheOldestEpisodes(
-        id: String,
-        state: OldestEpisodes,
-    ) = ApiTransport.cacheOldestEpisodes(id, state)
-
-    fun clearCache() = ApiTransport.clearCache()
-
-    fun fetchedThisSession(pathPart: String): Boolean = ApiTransport.fetchedThisSession(pathPart)
-
-    fun peekDetail(id: String): DetailResult? = ApiTransport.peekDetail(id)
-
-    fun peekEpisodes(id: String): List<Episode>? = ApiTransport.peekEpisodes(id)
-
-    fun oldestEpisodesSizeBytes(): Long = ApiTransport.oldestEpisodesSizeBytes()
-
-    fun trimCache() = ApiTransport.trimCache()
-
-    suspend fun ensureReady() = ApiDomainManager.ensureReady()
-
-    suspend fun <T> withFallback(block: suspend (domain: String) -> T): T = ApiDomainManager.withFallback(block)
-
-    fun absUrl(path: String?): String? = ApiDomainManager.absUrl(path)
-
-    suspend fun home(force: Boolean = false): HomeData = ApiHomeEndpoints.home(force)
-
-    suspend fun homeMovies(
-        section: String,
-        page: Int = 0,
-        force: Boolean = false,
-    ): List<Movie> = ApiHomeEndpoints.homeMovies(section, page, force)
-
-    suspend fun newEpisodes(
-        page: Int = 0,
-        force: Boolean = false,
-    ): List<Movie> = ApiHomeEndpoints.newEpisodes(page, force)
-
-    suspend fun homeCuplix(
-        force: Boolean = false,
-        page: Int = 1,
-    ): List<Cuplix> = ApiHomeEndpoints.homeCuplix(force, page)
-
-    suspend fun cuplixScroll(
-        sort: String,
-        cursor: Map<String, String> = emptyMap(),
-        keyIdFyp: String = "",
-        idUserFyp: String = "",
-        movieIds: String = "",
-        force: Boolean = false,
-    ): CuplixPage = ApiHomeEndpoints.cuplixScroll(sort, cursor, keyIdFyp, idUserFyp, movieIds, force)
-
-    suspend fun cuplixServers(clipId: String): List<Server> = ApiHomeEndpoints.cuplixServers(clipId)
-
-    suspend fun schedule(force: Boolean = false): List<Movie> = ApiHomeEndpoints.schedule(force)
-
-    suspend fun search(
-        q: String,
-        page: Int = 0,
-        force: Boolean = false,
-    ): List<Movie> = ApiCatalogEndpoints.search(q, page, force)
-
-    suspend fun suggest(
-        q: String,
-        limit: Int = 6,
-    ): List<Movie> = ApiCatalogEndpoints.suggest(q, limit)
-
-    suspend fun detail(id: String): Movie? = ApiCatalogEndpoints.detail(id)
-
-    suspend fun detailFull(
-        id: String,
-        force: Boolean = false,
-    ): DetailResult = ApiCatalogEndpoints.detailFull(id, force)
-
-    suspend fun episodes(
-        id: String,
-        page: Int? = null,
-        force: Boolean = false,
-    ): List<Episode> = ApiCatalogEndpoints.episodes(id, page, force)
-
-    suspend fun trailers(
+    private suspend fun neighborEpisode(
         movieId: String,
-        force: Boolean = false,
-    ): List<Trailer> = ApiCatalogEndpoints.trailers(movieId, force)
+        current: Double,
+        forward: Boolean,
+        newest: List<Episode>,
+    ): Episode? {
+        val newestMax = newest.mapNotNull { it.number() }.maxOrNull() ?: return null
+        val start = ((newestMax - current) / API_LIMIT).toInt().coerceAtLeast(0)
+        val pool = LinkedHashMap<String, Episode>()
 
-    suspend fun hasServers(episodeId: String?): Boolean = ApiCatalogEndpoints.hasServers(episodeId)
+        suspend fun load(page: Int): Boolean {
+            val batch = if (page == 0) newest else episodesPage(movieId, page)
+            if (batch.isEmpty()) return false
+            for (ep in batch) {
+                val key = ep.id ?: continue
+                pool.putIfAbsent(key, ep)
+            }
+            return true
+        }
+
+        var low = start
+        var high = start
+        if (!load(start)) return null
+        var attempts = 0
+        while (attempts < MAX_NEIGHBOR_PAGES) {
+            attempts++
+            val numbers = pool.values.mapNotNull { it.number() }
+            val needOlder =
+                if (forward) numbers.none { it <= current } else numbers.none { it < current }
+            val needNewer =
+                if (forward) numbers.none { it > current } else numbers.none { it >= current }
+            when {
+                needOlder -> if (load(high + 1)) high++ else break
+                needNewer -> if (low > 0 && load(low - 1)) low-- else break
+                else -> break
+            }
+        }
+        val numbered = pool.values.mapNotNull { ep -> ep.number()?.let { ep to it } }
+        return if (forward) {
+            numbered.filter { it.second > current }.minByOrNull { it.second }?.first
+        } else {
+            numbered.filter { it.second < current }.maxByOrNull { it.second }?.first
+        }
+    }
 
     suspend fun lookupNextEpisode(
         movieId: String,
         index: String?,
         requireServers: Boolean = false,
-    ): NextEpisodeLookup = ApiCatalogEndpoints.lookupNextEpisode(movieId, index, requireServers)
+    ): NextEpisodeLookup {
+        val current = index.toEpisodeIndex()?.toDoubleOrNull() ?: return NextEpisodeLookup.Unknown
+        val key = "$movieId:$current:${if (requireServers) "s" else "c"}"
+        nextCache.get(key)?.let { hit ->
+            if (hit.episode != null) return NextEpisodeLookup.Exists(hit.episode)
+        }
+
+        var newest =
+            runSuspendCatching { episodes(movieId) }.getOrElse {
+                return NextEpisodeLookup.Unknown
+            }
+        var newestNum = newest.mapNotNull { it.number() }.maxOrNull() ?: return NextEpisodeLookup.Unknown
+        if (current >= newestNum) {
+            val fresh = runSuspendCatching { episodes(movieId, force = true) }.getOrNull().orEmpty()
+            val freshNum = fresh.mapNotNull { it.number() }.maxOrNull()
+            if (freshNum != null) {
+                newest = fresh
+                newestNum = freshNum
+            }
+        }
+        if (current >= newestNum) return NextEpisodeLookup.NoNext
+
+        val found =
+            runSuspendCatching { neighborEpisode(movieId, current, forward = true, newest = newest) }.getOrNull()
+                ?: return NextEpisodeLookup.Unknown
+        if (requireServers && !hasServers(found.id)) {
+            return NextEpisodeLookup.Unknown
+        }
+
+        nextCache.put(key, NextHit(found))
+        return NextEpisodeLookup.Exists(found)
+    }
 
     suspend fun nextEpisode(
         movieId: String,
         index: String?,
-    ): Episode? = ApiCatalogEndpoints.nextEpisode(movieId, index)
+    ): Episode? =
+        when (val r = lookupNextEpisode(movieId, index, requireServers = true)) {
+            is NextEpisodeLookup.Exists -> r.episode
+            else -> null
+        }
 
     suspend fun previousEpisode(
         movieId: String,
         index: String?,
-    ): Episode? = ApiCatalogEndpoints.previousEpisode(movieId, index)
+    ): Episode? {
+        val current = index.toEpisodeIndex()?.toDoubleOrNull() ?: return null
+        val newest = runSuspendCatching { episodes(movieId) }.getOrNull() ?: return null
+        return runSuspendCatching { neighborEpisode(movieId, current, forward = false, newest = newest) }.getOrNull()
+    }
 
     suspend fun findEpisode(
         movieId: String,
         index: String,
-    ): Episode? = ApiCatalogEndpoints.findEpisode(movieId, index)
+    ): Episode? {
+        val target = index.trim()
+        if (target.isBlank()) return null
 
-    suspend fun allEpisodes(id: String): List<Episode> = ApiCatalogEndpoints.allEpisodes(id)
+        fun inList(list: List<Episode>) = list.firstOrNull { it.matches(target) }
+
+        val newest = episodes(movieId)
+        inList(newest)?.let { return it }
+
+        val targetNum = target.toDoubleOrNull()
+        val newestNum = newest.mapNotNull { it.number() }.maxOrNull()
+        if (targetNum != null && newestNum != null && newestNum > 0) {
+            val approxPage = ((newestNum - targetNum) / API_LIMIT).toInt().coerceAtLeast(1)
+            val triedPages = HashSet<Int>()
+            for (delta in listOf(0, -1, 1, -2, 2, -3, 3)) {
+                val page = (approxPage + delta).coerceAtLeast(1)
+                if (!triedPages.add(page)) continue
+                val batch = episodes(movieId, page = page)
+                inList(batch)?.let { return it }
+                if (batch.isEmpty() && delta > 0) break
+            }
+        }
+
+        var lo = 1
+        var hi = 80
+        var lastNonEmpty = 1
+        while (lo <= hi) {
+            val mid = (lo + hi) / 2
+            val page = episodes(movieId, page = mid)
+            if (page.isEmpty()) {
+                hi = mid - 1
+            } else {
+                lastNonEmpty = mid
+                inList(page)?.let { return it }
+                lo = mid + 1
+            }
+        }
+        for (p in 1..lastNonEmpty) {
+            inList(episodes(movieId, page = p))?.let { return it }
+        }
+        return null
+    }
+
+    suspend fun allEpisodes(id: String): List<Episode> {
+        val seen = LinkedHashMap<String, Episode>()
+        var page = 0
+        var stale = 0
+        while (page <= MAX_EPISODE_PAGES && stale < 2) {
+            val batch = episodesPage(id, page)
+            if (batch.isEmpty()) break
+            var added = 0
+            for (ep in batch) {
+                val key = ep.id ?: continue
+                if (seen.putIfAbsent(key, ep) == null) added++
+            }
+            stale = if (added == 0) stale + 1 else 0
+            page++
+        }
+        return seen.values.toList()
+    }
 
     suspend fun episodesPage(
         id: String,
         page: Int,
-    ): List<Episode> = ApiCatalogEndpoints.episodesPage(id, page)
+    ): List<Episode> = if (page <= 0) episodes(id) else episodes(id, page = page)
 
-    suspend fun lastEpisodePage(id: String): Int = ApiCatalogEndpoints.lastEpisodePage(id)
+    suspend fun lastEpisodePage(id: String): Int {
+        lastPageCache.get(id)?.let { return it }
+        if (episodes(id).isEmpty()) return 0
+        var lo = 0
+        var hi = 1
+        while (hi <= 1024 && episodesPage(id, hi).isNotEmpty()) {
+            lo = hi
+            hi *= 2
+        }
+        while (hi - lo > 1) {
+            val mid = (lo + hi) / 2
+            if (episodesPage(id, mid).isEmpty()) hi = mid else lo = mid
+        }
+        lastPageCache.put(id, lo)
+        return lo
+    }
 
     suspend fun servers(
         episodeId: String,
         force: Boolean = false,
-    ): List<Server> = ApiCatalogEndpoints.servers(episodeId, force)
+    ): List<Server> {
+        return get<StreamData>(NativeCore.path(NativeCore.STREAM, episodeId), StreamData::class.java, force = force)
+            ?.server
+            .orEmpty()
+            .filter { !it.link.isNullOrBlank() }
+            .mapNotNull { server ->
+                UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
+            }
+    }
+
+    private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
+        for (key in keys) {
+            val el = get(key) ?: continue
+            val list =
+                when {
+                    el.isJsonArray ->
+                        runCatching {
+                            gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
+                        }.getOrNull()
+                    el.isJsonObject -> {
+                        el.asJsonObject.entrySet().mapNotNull { (k, v) ->
+                            runCatching {
+                                val item = gson.fromJson(v, ExploreItem::class.java)
+                                if (item.displayName.isBlank()) item.copy(name = k) else item
+                            }.getOrNull()
+                        }
+                    }
+                    else -> null
+                }
+            if (!list.isNullOrEmpty()) return list.filter { it.displayName.isNotBlank() }
+        }
+        return emptyList()
+    }
 
     suspend fun explore(
         force: Boolean = false,
         preview: Boolean = true,
-    ): ExploreData = ApiCatalogEndpoints.explore(force, preview)
+    ): ExploreData {
+        val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "$API_LIMIT")
+        val primary = runSuspendCatching { getData(NativeCore.path(NativeCore.EXPLORE_DATA), params, force) }
+        val d = primary.getOrNull()
+        if (d != null) {
+            return ExploreData(
+                type = d.exploreItems("tipe", "type", "types", "movie_type"),
+                genre = d.exploreItems("genre", "genres", "kategori"),
+                studio = d.exploreItems("studio", "studios"),
+                year = d.exploreItems("year", "years", "tahun"),
+            )
+        }
+
+        primary.exceptionOrNull()?.let { if (it is ApiException.Offline) throw it }
+
+        val genres =
+            runSuspendCatching {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_GENRE),
+                    force = force,
+                )?.exploreItems("genre", "genres", "list", "data")
+            }
+        val years =
+            runSuspendCatching {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_YEAR),
+                    force = force,
+                )?.exploreItems("year", "years", "list", "data")
+            }
+        if (genres.isFailure && years.isFailure) {
+            throw primary.exceptionOrNull() ?: genres.exceptionOrNull() ?: ApiException.Parse()
+        }
+        return ExploreData(
+            type = emptyList(),
+            genre = genres.getOrNull().orEmpty(),
+            studio = emptyList(),
+            year = years.getOrNull().orEmpty(),
+        )
+    }
 
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> =
-        ApiCatalogEndpoints.exploreGenres(force)
+        firstNonEmpty(
+            {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_GENRE),
+                    force = force,
+                )?.exploreItems("genre", "genres", "list", "data").orEmpty()
+            },
+            { explore(force = force, preview = false).genre },
+        )
 
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> =
-        ApiCatalogEndpoints.exploreYears(force)
+        firstNonEmpty(
+            {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_YEAR),
+                    force = force,
+                )?.exploreItems("year", "years", "list", "data").orEmpty()
+            },
+            { explore(force = force, preview = false).year },
+        )
 
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
-        ApiCatalogEndpoints.exploreStudios(force)
+        explore(force = force, preview = false).studio
 
     suspend fun exploreMovies(
         kind: String,
@@ -200,5 +1483,24 @@ object Api {
         sort: String = "views",
         season: String = "",
         genreIn: String = "",
-    ): List<Movie> = ApiCatalogEndpoints.exploreMovies(kind, idOrName, title, page, force, sort, season, genreIn)
+    ): List<Movie> {
+        val value = idOrName.trim()
+        if (value.isBlank()) return emptyList()
+        val p = page.coerceAtLeast(0)
+        val (path, filterKey, yearFlag) = NativeCore.exploreTarget(kind)
+
+        val params =
+            linkedMapOf(
+                filterKey to value,
+                "page" to "$p",
+                "sort" to sort.lowercase(),
+                "genre_in" to genreIn.trim(),
+                "limit" to "$API_LIMIT",
+            )
+        if (yearFlag == "1") {
+            params["season"] = season.lowercase().trim()
+        }
+
+        return getData(path, params, force)?.movieArray().orEmpty()
+    }
 }

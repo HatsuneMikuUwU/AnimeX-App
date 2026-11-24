@@ -3,7 +3,9 @@ package com.uwu.animex.sync.anilist
 import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.JsonArray
+import com.google.gson.JsonNull
 import com.google.gson.JsonObject
+import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.anilist.AniFavorite
@@ -44,7 +46,71 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
-import com.uwu.animex.core.network.awaitResponse
+
+data class AniListEditOptions(
+    val scoreFormat: String = "POINT_100",
+    val advancedScoringEnabled: Boolean = false,
+    val advancedScoring: List<String> = emptyList(),
+    val customLists: List<String> = emptyList(),
+) {
+    fun scoreToTen(value: Double): Int = aniScoreToTen(scoreFormat, value)
+}
+
+data class AniListEditEntry(
+    val status: String? = null,
+    val score: Double? = null,
+    val progress: Int? = null,
+    val startedAt: String? = null,
+    val completedAt: String? = null,
+    val repeat: Int? = null,
+    val priority: Int? = null,
+    val isPrivate: Boolean? = null,
+    val hiddenFromStatusLists: Boolean? = null,
+    val notes: String? = null,
+    val advancedScores: Map<String, Double> = emptyMap(),
+    val customLists: Set<String> = emptySet(),
+)
+
+data class AniListEditData(
+    val mediaId: Int,
+    val totalEpisodes: Int?,
+    val entry: AniListEditEntry?,
+    val options: AniListEditOptions,
+)
+
+data class AniListEditUpdate(
+    val status: String?,
+    val score: Double?,
+    val progress: Int?,
+    val startedAt: String?,
+    val completedAt: String?,
+    val repeat: Int?,
+    val priority: Int?,
+    val isPrivate: Boolean?,
+    val hiddenFromStatusLists: Boolean?,
+    val notes: String?,
+    val advancedScores: List<Double>?,
+    val customLists: List<String>?,
+)
+
+fun aniScoreToTen(
+    format: String?,
+    value: Double,
+): Int {
+    val scaled =
+        when (format ?: "POINT_100") {
+            "POINT_10_DECIMAL", "POINT_10" -> value
+            "POINT_5" -> value * 2
+            "POINT_3" -> value * (10.0 / 3.0)
+            else -> value / 10.0
+        }
+    return scaled.roundToInt().coerceIn(0, 10)
+}
+
+internal fun isAniListOAuthStateValid(
+    expectedState: String?,
+    returnedState: String?,
+): Boolean = expectedState != null && returnedState == expectedState
 
 class AniListApi : SyncAPI() {
     override val name = "AniList"
@@ -66,7 +132,11 @@ class AniListApi : SyncAPI() {
         const val REDIRECT_URI = "animex://anilist-auth"
         const val PROFILE_URL = "https://anilist.co/user/"
         private const val API = "https://graphql.anilist.co"
-                                        private val JSON = "application/json; charset=utf-8".toMediaType()
+        private const val LIST_CHUNK_SIZE = 500
+        private const val MAX_CHUNKS = 40
+        private const val FAVORITE_PAGE_SIZE = 25
+        private const val MAX_FAVORITE_PAGES = 40
+        private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 
     private val gson = Gson()
@@ -76,7 +146,118 @@ class AniListApi : SyncAPI() {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    private data class AniTitle(
+        val romaji: String? = null,
+        val english: String? = null,
+        val native: String? = null,
+    )
+
+    private data class AniCover(
+        val large: String? = null,
+        val extraLarge: String? = null,
+    )
+
+    private data class AniEntry(
+        val id: Int? = null,
+        val status: String? = null,
+        val score: Double? = null,
+        val progress: Int? = null,
+        val repeat: Int? = null,
+        val notes: String? = null,
+        val startedAt: AniDate? = null,
+        val completedAt: AniDate? = null,
+        val priority: Int? = null,
+        @SerializedName("private") val isPrivate: Boolean? = null,
+        val hiddenFromStatusLists: Boolean? = null,
+        val advancedScores: Map<String, Double>? = null,
+        val customLists: Map<String, Boolean>? = null,
+    )
+
+    private data class AniDate(
+        val year: Int? = null,
+        val month: Int? = null,
+        val day: Int? = null,
+    )
+
+    private data class AniMedia(
+        val id: Int = 0,
+        val idMal: Int? = null,
+        val title: AniTitle? = null,
+        val episodes: Int? = null,
+        val averageScore: Int? = null,
+        val description: String? = null,
+        val coverImage: AniCover? = null,
+        val mediaListEntry: AniEntry? = null,
+        val format: String? = null,
+        val seasonYear: Int? = null,
+        val startDate: AniDate? = null,
+    )
+
+    private data class AniPage(
+        val media: List<AniMedia>? = null,
+    )
+
+    private data class AniData(
+        val Viewer: AniViewer? = null,
+        val Page: AniPage? = null,
+        val Media: AniMedia? = null,
+        val SaveMediaListEntry: AniEntry? = null,
+        val DeleteMediaListEntry: AniDeleted? = null,
+    )
+
+    private data class AniViewer(
+        val id: Int = 0,
+        val name: String? = null,
+        val avatar: AniCover? = null,
+        val mediaListOptions: AniMediaListOptions? = null,
+    )
+
+    private data class AniMediaListOptions(
+        val scoreFormat: String? = null,
+        val animeList: AniTypeOptions? = null,
+    )
+
+    private data class AniTypeOptions(
+        val advancedScoringEnabled: Boolean? = null,
+        val advancedScoring: List<String>? = null,
+        val customLists: List<String>? = null,
+    )
+
+    private data class AniDeleted(
+        val deleted: Boolean = false,
+    )
+
+    private data class AniEnvelope(
+        val data: AniData? = null,
+        val errors: List<AniError>? = null,
+    )
+
+    private data class AniError(
+        val message: String? = null,
+    )
+
+    private data class OAuthPayload(
+        val state: String,
+    )
+
     @Volatile private var scoreFormat: String? = null
+
+    private fun scoreToUi(score: Double?): Int? = score?.let { aniScoreToTen(scoreFormat, it) }
+
+    private fun scoreToAniList(score: Int): Float {
+        val value = score.coerceIn(0, 10).toDouble()
+        return when (scoreFormat ?: "POINT_100") {
+            "POINT_10_DECIMAL", "POINT_10" -> value
+            "POINT_5" -> (value / 2.0).roundToInt().toDouble()
+            "POINT_3" -> (value * 3.0 / 10.0).roundToInt().toDouble()
+            else -> value * 10.0
+        }.toFloat()
+    }
+
+    private fun displayTitle(media: AniMedia): String =
+        media.title?.english?.takeIf { it.isNotBlank() }
+            ?: media.title?.romaji?.takeIf { it.isNotBlank() }
+            ?: media.title?.native.orEmpty()
 
     private fun AniMedia.toResult(): SyncResult {
         mediaListEntry?.id?.let { entryIds[id] = it }
@@ -107,17 +288,53 @@ class AniListApi : SyncAPI() {
             },
         )
 
-    private fun scoreToUi(score: Double?): Int? = score?.let { aniScoreToTen(scoreFormat, it) }
-
-    private fun scoreToAniList(score: Int): Float {
-        val value = score.coerceIn(0, 10).toDouble()
-        return when (scoreFormat ?: "POINT_100") {
-            "POINT_10_DECIMAL", "POINT_10" -> value
-            "POINT_5" -> (value / 2.0).roundToInt().toDouble()
-            "POINT_3" -> (value * 3.0 / 10.0).roundToInt().toDouble()
-            else -> value * 10.0
-        }.toFloat()
+    private fun AniDate?.toIso(): String? {
+        val y = this?.year?.takeIf { it > 0 } ?: return null
+        val m = month?.takeIf { it > 0 } ?: return "%04d".format(y)
+        val d = day?.takeIf { it > 0 } ?: return "%04d-%02d".format(y, m)
+        return "%04d-%02d-%02d".format(y, m, d)
     }
+
+    private fun String?.toFuzzyInput(): JsonObject? {
+        val parts = this?.split("-")?.mapNotNull { it.toIntOrNull() } ?: return null
+        if (parts.size != 3 || parts[0] <= 0) return null
+        return JsonObject().apply {
+            addProperty("year", parts[0])
+            addProperty("month", parts[1])
+            addProperty("day", parts[2])
+        }
+    }
+
+    private fun String?.toFuzzyOrClear(): JsonObject {
+        val parts = this?.split("-")?.mapNotNull { it.toIntOrNull() }.orEmpty()
+        return JsonObject().apply {
+            val names = listOf("year", "month", "day")
+            names.forEachIndexed { index, name ->
+                val value = parts.getOrNull(index)?.takeIf { parts[0] > 0 }
+                if (value == null) add(name, JsonNull.INSTANCE) else addProperty(name, value)
+            }
+        }
+    }
+
+    private fun watchType(status: String?): SyncWatchType? =
+        when (status) {
+            "CURRENT", "REPEATING" -> SyncWatchType.WATCHING
+            "COMPLETED" -> SyncWatchType.COMPLETED
+            "PAUSED" -> SyncWatchType.ONHOLD
+            "DROPPED" -> SyncWatchType.DROPPED
+            "PLANNING" -> SyncWatchType.PLANTOWATCH
+            else -> null
+        }
+
+    private fun listStatus(status: SyncWatchType?): String? =
+        when (status) {
+            SyncWatchType.WATCHING -> "CURRENT"
+            SyncWatchType.COMPLETED -> "COMPLETED"
+            SyncWatchType.ONHOLD -> "PAUSED"
+            SyncWatchType.DROPPED -> "DROPPED"
+            SyncWatchType.PLANTOWATCH -> "PLANNING"
+            else -> null
+        }
 
     override fun loginRequest(): AuthLoginPage? {
         if (CLIENT_ID.isBlank()) return null
@@ -158,13 +375,13 @@ class AniListApi : SyncAPI() {
         retrySafe: Boolean,
     ): okhttp3.Response {
         var attempt = 0
-        var response = http.newCall(request).awaitResponse()
+        var response = http.newCall(request).execute()
         while (retrySafe && response.code == 429 && attempt < 2) {
             val wait = (response.header("Retry-After")?.toLongOrNull() ?: 2L).coerceIn(1L, 15L)
             response.close()
             attempt++
             delay(wait * 1000L)
-            response = http.newCall(request).awaitResponse()
+            response = http.newCall(request).execute()
         }
         return response
     }
@@ -201,7 +418,7 @@ class AniListApi : SyncAPI() {
             }
         }
 
-    internal val entryIds = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+    private val entryIds = java.util.concurrent.ConcurrentHashMap<Int, Int>()
 
     private fun variableInt(value: Int): JsonObject = JsonObject().apply { addProperty("id", value) }
 
@@ -214,7 +431,28 @@ class AniListApi : SyncAPI() {
         return AuthUser(viewer.name, viewer.id, viewer.avatar?.large)
     }
 
-    internal suspend fun graphData(
+    private fun JsonObject.obj(key: String): JsonObject? = get(key)?.takeIf { it.isJsonObject }?.asJsonObject
+
+    private fun JsonObject.list(key: String): List<JsonObject> =
+        get(key)
+            ?.takeIf { it.isJsonArray }
+            ?.asJsonArray
+            ?.mapNotNull { e -> e.takeIf { it.isJsonObject }?.asJsonObject }
+            .orEmpty()
+
+    private fun JsonObject.str(key: String): String? =
+        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asString }.getOrNull() }
+
+    private fun JsonObject.int(key: String): Int =
+        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asInt }.getOrNull() } ?: 0
+
+    private fun JsonObject.dbl(key: String): Double =
+        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
+
+    private fun JsonObject.toStat(keyField: String) =
+        ListStat(str(keyField), int("count"), int("minutesWatched"), dbl("meanScore"))
+
+    private suspend fun graphData(
         query: String,
         token: String?,
     ): JsonObject =
@@ -242,6 +480,186 @@ class AniListApi : SyncAPI() {
                 root.obj("data") ?: throw IllegalStateException("Respons AniList kosong")
             }
         }
+
+    private fun overviewQuery(): String {
+        fun dist(
+            field: String,
+            key: String,
+        ) = "$field { $key count minutesWatched meanScore }"
+        return "query { Viewer { id name avatar { large } createdAt statistics { anime { " +
+            "count episodesWatched minutesWatched meanScore standardDeviation " +
+            dist("scores(sort: MEAN_SCORE)", "score") + " " +
+            dist("lengths", "length") + " " +
+            dist("formats", "format") + " " +
+            dist("statuses", "status") + " " +
+            dist("countries", "country") + " " +
+            dist("releaseYears", "releaseYear") + " " +
+            dist("startYears", "startYear") +
+            " } } } }"
+    }
+
+    private fun rankingsQuery(): String {
+        val sorts = listOf("C" to "COUNT_DESC", "T" to "PROGRESS_DESC", "S" to "MEAN_SCORE_DESC")
+
+        fun ranked(
+            field: String,
+            inner: String,
+        ) = sorts.joinToString(" ") { (suffix, sort) ->
+            "$field$suffix: $field(sort: $sort, limit: 10) { $inner count minutesWatched meanScore }"
+        }
+        val person = "name { userPreferred } image { medium }"
+        return "query { Viewer { statistics { anime { " +
+            ranked("genres", "genre") + " " +
+            ranked("tags", "tag { name }") + " " +
+            ranked("studios", "studio { name }") + " " +
+            ranked("staff", "staff { $person }") + " " +
+            ranked("voiceActors", "voiceActor { $person }") +
+            " } } } }"
+    }
+
+    private suspend fun totalAnimeRewatches(
+        userId: Int,
+        token: String?,
+    ): Int {
+        var chunk = 1
+        var total = 0
+        val seenEntryIds = HashSet<Int>()
+
+        while (true) {
+            val query =
+                "query { MediaListCollection(userId: $userId, type: ANIME, " +
+                    "sort: UPDATED_TIME_DESC, chunk: $chunk, perChunk: $LIST_CHUNK_SIZE) { " +
+                    "hasNextChunk lists { entries { id repeat } } } }"
+            val collection =
+                graphData(query, token).obj("MediaListCollection")
+                    ?: throw IllegalStateException("Data daftar AniList kosong")
+
+            collection
+                .list("lists")
+                .flatMap { it.list("entries") }
+                .forEach { entry ->
+                    val entryId = entry.int("id")
+                    if (entryId > 0 && seenEntryIds.add(entryId)) {
+                        total += entry.int("repeat")
+                    }
+                }
+
+            val hasNext =
+                collection
+                    .get("hasNextChunk")
+                    ?.takeIf { it.isJsonPrimitive }
+                    ?.asBoolean == true
+            if (!hasNext || chunk >= MAX_CHUNKS) break
+            chunk++
+        }
+
+        return total
+    }
+
+    private fun JsonObject.toRank(kind: String): ListRank {
+        val nested = obj(kind)
+        val name =
+            when (kind) {
+                "genre" -> str("genre")
+                "tag", "studio" -> nested?.str("name")
+                else -> nested?.obj("name")?.str("userPreferred")
+            }
+        return ListRank(
+            name = name,
+            image = nested?.obj("image")?.str("medium"),
+            count = int("count"),
+            minutes = int("minutesWatched"),
+            meanScore = dbl("meanScore"),
+        )
+    }
+
+    private fun JsonObject.rankings(
+        field: String,
+        kind: String,
+    ): AniListRankingsHolder {
+        fun by(suffix: String) = list("$field$suffix").map { it.toRank(kind) }
+        return AniListRankingsHolder(by("C"), by("T"), by("S"))
+    }
+
+    private class AniListRankingsHolder(
+        val c: List<ListRank>,
+        val t: List<ListRank>,
+        val s: List<ListRank>,
+    ) {
+        fun toModel() = ListRankings(byCount = c, byTime = t, byScore = s)
+    }
+
+    private fun lengthOrder(key: String?): Int = key?.takeWhile { it.isDigit() }?.toIntOrNull() ?: Int.MAX_VALUE
+
+    suspend fun profile(
+        auth: AuthData?,
+        previous: ListStats? = null,
+    ): AniListUser {
+        val token = auth?.token?.accessToken
+        return coroutineScope {
+            val rankingsJob =
+                async {
+                    runCatching {
+                        graphData(rankingsQuery(), token).obj("Viewer")?.obj("statistics")?.obj("anime")
+                    }.getOrNull()
+                }
+            val viewer =
+                graphData(overviewQuery(), token).obj("Viewer")
+                    ?: throw IllegalStateException("Respons AniList kosong")
+            val rewatchJob = async { runCatching { totalAnimeRewatches(viewer.int("id"), token) }.getOrNull() }
+            val anime = viewer.obj("statistics")?.obj("anime")
+            val rankings = rankingsJob.await()
+            val totalRewatches = rewatchJob.await() ?: previous?.totalRewatches
+
+            fun dist(
+                field: String,
+                key: String,
+            ) = anime?.list(field).orEmpty().map { it.toStat(key) }
+
+            val statuses = dist("statuses", "status")
+            AniListUser(
+                id = viewer.int("id"),
+                name = viewer.str("name"),
+                avatar = viewer.obj("avatar")?.str("large"),
+                createdAt = viewer.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong,
+                stats =
+                    ListStats(
+                        count = anime?.int("count") ?: 0,
+                        episodes = anime?.int("episodesWatched") ?: 0,
+                        totalRewatches = totalRewatches,
+                        minutes = anime?.int("minutesWatched") ?: 0,
+                        plannedMinutes = statuses.firstOrNull { it.key == "PLANNING" }?.minutes ?: 0,
+                        meanScore = anime?.dbl("meanScore") ?: 0.0,
+                        standardDeviation = anime?.dbl("standardDeviation") ?: 0.0,
+                        scores =
+                            dist("scores", "score")
+                                .filter { it.key != null }
+                                .sortedBy { it.key?.toDoubleOrNull() ?: 0.0 },
+                        lengths = dist("lengths", "length").sortedBy { lengthOrder(it.key) },
+                        statuses = statuses.filter { it.key != null },
+                        formats = dist("formats", "format").filter { it.key != null },
+                        countries = dist("countries", "country").filter { it.key != null },
+                        releaseYears =
+                            dist("releaseYears", "releaseYear")
+                                .filter { it.key != null }
+                                .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                        startYears =
+                            dist("startYears", "startYear")
+                                .filter { it.key != null }
+                                .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                        genres = rankings?.rankings("genres", "genre")?.toModel() ?: previous?.genres ?: ListRankings(),
+                        tags = rankings?.rankings("tags", "tag")?.toModel() ?: previous?.tags ?: ListRankings(),
+                        studios =
+                            rankings?.rankings("studios", "studio")?.toModel() ?: previous?.studios ?: ListRankings(),
+                        staff = rankings?.rankings("staff", "staff")?.toModel() ?: previous?.staff ?: ListRankings(),
+                        voiceActors =
+                            rankings?.rankings("voiceActors", "voiceActor")?.toModel()
+                                ?: previous?.voiceActors
+                                ?: ListRankings(),
+                    ),
+            )
+        }
+    }
 
     override suspend fun search(
         auth: AuthData?,
@@ -448,6 +866,104 @@ class AniListApi : SyncAPI() {
         return graph(mutation, variableInt(entryId), token).DeleteMediaListEntry?.deleted == true
     }
 
+    suspend fun history(auth: AuthData?): List<ProfileHistoryItem> {
+        val token = auth?.token?.accessToken ?: return emptyList()
+        val userId = auth.user.id
+        val query =
+            "query { Page(page: 1, perPage: 50) { activities(userId: $userId, type: MEDIA_LIST, sort: ID_DESC) { " +
+                "... on ListActivity { id status progress createdAt media { id type title { romaji english native } } } } } }"
+        return graphData(query, token)
+            .obj("Page")
+            ?.list("activities")
+            .orEmpty()
+            .mapNotNull { a ->
+                val media = a.obj("media") ?: return@mapNotNull null
+                if (media.str("type") != "ANIME") return@mapNotNull null
+                val mediaId = media.int("id").takeIf { it > 0 } ?: return@mapNotNull null
+                val title = media.obj("title")
+                val name =
+                    title?.str("romaji")?.takeIf { it.isNotBlank() }
+                        ?: title?.str("english")?.takeIf { it.isNotBlank() }
+                        ?: title?.str("native").orEmpty()
+                val status = a.str("status").orEmpty()
+                val progress = a.str("progress")?.takeIf { it.isNotBlank() }
+
+                val action =
+                    if (progress != null && status.contains("episode", ignoreCase = true)) {
+                        "ep. $progress"
+                    } else {
+                        listOfNotNull(status.replaceFirstChar { it.uppercase() }.takeIf { it.isNotBlank() }, progress)
+                            .joinToString(" ")
+                            .ifBlank { "Diperbarui" }
+                    }
+                val epoch = a.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong ?: 0L
+                ProfileHistoryItem(
+                    key = "${a.int("id")}",
+                    mediaId = mediaId,
+                    title = name,
+                    action = action,
+                    time = if (epoch > 0) historyTimeId(epoch * 1000) else "",
+                    group = if (epoch > 0) historyGroup(epoch * 1000) else HISTORY_TODAY,
+                    url = "https://anilist.co/anime/$mediaId",
+                )
+            }
+    }
+
+    suspend fun favorites(auth: AuthData?): List<AniFavorite> {
+        val token = auth?.token?.accessToken ?: return emptyList()
+        val userId = auth.user.id
+        val seen = HashSet<Int>()
+        val out = ArrayList<AniFavorite>()
+        var page = 1
+        while (page <= MAX_FAVORITE_PAGES) {
+            val query =
+                "query { User(id: $userId) { favourites { anime(page: $page, perPage: $FAVORITE_PAGE_SIZE) { " +
+                    "pageInfo { hasNextPage } nodes { id title { romaji english native } synonyms " +
+                    "coverImage { large extraLarge } } } } } }"
+            val anime = graphData(query, token).obj("User")?.obj("favourites")?.obj("anime")
+            anime?.list("nodes").orEmpty().forEach { node ->
+                val id = node.int("id").takeIf { it > 0 } ?: return@forEach
+                if (!seen.add(id)) return@forEach
+                val title = node.obj("title")
+                val romaji = title?.str("romaji")
+                val english = title?.str("english")
+                val native = title?.str("native")
+                val cover = node.obj("coverImage")
+                out.add(
+                    AniFavorite(
+                        id = id,
+                        name =
+                            romaji?.takeIf { it.isNotBlank() }
+                                ?: english?.takeIf { it.isNotBlank() }
+                                ?: native.orEmpty(),
+                        posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
+                        synonyms =
+                            (
+                                listOfNotNull(romaji, english, native) +
+                                    (
+                                        node
+                                            .get("synonyms")
+                                            ?.takeIf { it.isJsonArray }
+                                            ?.asJsonArray
+                                            ?.mapNotNull { e -> e.takeIf { it.isJsonPrimitive }?.asString }
+                                            .orEmpty()
+                                    )
+                            ).distinct(),
+                    ),
+                )
+            }
+            val hasNext =
+                anime
+                    ?.obj("pageInfo")
+                    ?.get("hasNextPage")
+                    ?.takeIf { it.isJsonPrimitive }
+                    ?.asBoolean == true
+            if (!hasNext) break
+            page++
+        }
+        return out
+    }
+
     suspend fun isFavourite(
         auth: AuthData?,
         id: Int,
@@ -471,14 +987,97 @@ class AniListApi : SyncAPI() {
         return true
     }
 
-    suspend fun profile(
-        auth: AuthData?,
-        previous: ListStats? = null,
-    ): AniListUser = fetchProfile(auth, previous)
+    private fun JsonObject.fuzzyDate(key: String): String? {
+        val d = obj(key) ?: return null
+        val y = d.int("year").takeIf { it > 0 } ?: return null
+        val m = d.int("month").takeIf { it > 0 } ?: return "%04d".format(y)
+        val day = d.int("day").takeIf { it > 0 } ?: return "%04d-%02d".format(y, m)
+        return "%04d-%02d-%02d".format(y, m, day)
+    }
 
-    suspend fun history(auth: AuthData?): List<ProfileHistoryItem> = fetchHistory(auth)
+    private fun JsonObject.fuzzyEpoch(key: String): Long? {
+        val d = obj(key) ?: return null
+        val y = d.int("year").takeIf { it > 0 } ?: return null
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        cal.clear()
+        cal.set(y, (d.int("month").takeIf { it > 0 } ?: 1) - 1, d.int("day").takeIf { it > 0 } ?: 1)
+        return cal.timeInMillis
+    }
 
-    suspend fun favorites(auth: AuthData?): List<AniFavorite> = fetchFavorites(auth)
+    override suspend fun library(auth: AuthData?): LibraryMetadata? {
+        val token = auth?.token?.accessToken ?: return null
+        val userId = auth.user.id
+        val date = "{ year month day }"
+        val seen = HashSet<String>()
+        val items = ArrayList<LibraryItem>()
 
-    override suspend fun library(auth: AuthData?): LibraryMetadata? = fetchLibrary(auth)
+        var chunk = 1
+        while (true) {
+            val query =
+                "query { MediaListCollection(userId: $userId, type: ANIME, sort: UPDATED_TIME_DESC, " +
+                    "chunk: $chunk, perChunk: $LIST_CHUNK_SIZE) { hasNextChunk lists { isCustomList entries { " +
+                    "id status score(format: POINT_10) progress repeat updatedAt startedAt $date completedAt $date " +
+                    "media { id idMal episodes title { romaji english native } synonyms " +
+                    "coverImage { large extraLarge } startDate $date } } } } }"
+            val collection = graphData(query, token).obj("MediaListCollection")
+            val lists =
+                collection
+                    ?.list("lists")
+                    .orEmpty()
+                    .filter { it.get("isCustomList")?.takeIf { v -> v.isJsonPrimitive }?.asBoolean != true }
+            lists.flatMap { it.list("entries") }.forEach { e ->
+                val media = e.obj("media") ?: return@forEach
+                val id = media.int("id").takeIf { it > 0 } ?: return@forEach
+                val type = watchType(e.str("status")) ?: return@forEach
+                if (!seen.add(id.toString())) return@forEach
+                e.int("id").takeIf { it > 0 }?.let { entryIds[id] = it }
+                val title = media.obj("title")
+                val romaji = title?.str("romaji")
+                val english = title?.str("english")
+                val native = title?.str("native")
+                val cover = media.obj("coverImage")
+                items.add(
+                    LibraryItem(
+                        name =
+                            romaji?.takeIf { it.isNotBlank() }
+                                ?: english?.takeIf { it.isNotBlank() }
+                                ?: native.orEmpty(),
+                        url = "$mainUrl/anime/$id",
+                        syncId = id.toString(),
+                        status = type,
+                        episodesCompleted = e.int("progress"),
+                        episodesTotal = media.int("episodes").takeIf { it > 0 },
+                        personalRating = e.dbl("score").roundToInt().takeIf { it > 0 },
+                        lastUpdatedUnixTime = e.get("updatedAt")?.takeIf { it.isJsonPrimitive }?.asLong,
+                        posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
+                        releaseDate = media.fuzzyEpoch("startDate"),
+                        synonyms =
+                            (
+                                listOfNotNull(romaji, english, native) +
+                                    media
+                                        .get("synonyms")
+                                        ?.takeIf { it.isJsonArray }
+                                        ?.asJsonArray
+                                        ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }
+                                        .orEmpty()
+                            ).distinct(),
+                        startDate = e.fuzzyDate("startedAt"),
+                        finishDate = e.fuzzyDate("completedAt"),
+                        crossMalId = media.int("idMal").takeIf { it > 0 },
+                        rewatching = e.str("status") == "REPEATING",
+                        rewatchCount = e.int("repeat"),
+                    ),
+                )
+            }
+            val hasNext = collection?.get("hasNextChunk")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
+            if (!hasNext || chunk >= MAX_CHUNKS) break
+            chunk++
+        }
+        val grouped = items.groupBy { it.status }
+        val result =
+            SyncWatchType.entries
+                .filter { it != SyncWatchType.NONE && it in supportedWatchTypes }
+                .map { LibraryList(it.label, it, grouped[it].orEmpty()) }
+        return LibraryMetadata(result, ListSorting.entries.toSet())
+    }
 }

@@ -140,6 +140,106 @@ import kotlin.math.roundToInt
 
 private const val AUTO_NEXT_SECONDS = 5
 
+val MiniPlayerBarHeight = 68.dp
+val MiniPlayerDockedSpace = 76.dp
+
+private val FloatingMiniWidth = 212.dp
+private val FloatingMiniVideoHeight = 119.dp
+private val FloatingMiniBarHeight = 37.dp
+private val FloatingMiniTotalHeight = FloatingMiniVideoHeight + FloatingMiniBarHeight
+
+internal tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
+
+private fun setFullscreen(
+    activity: Activity?,
+    on: Boolean,
+) {
+    activity ?: return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        activity.window.attributes =
+            activity.window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    if (on) {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    } else {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+            }
+    }
+    val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+    if (on) {
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+    } else {
+        controller.show(WindowInsetsCompat.Type.systemBars())
+    }
+}
+
+private fun applyPlayerOrientation(
+    activity: Activity?,
+    on: Boolean,
+) {
+    activity ?: return
+    activity.requestedOrientation =
+        if (on) PlayerPrefs.defaultOrientation.value.activityInfo else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+}
+
+private class ExoTarget(
+    val url: String,
+    val subtitle: String,
+    val idx: Int,
+)
+
+internal fun Server.label(): String {
+    val source = "AnimeX"
+    return listOfNotNull(source, quality).joinToString(" ") + if (isDirect) "" else " · Embed"
+}
+
+@Composable
+fun PlayerHost(
+    hasFloatingBottomBar: Boolean,
+    hidden: Boolean = false,
+    onOpenAnime: (String) -> Unit,
+    onNeedLogin: () -> Unit,
+) {
+    val req = MiniPlayerController.request ?: return
+    val expanded = MiniPlayerController.expanded
+    val bottomClearance =
+        if (hasFloatingBottomBar) {
+            floatingTabBarSpace() + 8.dp
+        } else {
+            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 12.dp
+        }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = if (hidden) 0f else 1f },
+    ) {
+        if (!hidden || PlaybackSessions.current != null) {
+            PlayerScreen(
+                epId = req.epId,
+                title = req.title,
+                movieId = req.movieId,
+                epIndex = req.epIndex,
+                startAtMs = req.startAtMs,
+                requestNonce = req.nonce,
+                expanded = expanded,
+                miniBottomClearance = bottomClearance,
+                onMinimize = { MiniPlayerController.minimize() },
+                onExpand = { MiniPlayerController.expand() },
+                onBack = { MiniPlayerController.close() },
+                onOpenAnime = onOpenAnime,
+                onNeedLogin = onNeedLogin,
+            )
+        }
+    }
+}
 
 @Composable
 fun PlayerScreen(
@@ -262,8 +362,7 @@ fun PlayerScreen(
             applyResume(true)
         }
     }
-    val autoNextState = remember(curEpId) { mutableStateOf<Int?>(null) }
-    var autoNext by autoNextState
+    var autoNext by remember(curEpId) { mutableStateOf<Int?>(null) }
     val counting = autoNext != null
     LaunchedEffect(counting, curEpId) {
         if (!counting) return@LaunchedEffect
@@ -273,8 +372,7 @@ fun PlayerScreen(
         }
         goNext()
     }
-    val showEndSuggestionsState = remember(curEpId) { mutableStateOf(false) }
-    var showEndSuggestions by showEndSuggestionsState
+    var showEndSuggestions by remember(curEpId) { mutableStateOf(false) }
     var similar by remember(curMovieId) { mutableStateOf<List<SimilarMovie>>(emptyList()) }
     var similarLoading by remember(curMovieId) { mutableStateOf(false) }
     LaunchedEffect(showEndSuggestions, curMovieId) {
@@ -426,26 +524,18 @@ fun PlayerScreen(
     }
 
     var sel by rememberSaveable(requestNonce, activeEpId) { mutableIntStateOf(-1) }
-    val failedSelState = remember(requestNonce, activeEpId) { mutableStateOf(setOf<Int>()) }
-    var failedSel by failedSelState
-    val streamErrorState = remember(requestNonce, activeEpId) { mutableStateOf<String?>(null) }
-    var streamError by streamErrorState
-    val showDialogState = rememberSaveable { mutableStateOf(false) }
-    var showDialog by showDialogState
-    val showEpisodesState = rememberSaveable { mutableStateOf(false) }
-    var showEpisodes by showEpisodesState
-    val showSpeedState = rememberSaveable { mutableStateOf(false) }
-    var showSpeed by showSpeedState
-    val showSleepState = rememberSaveable { mutableStateOf(false) }
-    var showSleep by showSleepState
+    var failedSel by remember(requestNonce, activeEpId) { mutableStateOf(setOf<Int>()) }
+    var streamError by remember(requestNonce, activeEpId) { mutableStateOf<String?>(null) }
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    var showEpisodes by rememberSaveable { mutableStateOf(false) }
+    var showSpeed by rememberSaveable { mutableStateOf(false) }
+    var showSleep by rememberSaveable { mutableStateOf(false) }
     var showComments by rememberSaveable { mutableStateOf(false) }
     var showDescription by rememberSaveable { mutableStateOf(false) }
-    val lockedState = rememberSaveable { mutableStateOf(false) }
-    var locked by lockedState
-    val resizeState = rememberSaveable { mutableStateOf(PlayerResize.Fit) }
-    var resize by resizeState
+    var locked by rememberSaveable { mutableStateOf(false) }
+    var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
 
-    val speedState = rememberSaveable {
+    var speed by rememberSaveable {
         mutableStateOf(
             if (PlaybackSessions.episodeId == activeEpId) {
                 runCatching {
@@ -459,11 +549,8 @@ fun PlayerScreen(
             },
         )
     }
-    var speed by speedState
-    val sleepDeadlineMsState = rememberSaveable { mutableLongStateOf(0L) }
-    var sleepDeadlineMs by sleepDeadlineMsState
-    val sleepAfterEpisodeState = rememberSaveable { mutableStateOf(false) }
-    var sleepAfterEpisode by sleepAfterEpisodeState
+    var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
+    var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(showSleep, sleepDeadlineMs) {
         while (showSleep || sleepDeadlineMs > 0L) {
@@ -489,8 +576,7 @@ fun PlayerScreen(
     LaunchedEffect(fullscreen) { if (!fullscreen) locked = false }
     LaunchedEffect(fullscreen) { if (fullscreen) PipHelper.updateSourceRect(activity, null) }
 
-    val playerRefState = remember { mutableStateOf<Player?>(null) }
-    var playerRef by playerRefState
+    var playerRef by remember { mutableStateOf<Player?>(null) }
     var miniPlayWhenReady by remember { mutableStateOf(true) }
     var miniEnded by remember { mutableStateOf(false) }
     var miniBuffering by remember { mutableStateOf(false) }
@@ -718,6 +804,152 @@ fun PlayerScreen(
     val expandFrac = if (fullscreen) 1f else expandAnim.value.coerceIn(0f, 1f)
     val isMinimizedVisual = expandFrac < 0.55f
 
+    @Composable
+    fun renderExo(
+        url: String,
+        subtitle: String,
+        fromIdx: Int,
+        collapseDistPx: Float,
+    ) {
+        ExoView(
+            url = url,
+            epId = activeEpId,
+            title = activeTitle,
+            subtitle = subtitle,
+            movieId = curMovieId,
+            epIndex = curIndex,
+            initialPositionMs = initialPositionMs,
+            resize = if (isMinimizedVisual) PlayerResize.Zoom else resize,
+            isFinished = { activeEpId in finishedEps.value },
+            onEnded = {
+                Progress.markDone(activeEpId)
+                applyResume(true)
+
+                if (sleepAfterEpisode) {
+                    sleepAfterEpisode = false
+                } else if (nextEp != null &&
+                    autoNext == null &&
+                    PlayerPrefs.autoplayEnabled.value
+                ) {
+                    autoNext = AUTO_NEXT_SECONDS
+                } else if (nextEp == null &&
+                    (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
+                    curMovieId != null
+                ) {
+                    showEndSuggestions = true
+                }
+            },
+            onProgressSaved = { crossedDone ->
+                if (crossedDone) applyResume(true)
+            },
+            onStreamError = { err ->
+                if (PlayerPrefs.switchOnFailure.value) {
+                    tryNextServer(servers, fromIdx, err.toStreamMessage())
+                } else {
+                    streamError = err.toStreamMessage()
+                }
+            },
+        ) { player ->
+            SideEffect { playerRef = player }
+            DisposableEffect(player) {
+                onDispose { if (playerRef === player) playerRef = null }
+            }
+            PlayerChrome(
+                player = player,
+                title = activeTitle,
+                subtitle = subtitle,
+                locked = locked,
+                onLockedChange = { locked = it },
+                resize = resize,
+                onResize = { resize = it },
+                speed = speed,
+                onSpeed = { speed = it },
+                sleepDeadlineMs = sleepDeadlineMs,
+                sleepAfterEpisode = sleepAfterEpisode,
+                onSleepTimer = { deadline, afterEp ->
+                    sleepDeadlineMs = deadline
+                    sleepAfterEpisode = afterEp
+                },
+                onSleepExpired = { autoNext = null },
+                hasNext = nextEp != null,
+                onNext = goNext,
+                hasPrev = prevEp != null,
+                onPrev = goPrev,
+                hasSources = servers.size > 1,
+                onSources = { showDialog = true },
+                hasEpisodes = curMovieId != null,
+                onEpisodes = { showEpisodes = true },
+                onBack = topBarBackOrMinimize,
+                epId = activeEpId,
+                onComment = openComment,
+                onOpenSpeed = { showSpeed = true },
+                onOpenSleep = { showSleep = true },
+                compact = !fullscreen,
+                minimized = isMinimizedVisual,
+                onToggleFullscreen = { toggleFullscreen() },
+                onPullDownDelta =
+                    if (supportsMiniPlayer && !fullscreen) {
+                        { dyPx ->
+                            val f = (1f - dyPx / collapseDistPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                            animScope.launch { expandAnim.snapTo(f) }
+                        }
+                    } else {
+                        null
+                    },
+                onPullDownEnd =
+                    if (supportsMiniPlayer && !fullscreen) {
+                        { shouldMin ->
+                            if (shouldMin || expandAnim.value < 0.72f) {
+                                onMinimize?.invoke()
+                                animScope.launch {
+                                    expandAnim.animateTo(
+                                        0f,
+                                        spring(dampingRatio = 0.88f, stiffness = Spring.StiffnessMediumLow),
+                                    )
+                                }
+                            } else {
+                                animScope.launch {
+                                    expandAnim.animateTo(
+                                        1f,
+                                        spring(dampingRatio = 0.88f, stiffness = Spring.StiffnessMediumLow),
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        null
+                    },
+                streamUrl = url,
+                onMessage = showMessage,
+                onProgressSaved = { crossedDone ->
+                    if (crossedDone) applyResume(true)
+                },
+                loadStamps = { durMs ->
+                    if (!PlayerPrefs.aniSkipEnabled.value) {
+                        emptyList()
+                    } else {
+                        val malId = Mal.malIdFor(curMovieId) ?: MalIdLookup.find(curMovieId)
+                        val ep = curIndex?.toIntOrNull()
+                        if (malId != null && ep != null) {
+                            AniSkip.stamps(malId, ep, durMs)
+                        } else {
+                            emptyList()
+                        }
+                    }
+                },
+                onVoteStamp = { stamp, upvote ->
+                    val skipId = stamp.skipId ?: return@PlayerChrome
+                    snackScope.launch {
+                        when (val res = AniSkip.vote(skipId, upvote)) {
+                            is AniSkipActionResult.Ok -> showMessage(res.message)
+                            is AniSkipActionResult.Error -> showMessage(res.message)
+                        }
+                    }
+                },
+            )
+        }
+    }
+
     val exoTarget: ExoTarget? =
         when {
             liveUrl != null ->
@@ -743,10 +975,8 @@ fun PlayerScreen(
         val screenHPx = with(density) { screenH.toPx() }
         val collapseDistPx = (screenHPx * 0.65f).coerceAtLeast(1f)
 
-        val dismissDragXState = remember { mutableFloatStateOf(0f) }
-    var dismissDragX by dismissDragXState
-        val dismissDragYState = remember { mutableFloatStateOf(0f) }
-    var dismissDragY by dismissDragYState
+        var dismissDragX by remember { mutableFloatStateOf(0f) }
+        var dismissDragY by remember { mutableFloatStateOf(0f) }
 
         val marginPx = with(density) { 12.dp.toPx() }
         val floatWPx = with(density) { FloatingMiniWidth.toPx() }
@@ -903,134 +1133,663 @@ fun PlayerScreen(
                     }
                 }
 
-                PlayerVideoBox(
-                    state = state,
-                    servers = servers,
-                    exoTarget = exoTarget,
-                    activeEpId = activeEpId,
-                    activeTitle = activeTitle,
-                    curIndex = curIndex,
-                    curMovieId = curMovieId,
-                    initialPositionMs = initialPositionMs,
-                    fullscreen = fullscreen,
-                    isMinimizedVisual = isMinimizedVisual,
-                    supportsMiniPlayer = supportsMiniPlayer,
-                    collapseDistPx = collapseDistPx,
-                    curVideoX = curVideoX,
-                    curVideoY = curVideoY,
-                    curVideoW = curVideoW,
-                    curVideoH = curVideoH,
-                    curVideoCorner = curVideoCorner,
-                    prevEp = prevEp,
-                    nextEp = nextEp,
-                    nextLookup = nextLookup,
-                    finishedEps = finishedEps,
-                    activity = activity,
-                    ctx = ctx,
-                    animScope = animScope,
-                    snackScope = snackScope,
-                    expandAnim = expandAnim,
-                    playerRefState = playerRefState,
-                    resizeState = resizeState,
-                    speedState = speedState,
-                    lockedState = lockedState,
-                    streamErrorState = streamErrorState,
-                    failedSelState = failedSelState,
-                    autoNextState = autoNextState,
-                    showEndSuggestionsState = showEndSuggestionsState,
-                    showDialogState = showDialogState,
-                    showEpisodesState = showEpisodesState,
-                    showSpeedState = showSpeedState,
-                    showSleepState = showSleepState,
-                    sleepDeadlineMsState = sleepDeadlineMsState,
-                    sleepAfterEpisodeState = sleepAfterEpisodeState,
-                    resolveSel = ::resolveSel,
-                    applyResume = ::applyResume,
-                    retryServers = ::retryServers,
-                    tryNextServer = ::tryNextServer,
-                    goPrev = ::goPrev,
-                    goNext = ::goNext,
-                    openComment = openComment,
-                    topBarBackOrMinimize = topBarBackOrMinimize,
-                    toggleFullscreen = toggleFullscreen,
-                    onMinimize = onMinimize,
-                    closeCompletely = closeCompletely,
-                    showMessage = showMessage,
-                )
+                Box(
+                    Modifier
+                        .offset(curVideoX, curVideoY)
+                        .size(curVideoW, curVideoH)
+                        .clip(RoundedCornerShape(curVideoCorner))
+                        .background(Color.Black)
+                        .onGloballyPositioned {
+                            if (!fullscreen) {
+                                val b = it.boundsInWindow()
+                                PipHelper.updateSourceRect(
+                                    activity,
+                                    android.graphics.Rect(
+                                        b.left.roundToInt(),
+                                        b.top.roundToInt(),
+                                        b.right.roundToInt(),
+                                        b.bottom.roundToInt(),
+                                    ),
+                                )
+                            }
+                        },
+                ) {
+                    if (exoTarget != null) {
+                        key(activeEpId, exoTarget.url) {
+                            renderExo(exoTarget.url, exoTarget.subtitle, exoTarget.idx, collapseDistPx)
+                        }
+                    } else {
+                        when (val s = state) {
+                            UiState.Loading ->
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    if (isMinimizedVisual && !MiniPlayerController.currentPoster.isNullOrBlank()) {
+                                        Poster(MiniPlayerController.currentPoster, Modifier.fillMaxSize(), radius = 0.dp)
+                                    }
+                                    if (PlayerPrefs.showLoadingCircle.value) {
+                                        AppLoadingIndicator(
+                                            modifier = if (isMinimizedVisual) Modifier.size(22.dp) else Modifier,
+                                            color = Color.White,
+                                        )
+                                    }
 
-                MiniPlayerBar(
-                    fullscreen = fullscreen,
-                    expandFrac = expandFrac,
-                    miniFloating = miniFloating,
-                    activeTitle = activeTitle,
-                    curIndex = curIndex,
-                    miniPlayWhenReady = miniPlayWhenReady,
-                    miniEnded = miniEnded,
-                    miniBuffering = miniBuffering,
-                    miniPos = miniPos,
-                    miniBuffered = miniBuffered,
-                    miniDur = miniDur,
-                    showNext = showNext,
-                    cs = cs,
-                    density = density,
-                    animScope = animScope,
-                    expandAnim = expandAnim,
-                    floatXAnim = floatXAnim,
-                    floatYAnim = floatYAnim,
-                    dismissDragXState = dismissDragXState,
-                    dismissDragYState = dismissDragYState,
-                    collapseDistPx = collapseDistPx,
-                    screenWPx = screenWPx,
-                    floatWPx = floatWPx,
-                    marginPx = marginPx,
-                    minFloatY = minFloatY,
-                    maxFloatY = maxFloatY,
-                    toggleMiniPlayback = ::toggleMiniPlayback,
-                    goNext = { goNext(true) },
-                    closeCompletely = closeCompletely,
-                    onExpand = onExpand,
+                                    if (!isMinimizedVisual) {
+                                        Box(
+                                            Modifier
+                                                .align(Alignment.TopStart)
+                                                .then(if (fullscreen) Modifier.safeDrawingPadding() else Modifier)
+                                                .padding(horizontal = 4.dp, vertical = if (fullscreen) 8.dp else 4.dp),
+                                        ) {
+                                            OverlayButton(topBarBackOrMinimize) {
+                                                Icon(
+                                                    if (fullscreen) {
+                                                        Icons.AutoMirrored.Outlined.ArrowBack
+                                                    } else {
+                                                        Icons.Outlined.KeyboardArrowDown
+                                                    },
+                                                    contentDescription =
+                                                        if (fullscreen) "Balik" else "Kecilkan ke mini player",
+                                                    tint = Color.White,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            is UiState.Error -> {
+                                PlayerLoadError(
+                                    title = activeTitle,
+                                    message = "Yah gagal load: ${s.msg}",
+                                    onRetry = { retryServers() },
+                                    onBack = topBarBackOrMinimize,
+                                    compact = !fullscreen,
+                                    minimized = isMinimizedVisual,
+                                )
+                            }
+                            is UiState.Ready -> {
+                                if (servers.isEmpty()) {
+                                    PlayerLoadError(
+                                        title = activeTitle,
+                                        message = "Gak ada server yang bisa dipake",
+                                        onRetry = { retryServers() },
+                                        onBack = topBarBackOrMinimize,
+                                        compact = !fullscreen,
+                                        minimized = isMinimizedVisual,
+                                    )
+                                } else {
+                                    val idx = resolveSel(servers)
+                                    val server = servers[idx]
+                                    val loadError = streamError
+                                    if (loadError != null) {
+                                        PlayerLoadError(
+                                            title = activeTitle,
+                                            message = loadError,
+                                            onRetry = { retryServers() },
+                                            onBack = topBarBackOrMinimize,
+                                            compact = !fullscreen,
+                                            minimized = isMinimizedVisual,
+                                            extra = {
+                                                if (servers.size > 1) {
+                                                    TextButton(
+                                                        onClick = hapticClick {
+                                                            streamError = null
+                                                            failedSel = emptySet()
+                                                            showDialog = true
+                                                        },
+                                                        shapes = ButtonDefaults.shapes(),
+                                                    ) { Text("Pilih server lain") }
+                                                }
+                                            },
+                                        )
+                                    } else if (server.isDirect) {
+                                        val alwaysExt = PlayerPrefs.alwaysUseExternal.value
+                                        if (alwaysExt) {
+                                            val externalLauncher =
+                                                rememberExternalLauncher { data ->
+                                                    if (ExternalPlayer.record(activeEpId, data)?.crossedDone ==
+                                                        true
+                                                    ) {
+                                                        applyResume(true)
+                                                    }
+                                                    closeCompletely()
+                                                }
+                                            var opened by rememberSaveable(
+                                                activeEpId,
+                                                idx,
+                                                server.link,
+                                            ) { mutableStateOf(false) }
+                                            LaunchedEffect(activeEpId, idx, server.link) {
+                                                if (opened) return@LaunchedEffect
+                                                opened = true
+                                                if (!ExternalPlayer.open(
+                                                        ctx,
+                                                        externalLauncher,
+                                                        activeEpId,
+                                                        server.link.orEmpty(),
+                                                        activeTitle,
+                                                    )
+                                                ) {
+                                                    closeCompletely()
+                                                }
+                                            }
+                                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                Text("Buka player eksternal dulu…", color = Color.White)
+                                            }
+                                        }
+                                    } else {
+                                        WebEmbed(server.link.orEmpty())
+                                        if (locked && !isMinimizedVisual) {
+                                            Box(
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .pointerInput(Unit) { detectTapGestures { } },
+                                            )
+                                        }
+                                        if (!isMinimizedVisual) {
+                                            EmbedTopBar(
+                                                title = if (fullscreen) activeTitle else "",
+                                                showSources = servers.size > 1,
+                                                locked = locked,
+                                                onBack = topBarBackOrMinimize,
+                                                onSources = { showDialog = true },
+                                                onLock = { locked = it },
+                                                showLock = fullscreen,
+                                                onComment = if (fullscreen) openComment else null,
+                                                compact = !fullscreen,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isMinimizedVisual) {
+                        autoNext?.let { n ->
+                            Row(
+                                Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .then(if (fullscreen) Modifier.safeDrawingPadding() else Modifier)
+                                    .padding(end = 12.dp, bottom = if (fullscreen) 132.dp else 44.dp)
+                                    .background(Color(0xCC000000), RoundedCornerShape(24.dp))
+                                    .padding(start = 16.dp, end = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    if (fullscreen) "Episode berikutnya mulai dalam $n…" else "Lanjut dalam $n…",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                                TextButton(
+                                    onClick = hapticClick { goNext() },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text("Putar") }
+                                TextButton(
+                                    onClick = hapticClick { autoNext = null },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text("Batal") }
+                            }
+                        }
+                    }
+                }
+
+                if (!fullscreen && expandFrac < 0.45f) {
+                    val miniAlpha = ((0.45f - expandFrac) / 0.45f).coerceIn(0f, 1f)
+                    val epHeading =
+                        MiniPlayerController.currentEpisodeTitle.ifBlank {
+                            if (!curIndex.isNullOrBlank()) "Episode $curIndex" else activeTitle
+                        }
+                    val animeSub =
+                        MiniPlayerController.currentAnimeTitle.ifBlank {
+                            activeTitle.substringBeforeLast(" - Ep ", activeTitle)
+                        }
+
+                    if (!miniFloating) {
+                        val dismissYThreshold = with(density) { 52.dp.toPx() }
+                        val dismissXThreshold = with(density) { 96.dp.toPx() }
+                        val expandYThreshold = with(density) { 64.dp.toPx() }
+
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = miniAlpha }
+                                .pointerInput(collapseDistPx) {
+                                    var mode = 0
+                                    var accX = 0f
+                                    var accY = 0f
+                                    detectDragGestures(
+                                        onDragStart = {
+                                            mode = 0
+                                            accX = 0f
+                                            accY = 0f
+                                        },
+                                        onDragEnd = {
+                                            when (mode) {
+                                                1 -> {
+                                                    if (-accY > expandYThreshold || expandAnim.value > 0.25f) {
+                                                        onExpand?.invoke()
+                                                        animScope.launch {
+                                                            expandAnim.animateTo(
+                                                                1f,
+                                                                spring(
+                                                                    dampingRatio = 0.88f,
+                                                                    stiffness = Spring.StiffnessMediumLow,
+                                                                ),
+                                                            )
+                                                        }
+                                                    } else {
+                                                        animScope.launch { expandAnim.animateTo(0f) }
+                                                    }
+                                                }
+                                                2 -> {
+                                                    val shouldDismiss = dismissDragY > dismissYThreshold
+                                                    dismissDragY = 0f
+                                                    if (shouldDismiss) closeCompletely()
+                                                }
+                                                3 -> {
+                                                    val shouldDismiss = abs(dismissDragX) > dismissXThreshold
+                                                    dismissDragX = 0f
+                                                    if (shouldDismiss) closeCompletely()
+                                                }
+                                            }
+                                            mode = 0
+                                        },
+                                        onDragCancel = {
+                                            dismissDragX = 0f
+                                            dismissDragY = 0f
+                                            if (mode == 1) animScope.launch { expandAnim.animateTo(0f) }
+                                            mode = 0
+                                        },
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            accX += amount.x
+                                            accY += amount.y
+                                            if (mode == 0 && (abs(accX) > 12f || abs(accY) > 12f)) {
+                                                mode =
+                                                    if (abs(accX) > abs(accY)) {
+                                                        3
+                                                    } else if (accY < 0f) {
+                                                        1
+                                                    } else {
+                                                        2
+                                                    }
+                                            }
+                                            when (mode) {
+                                                1 -> {
+                                                    val f = (-accY / collapseDistPx).coerceIn(0f, 1f)
+                                                    animScope.launch { expandAnim.snapTo(f) }
+                                                }
+                                                2 -> dismissDragY = accY.coerceAtLeast(0f)
+                                                3 -> dismissDragX = accX
+                                            }
+                                        },
+                                    )
+                                }.clickable(
+                                    onClick = hapticClick { onExpand?.invoke() },
+                                ),
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 118.dp, end = 4.dp, bottom = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(
+                                    Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Text(
+                                        epHeading,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = cs.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        animeSub,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = cs.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = hapticClick { PlayerPrefs.setMiniPlayerFloating(true) },
+                                    modifier = Modifier.size(34.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Tab,
+                                        contentDescription = "Mode mengambang",
+                                        tint = cs.onSurface,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = hapticClick { toggleMiniPlayback() },
+                                    modifier = Modifier.size(38.dp),
+                                ) {
+                                    if (miniBuffering) {
+                                        AppLoadingIndicator(Modifier.size(18.dp))
+                                    } else {
+                                        Icon(
+                                            when {
+                                                miniEnded -> Icons.Outlined.Replay
+                                                miniPlayWhenReady -> Icons.Outlined.Pause
+                                                else -> Icons.Outlined.PlayArrow
+                                            },
+                                            contentDescription = "Putar atau jeda",
+                                            tint = cs.onSurface,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
+                                }
+
+                                if (showNext) {
+                                    IconButton(
+                                        onClick = hapticClick { goNext() },
+                                        modifier = Modifier.size(34.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.SkipNext,
+                                            contentDescription = "Episode berikutnya",
+                                            tint = cs.onSurface,
+                                            modifier = Modifier.size(22.dp),
+                                        )
+                                    }
+                                }
+
+                                IconButton(
+                                    onClick = hapticClick { closeCompletely() },
+                                    modifier = Modifier.size(36.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Close,
+                                        contentDescription = "Tutup mini player",
+                                        tint = cs.onSurface,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+
+                            if (miniDur > 0L) {
+                                val pFrac = (miniPos.toFloat() / miniDur).coerceIn(0f, 1f)
+                                val bFrac = (miniBuffered.toFloat() / miniDur).coerceIn(0f, 1f)
+                                Box(
+                                    Modifier
+                                        .align(Alignment.BottomStart)
+                                        .fillMaxWidth()
+                                        .height(2.5.dp)
+                                        .background(cs.onSurface.copy(alpha = 0.12f)),
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(bFrac)
+                                            .background(cs.onSurface.copy(alpha = 0.24f)),
+                                    )
+                                    Box(
+                                        Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(pFrac)
+                                            .background(cs.primary),
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = miniAlpha }
+                                .pointerInput(screenWPx, minFloatY, maxFloatY) {
+                                    detectDragGestures(
+                                        onDragEnd = {
+                                            val rightX = (screenWPx - floatWPx - marginPx).coerceAtLeast(marginPx)
+                                            val snapX =
+                                                if (floatXAnim.value + floatWPx / 2f < screenWPx / 2f) {
+                                                    marginPx
+                                                } else {
+                                                    rightX
+                                                }
+                                            animScope.launch {
+                                                floatXAnim.animateTo(
+                                                    snapX,
+                                                    spring(
+                                                        dampingRatio = 0.8f,
+                                                        stiffness = Spring.StiffnessMediumLow,
+                                                    ),
+                                                )
+                                            }
+                                        },
+                                    ) { change, amount ->
+                                        change.consume()
+                                        val rightX = (screenWPx - floatWPx - marginPx).coerceAtLeast(marginPx)
+                                        val nextX = (floatXAnim.value + amount.x).coerceIn(marginPx, rightX)
+                                        val nextY = (floatYAnim.value + amount.y).coerceIn(minFloatY, maxFloatY)
+                                        animScope.launch {
+                                            floatXAnim.snapTo(nextX)
+                                            floatYAnim.snapTo(nextY)
+                                        }
+                                    }
+                                },
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(FloatingMiniVideoHeight)
+                                    .clickable(onClick = hapticClick { onExpand?.invoke() }),
+                            )
+
+                            Row(
+                                Modifier
+                                    .align(Alignment.BottomStart)
+                                    .fillMaxWidth()
+                                    .height(FloatingMiniBarHeight)
+                                    .background(cs.surfaceContainerHighest)
+                                    .padding(start = 10.dp, end = 2.dp, bottom = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    if (!curIndex.isNullOrBlank()) "Ep $curIndex" else epHeading,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = cs.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier =
+                                        Modifier
+                                            .weight(1f)
+                                            .clickable(onClick = hapticClick { onExpand?.invoke() }),
+                                )
+
+                                IconButton(
+                                    onClick = hapticClick { PlayerPrefs.setMiniPlayerFloating(false) },
+                                    modifier = Modifier.size(30.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.ViewAgenda,
+                                        contentDescription = "Mode bar bawah",
+                                        tint = cs.onSurface,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = hapticClick { toggleMiniPlayback() },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        when {
+                                            miniEnded -> Icons.Outlined.Replay
+                                            miniPlayWhenReady -> Icons.Outlined.Pause
+                                            else -> Icons.Outlined.PlayArrow
+                                        },
+                                        contentDescription = "Putar atau jeda",
+                                        tint = cs.onSurface,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = hapticClick { closeCompletely() },
+                                    modifier = Modifier.size(30.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Close,
+                                        contentDescription = "Tutup",
+                                        tint = cs.onSurface,
+                                        modifier = Modifier.size(17.dp),
+                                    )
+                                }
+                            }
+
+                            if (miniDur > 0L) {
+                                val pFrac = (miniPos.toFloat() / miniDur).coerceIn(0f, 1f)
+                                Box(
+                                    Modifier
+                                        .align(Alignment.BottomStart)
+                                        .fillMaxWidth()
+                                        .height(2.5.dp)
+                                        .background(cs.onSurface.copy(alpha = 0.15f)),
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(pFrac)
+                                            .background(cs.primary),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = showEpisodes && curMovieId != null && fullscreen,
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
+        ) {
+            val mId = curMovieId
+            if (mId != null) {
+                EpisodePanel(
+                    movieId = mId,
+                    currentEpId = curEpId,
+                    currentIndex = curIndex,
+                    viewModel = viewModel,
+                    onPick = {
+                        showEpisodes = false
+                        switchTo(it, false)
+                    },
+                    onDismiss = { showEpisodes = false },
                 )
             }
         }
 
-        PlayerModalsHost(
-            fullscreen = fullscreen,
-            expanded = expanded,
-            curMovieId = curMovieId,
-            curEpId = curEpId,
-            curIndex = curIndex,
-            activeTitle = activeTitle,
-            servers = servers,
+        AnimatedVisibility(
+            visible = showComments && fullscreen,
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
+        ) {
+            CommentsPanel(
+                viewModel = commentsViewModel,
+                onDismiss = { showComments = false },
+            )
+        }
+
+        if (showEndSuggestions && expanded) {
+            EndSuggestions(
+                animeTitle = activeTitle.substringBeforeLast(" - Ep ", activeTitle),
+                movies = similar,
+                loading = similarLoading,
+                onOpen = onOpenAnime,
+                onDismiss = { showEndSuggestions = false },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        SpeedPanel(
+            visible = showSpeed && fullscreen,
             speed = speed,
-            sleepDeadlineMs = sleepDeadlineMs,
-            sleepNow = sleepNow,
-            sleepAfterEpisode = sleepAfterEpisode,
-            showEpisodes = showEpisodes,
-            showComments = showComments,
-            showEndSuggestions = showEndSuggestions,
-            showSpeed = showSpeed,
-            showSleep = showSleep,
-            showDialog = showDialog,
-            similar = similar,
-            similarLoading = similarLoading,
-            commentsViewModel = commentsViewModel,
-            snackbar = snackbar,
-            resolveSel = ::resolveSel,
-            switchTo = switchTo,
-            pickServer = pickServer,
-            onOpenAnime = onOpenAnime,
-            showMessage = showMessage,
-            onDismissEpisodes = { showEpisodes = false },
-            onDismissComments = { showComments = false },
-            onDismissEndSuggestions = { showEndSuggestions = false },
-            onDismissSpeed = { showSpeed = false },
-            onDismissSleep = { showSleep = false },
-            onDismissDialog = { showDialog = false },
-            onSpeedChange = { speed = it },
-            onSleepTimerChange = { d, a ->
-                sleepDeadlineMs = d
-                sleepAfterEpisode = a
-            },
-        )
-}
+            onDismiss = { showSpeed = false },
+        ) { s ->
+            showSpeed = false
+            speed = s
+        }
+
+        SleepTimerPanel(
+            visible = showSleep && fullscreen,
+            deadlineMs = sleepDeadlineMs,
+            nowMs = sleepNow,
+            afterEpisode = sleepAfterEpisode,
+            onDismiss = { showSleep = false },
+        ) { deadlineMs, afterEpisode, message ->
+            showSleep = false
+            sleepDeadlineMs = deadlineMs
+            sleepAfterEpisode = afterEpisode
+            showMessage(message)
+        }
+
+        AnimatedVisibility(
+            visible = showDialog && servers.isNotEmpty() && fullscreen,
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
+        ) {
+            if (servers.isNotEmpty()) {
+                PlayerOptionPanel(
+                    title = "Kualitas",
+                    options = servers.map { it.label() },
+                    selected = resolveSel(servers),
+                    onDismiss = { showDialog = false },
+                    onSelect = pickServer,
+                )
+            }
+        }
+
+        if (!fullscreen && expanded) {
+            if (showSpeed) {
+                SpeedSheet(
+                    speed = speed,
+                    onDismiss = { showSpeed = false },
+                ) { s ->
+                    showSpeed = false
+                    speed = s
+                }
+            }
+            if (showSleep) {
+                SleepTimerSheet(
+                    deadlineMs = sleepDeadlineMs,
+                    nowMs = sleepNow,
+                    afterEpisode = sleepAfterEpisode,
+                    onDismiss = { showSleep = false },
+                ) { choice ->
+                    showSleep = false
+                    sleepDeadlineMs = choice.deadlineMs
+                    sleepAfterEpisode = choice.afterEpisode
+                    showMessage(choice.message)
+                }
+            }
+            if (showDialog && servers.isNotEmpty()) {
+                QualitySheet(
+                    servers = servers,
+                    selected = resolveSel(servers),
+                    onDismiss = { showDialog = false },
+                    onSelect = pickServer,
+                )
+            }
+        }
+
+        if (expanded) {
+            SnackbarHost(
+                hostState = snackbar,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .safeDrawingPadding()
+                        .padding(bottom = if (fullscreen) 72.dp else 0.dp),
+            )
+        }
+    }
 }

@@ -3,10 +3,6 @@ package com.uwu.animex.data.local
 import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
-import com.google.gson.Gson
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.BookmarkEntity
@@ -24,6 +20,8 @@ import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import com.uwu.animex.ui.theme.coerceToUiScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,7 +29,6 @@ import java.util.Locale
 object DataBackup {
     private const val APP = "AnimeX"
     private const val FORMAT = 1
-    private val gson = Gson()
 
     data class Summary(
         val bookmarks: Int,
@@ -67,87 +64,76 @@ object DataBackup {
             val n = NotificationPrefs.state.value
 
             val root =
-                JsonObject().apply {
-                    addProperty("app", APP)
-                    addProperty("format", FORMAT)
-                    addProperty("createdAt", System.currentTimeMillis())
-                    add(
+                JSONObject()
+                    .put("app", APP)
+                    .put("format", FORMAT)
+                    .put("createdAt", System.currentTimeMillis())
+                    .put(
                         "appearance",
-                        JsonObject().apply {
-                            addProperty("mode", a.mode.name)
-                            addProperty("dynamicColor", a.dynamicColor)
-                            addProperty("accent", a.accent.name)
-                            addProperty("amoled", a.amoled)
-                            addProperty("blur", a.blur)
-                            addProperty("barEffect", a.barEffect.name)
-                            addProperty("paletteStyle", a.paletteStyle.name)
-                            addProperty("colorSpec", a.colorSpec.name)
-                            addProperty("contrast", a.contrast.toDouble())
-                            addProperty("customSeed", a.customSeed)
-                            addProperty("cmfTertiarySeed", a.cmfTertiarySeed)
-                            add(
+                        JSONObject()
+                            .put("mode", a.mode.name)
+                            .put("dynamicColor", a.dynamicColor)
+                            .put("accent", a.accent.name)
+                            .put("amoled", a.amoled)
+                            .put("blur", a.blur)
+                            .put("barEffect", a.barEffect.name)
+                            .put("paletteStyle", a.paletteStyle.name)
+                            .put("colorSpec", a.colorSpec.name)
+                            .put("contrast", a.contrast.toDouble())
+                            .put("customSeed", a.customSeed)
+                            .put("cmfTertiarySeed", a.cmfTertiarySeed)
+                            .put(
                                 "roleOverrides",
-                                JsonObject().apply {
-                                    addProperty("primary", a.roleOverrides.primary)
-                                    addProperty("secondary", a.roleOverrides.secondary)
-                                    addProperty("tertiary", a.roleOverrides.tertiary)
-                                    addProperty("neutral", a.roleOverrides.neutral)
-                                    addProperty("neutralVariant", a.roleOverrides.neutralVariant)
-                                    addProperty("error", a.roleOverrides.error)
-                                },
-                            )
-                            addProperty("animateColorChange", a.animateColorChange)
-                            addProperty("colorAnimationMs", a.colorAnimationMs)
-                            addProperty("uiScale", a.uiScale.toDouble())
-                            addProperty("fontScale", a.fontScale.toDouble())
-                            addProperty("autoScaleUi", a.autoScaleUi)
-                            addProperty("homeCardScale", a.homeCardScale.toDouble())
-                            addProperty("compactNumbers", a.compactNumbers)
-                            addProperty("hideStats", a.hideStats)
-                            addProperty("hapticsEnabled", a.hapticsEnabled)
-                            addProperty("backgroundType", a.backgroundType.name)
-                            addProperty("backgroundParallax", a.backgroundParallax)
-                            addProperty("randomInterval", a.randomInterval.name)
-                            addProperty("seasonalThemes", a.seasonalThemes)
-                        },
-                    )
-                    add("player", PlayerPrefs.exportJson())
-                    add("homeSections", HomeSectionPrefs.exportJson())
-                    add(
+                                JSONObject()
+                                    .put("primary", a.roleOverrides.primary)
+                                    .put("secondary", a.roleOverrides.secondary)
+                                    .put("tertiary", a.roleOverrides.tertiary)
+                                    .put("neutral", a.roleOverrides.neutral)
+                                    .put("neutralVariant", a.roleOverrides.neutralVariant)
+                                    .put("error", a.roleOverrides.error),
+                            ).put("animateColorChange", a.animateColorChange)
+                            .put("colorAnimationMs", a.colorAnimationMs)
+                            .put("uiScale", a.uiScale.toDouble())
+                            .put("fontScale", a.fontScale.toDouble())
+                            .put("autoScaleUi", a.autoScaleUi)
+                            .put("homeCardScale", a.homeCardScale.toDouble())
+                            .put("compactNumbers", a.compactNumbers)
+                            .put("hideStats", a.hideStats)
+                            .put("hapticsEnabled", a.hapticsEnabled)
+                            .put("backgroundType", a.backgroundType.name)
+                            .put("backgroundParallax", a.backgroundParallax)
+                            .put("randomInterval", a.randomInterval.name)
+                            .put("seasonalThemes", a.seasonalThemes),
+                    ).put("player", PlayerPrefs.exportJson())
+                    .put("homeSections", HomeSectionPrefs.exportJson())
+                    .put(
                         "notifications",
-                        JsonObject().apply {
-                            addProperty("enabled", n.enabled)
-                            addProperty("episodes", n.episodes)
-                            addProperty("appUpdates", n.appUpdates)
-                            addProperty("prereleases", n.prereleases)
-                            addProperty("discussions", n.discussions)
-                        },
-                    )
-                    add(
+                        JSONObject()
+                            .put("enabled", n.enabled)
+                            .put("episodes", n.episodes)
+                            .put("appUpdates", n.appUpdates)
+                            .put("prereleases", n.prereleases)
+                            .put("discussions", n.discussions),
+                    ).put(
                         "cuplix",
-                        JsonObject().apply {
-                            addProperty("enabled", CuplixPrefs.enabled.value)
-                            addProperty("muted", CuplixPrefs.muted.value)
-                        },
-                    )
-                    add(
+                        JSONObject()
+                            .put("enabled", CuplixPrefs.enabled.value)
+                            .put("muted", CuplixPrefs.muted.value),
+                    ).put(
                         "sync",
-                        JsonObject().apply {
-                            addProperty("source", SyncSourcePref.source.value.name)
-                            addProperty("mirror", SyncSourcePref.mirror.value)
-                        },
-                    )
-                    add("bookmarks", JsonArray().apply { bookmarks.forEach { add(it.toJson()) } })
-                    add("history", JsonArray().apply { history.forEach { add(it.toJson()) } })
-                    add("progress", JsonArray().apply { progress.forEach { add(it.toJson()) } })
-                    add("searchHistory", JsonArray().apply { searches.forEach { add(it.toJson()) } })
-                    add("episodeAlerts", JsonArray().apply { alerts.forEach { add(it.toJson()) } })
-                }
+                        JSONObject()
+                            .put("source", SyncSourcePref.source.value.name)
+                            .put("mirror", SyncSourcePref.mirror.value),
+                    ).put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
+                    .put("history", JSONArray(history.map { it.toJson() }))
+                    .put("progress", JSONArray(progress.map { it.toJson() }))
+                    .put("searchHistory", JSONArray(searches.map { it.toJson() }))
+                    .put("episodeAlerts", JSONArray(alerts.map { it.toJson() }))
 
             val out =
                 app.contentResolver.openOutputStream(uri, "wt")
                     ?: throw java.io.IOException("Gagal membuka berkas tujuan")
-            out.use { it.write(gson.toJson(root).toByteArray(Charsets.UTF_8)) }
+            out.use { it.write(root.toString().toByteArray(Charsets.UTF_8)) }
 
             Summary(bookmarks.size, history.size, progress.size, searches.size, alerts.size)
         }
@@ -164,12 +150,12 @@ object DataBackup {
 
             val root =
                 try {
-                    JsonParser.parseString(text).asJsonObject
+                    JSONObject(text)
                 } catch (_: Exception) {
                     throw InvalidBackupException("Berkas bukan backup AnimeX yang valid")
                 }
-            if (root.str("app") != APP) throw InvalidBackupException("Berkas bukan backup AnimeX yang valid")
-            if ((root.intOrNull("format") ?: 0) > FORMAT) {
+            if (root.optString("app") != APP) throw InvalidBackupException("Berkas bukan backup AnimeX yang valid")
+            if (root.optInt("format", 0) > FORMAT) {
                 throw InvalidBackupException(
                     "Backup dibuat dari versi AnimeX yang lebih baru, perbarui aplikasinya dulu",
                 )
@@ -180,13 +166,13 @@ object DataBackup {
             val progress = root.objects("progress").mapNotNull { it.toProgress() }
             val searches = root.objects("searchHistory").mapNotNull { it.toSearch() }
             val alerts = root.objects("episodeAlerts").mapNotNull { it.toAlert() }
-            val appearanceObj = root.objOrNull("appearance")
+            val appearanceObj = root.optJSONObject("appearance")
             val appearance = appearanceObj?.toAppearance()
-            val player = root.objOrNull("player")
-            val homeSections = root.objOrNull("homeSections")
-            val notifications = root.objOrNull("notifications")
-            val cuplix = root.objOrNull("cuplix")
-            val sync = root.objOrNull("sync")
+            val player = root.optJSONObject("player")
+            val homeSections = root.optJSONObject("homeSections")
+            val notifications = root.optJSONObject("notifications")
+            val cuplix = root.optJSONObject("cuplix")
+            val sync = root.optJSONObject("sync")
 
             val database = AnimeDatabase.get(app)
             val dao = database.animeDao()
@@ -211,81 +197,49 @@ object DataBackup {
             if (notifications != null) {
                 NotificationPrefs.update {
                     copy(
-                        enabled = notifications.boolOr("enabled", enabled),
-                        episodes = notifications.boolOr("episodes", episodes),
-                        appUpdates = notifications.boolOr("appUpdates", appUpdates),
-                        prereleases = notifications.boolOr("prereleases", prereleases),
-                        discussions = notifications.boolOr("discussions", discussions),
+                        enabled = notifications.optBoolean("enabled", enabled),
+                        episodes = notifications.optBoolean("episodes", episodes),
+                        appUpdates = notifications.optBoolean("appUpdates", appUpdates),
+                        prereleases = notifications.optBoolean("prereleases", prereleases),
+                        discussions = notifications.optBoolean("discussions", discussions),
                     )
                 }
             }
             if (cuplix != null) {
-                cuplix.boolOrNull("enabled")?.let(CuplixPrefs::setEnabled)
-                cuplix.boolOrNull("muted")?.let(CuplixPrefs::setMuted)
+                if (cuplix.has("enabled")) CuplixPrefs.setEnabled(cuplix.optBoolean("enabled"))
+                if (cuplix.has("muted")) CuplixPrefs.setMuted(cuplix.optBoolean("muted"))
             }
             if (sync != null) {
-                sync.str("source")?.let { s -> runCatching { SyncSource.valueOf(s) }.getOrNull() }?.let(SyncSourcePref::set)
-                sync.boolOrNull("mirror")?.let(SyncSourcePref::setMirror)
+                runCatching { SyncSource.valueOf(sync.optString("source")) }.getOrNull()?.let(SyncSourcePref::set)
+                if (sync.has("mirror")) SyncSourcePref.setMirror(sync.optBoolean("mirror"))
             }
 
             Summary(bookmarks.size, history.size, progress.size, searches.size, alerts.size)
         }
 
-    private fun JsonObject.str(key: String): String? {
-        val el = get(key) ?: return null
-        return if (el.isJsonNull || !el.isJsonPrimitive) null else el.asString
-    }
+    private fun JSONObject.str(key: String): String? = if (isNull(key)) null else optString(key).takeIf { has(key) }
 
-    private fun JsonObject.intOrNull(key: String): Int? =
-        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asInt }.getOrNull() }
-
-    private fun JsonObject.intOr(
-        key: String,
-        fallback: Int,
-    ): Int = intOrNull(key) ?: fallback
-
-    private fun JsonObject.longOr(
-        key: String,
-        fallback: Long,
-    ): Long = get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asLong }.getOrNull() } ?: fallback
-
-    private fun JsonObject.doubleOr(
-        key: String,
-        fallback: Double,
-    ): Double = get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble }.getOrNull() } ?: fallback
-
-    private fun JsonObject.boolOrNull(key: String): Boolean? =
-        get(key)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asBoolean }.getOrNull() }
-
-    private fun JsonObject.boolOr(
-        key: String,
-        fallback: Boolean,
-    ): Boolean = boolOrNull(key) ?: fallback
-
-    private fun JsonObject.objOrNull(key: String): JsonObject? =
-        get(key)?.takeIf { it.isJsonObject }?.asJsonObject
-
-    private fun JsonObject.objects(key: String): List<JsonObject> {
-        val arr = get(key)?.takeIf { it.isJsonArray }?.asJsonArray ?: return emptyList()
-        return arr.mapNotNull { it.takeIf { el -> el.isJsonObject }?.asJsonObject }
+    private fun JSONObject.objects(key: String): List<JSONObject> {
+        val arr = optJSONArray(key) ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
     }
 
     private fun BookmarkEntity.toJson() =
-        JsonObject().apply {
-            addProperty("movieId", movieId)
-            addProperty("title", title)
-            addProperty("imagePoster", imagePoster)
-            addProperty("imageCover", imageCover)
-            addProperty("type", type)
-            addProperty("year", year)
-            addProperty("genre", genre)
-            addProperty("studio", studio)
-            addProperty("status", status)
-            addProperty("updatedAt", updatedAt)
-        }
+        JSONObject()
+            .put("movieId", movieId)
+            .put("title", title)
+            .put("imagePoster", imagePoster)
+            .put("imageCover", imageCover)
+            .put("type", type)
+            .put("year", year)
+            .put("genre", genre)
+            .put("studio", studio)
+            .put("status", status)
+            .put("updatedAt", updatedAt)
 
-    private fun JsonObject.toBookmark(): BookmarkEntity? {
+    private fun JSONObject.toBookmark(): BookmarkEntity? {
         val id = str("movieId") ?: return null
+
         val status = str("status")?.takeIf { it.isNotBlank() } ?: return null
         return BookmarkEntity(
             movieId = id,
@@ -297,33 +251,32 @@ object DataBackup {
             genre = str("genre"),
             studio = str("studio"),
             status = status,
-            updatedAt = longOr("updatedAt", System.currentTimeMillis()),
+            updatedAt = optLong("updatedAt", System.currentTimeMillis()),
         )
     }
 
     private fun HistoryEntity.toJson() =
-        JsonObject().apply {
-            addProperty("movieId", movieId)
-            addProperty("title", title)
-            addProperty("imagePoster", imagePoster)
-            addProperty("imageCover", imageCover)
-            addProperty("type", type)
-            addProperty("year", year)
-            addProperty("status", status)
-            addProperty("genre", genre)
-            addProperty("studio", studio)
-            addProperty("views", views)
-            addProperty("favorites", favorites)
-            addProperty("airedStart", airedStart)
-            addProperty("airedEnd", airedEnd)
-            addProperty("day", day)
-            addProperty("time", time)
-            addProperty("episodeIndex", episodeIndex)
-            addProperty("episodeId", episodeId)
-            addProperty("watchedAt", watchedAt)
-        }
+        JSONObject()
+            .put("movieId", movieId)
+            .put("title", title)
+            .put("imagePoster", imagePoster)
+            .put("imageCover", imageCover)
+            .put("type", type)
+            .put("year", year)
+            .put("status", status)
+            .put("genre", genre)
+            .put("studio", studio)
+            .put("views", views)
+            .put("favorites", favorites)
+            .put("airedStart", airedStart)
+            .put("airedEnd", airedEnd)
+            .put("day", day)
+            .put("time", time)
+            .put("episodeIndex", episodeIndex)
+            .put("episodeId", episodeId)
+            .put("watchedAt", watchedAt)
 
-    private fun JsonObject.toHistory(): HistoryEntity? {
+    private fun JSONObject.toHistory(): HistoryEntity? {
         val id = str("movieId") ?: return null
         return HistoryEntity(
             movieId = id,
@@ -343,99 +296,96 @@ object DataBackup {
             time = str("time"),
             episodeIndex = str("episodeIndex"),
             episodeId = str("episodeId"),
-            watchedAt = longOr("watchedAt", System.currentTimeMillis()),
+            watchedAt = optLong("watchedAt", System.currentTimeMillis()),
         )
     }
 
     private fun ProgressEntity.toJson() =
-        JsonObject().apply {
-            addProperty("episodeId", episodeId)
-            addProperty("positionMs", positionMs)
-            addProperty("durationMs", durationMs)
-            addProperty("updatedAt", updatedAt)
-        }
+        JSONObject()
+            .put("episodeId", episodeId)
+            .put("positionMs", positionMs)
+            .put("durationMs", durationMs)
+            .put("updatedAt", updatedAt)
 
-    private fun JsonObject.toProgress(): ProgressEntity? {
+    private fun JSONObject.toProgress(): ProgressEntity? {
         val id = str("episodeId") ?: return null
         return ProgressEntity(
             episodeId = id,
-            positionMs = longOr("positionMs", 0L),
-            durationMs = longOr("durationMs", 0L),
-            updatedAt = longOr("updatedAt", System.currentTimeMillis()),
+            positionMs = optLong("positionMs", 0L),
+            durationMs = optLong("durationMs", 0L),
+            updatedAt = optLong("updatedAt", System.currentTimeMillis()),
         )
     }
 
     private fun SearchHistoryEntity.toJson() =
-        JsonObject().apply {
-            addProperty("query", query)
-            addProperty("searchedAt", searchedAt)
-        }
+        JSONObject()
+            .put("query", query)
+            .put("searchedAt", searchedAt)
 
-    private fun JsonObject.toSearch(): SearchHistoryEntity? {
+    private fun JSONObject.toSearch(): SearchHistoryEntity? {
         val q = str("query")?.takeIf { it.isNotBlank() } ?: return null
-        return SearchHistoryEntity(query = q, searchedAt = longOr("searchedAt", System.currentTimeMillis()))
+        return SearchHistoryEntity(query = q, searchedAt = optLong("searchedAt", System.currentTimeMillis()))
     }
 
     private fun EpisodeAlertEntity.toJson() =
-        JsonObject().apply {
-            addProperty("movieId", movieId)
-            addProperty("title", title)
-            addProperty("imagePoster", imagePoster)
-            addProperty("lastEpisode", lastEpisode)
-            addProperty("createdAt", createdAt)
-        }
+        JSONObject()
+            .put("movieId", movieId)
+            .put("title", title)
+            .put("imagePoster", imagePoster)
+            .put("lastEpisode", lastEpisode)
+            .put("createdAt", createdAt)
 
-    private fun JsonObject.toAlert(): EpisodeAlertEntity? {
+    private fun JSONObject.toAlert(): EpisodeAlertEntity? {
         val id = str("movieId") ?: return null
         return EpisodeAlertEntity(
             movieId = id,
             title = str("title"),
             imagePoster = str("imagePoster"),
-            lastEpisode = intOr("lastEpisode", 0),
-            createdAt = longOr("createdAt", System.currentTimeMillis()),
+            lastEpisode = optInt("lastEpisode", 0),
+            createdAt = optLong("createdAt", System.currentTimeMillis()),
         )
     }
 
-    private fun JsonObject.toAppearance(): AppearanceSettings {
+    private fun JSONObject.toAppearance(): AppearanceSettings {
         val d = AppearanceSettings()
         return AppearanceSettings(
-            mode = str("mode")?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.mode,
-            dynamicColor = boolOr("dynamicColor", d.dynamicColor),
-            accent = str("accent")?.let { runCatching { AccentPalette.valueOf(it) }.getOrNull() } ?: d.accent,
-            amoled = boolOr("amoled", d.amoled),
-            blur = boolOr("blur", d.blur),
-            barEffect = str("barEffect")?.let { runCatching { BarEffect.valueOf(it) }.getOrNull() } ?: d.barEffect,
-            paletteStyle = str("paletteStyle")?.let { runCatching { PaletteStyle.valueOf(it) }.getOrNull() } ?: d.paletteStyle,
-            colorSpec = str("colorSpec")?.let { runCatching { ColorSpec.valueOf(it) }.getOrNull() } ?: d.colorSpec,
-            contrast = doubleOr("contrast", d.contrast.toDouble()).toFloat().coerceToContrast(),
-            customSeed = intOr("customSeed", d.customSeed),
-            cmfTertiarySeed = intOr("cmfTertiarySeed", d.cmfTertiarySeed),
+            mode = runCatching { ThemeMode.valueOf(optString("mode")) }.getOrDefault(d.mode),
+            dynamicColor = optBoolean("dynamicColor", d.dynamicColor),
+            accent = runCatching { AccentPalette.valueOf(optString("accent")) }.getOrDefault(d.accent),
+            amoled = optBoolean("amoled", d.amoled),
+            blur = optBoolean("blur", d.blur),
+            barEffect = runCatching { BarEffect.valueOf(optString("barEffect")) }.getOrDefault(d.barEffect),
+            paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),
+            colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
+            contrast = optDouble("contrast", d.contrast.toDouble()).toFloat().coerceToContrast(),
+            customSeed = optInt("customSeed", d.customSeed),
+            cmfTertiarySeed = optInt("cmfTertiarySeed", d.cmfTertiarySeed),
             roleOverrides =
-                objOrNull("roleOverrides")?.let {
+                optJSONObject("roleOverrides")?.let {
                     RoleOverrides(
-                        primary = it.intOr("primary", 0),
-                        secondary = it.intOr("secondary", 0),
-                        tertiary = it.intOr("tertiary", 0),
-                        neutral = it.intOr("neutral", 0),
-                        neutralVariant = it.intOr("neutralVariant", 0),
-                        error = it.intOr("error", 0),
+                        primary = it.optInt("primary", 0),
+                        secondary = it.optInt("secondary", 0),
+                        tertiary = it.optInt("tertiary", 0),
+                        neutral = it.optInt("neutral", 0),
+                        neutralVariant = it.optInt("neutralVariant", 0),
+                        error = it.optInt("error", 0),
                     )
                 } ?: d.roleOverrides,
-            animateColorChange = boolOr("animateColorChange", d.animateColorChange),
-            colorAnimationMs = intOr("colorAnimationMs", d.colorAnimationMs).coerceToColorAnimMs(),
-            uiScale = doubleOr("uiScale", d.uiScale.toDouble()).toFloat().coerceToUiScale(),
-            fontScale = doubleOr("fontScale", d.fontScale.toDouble()).toFloat().coerceToFontScale(),
-            autoScaleUi = boolOr("autoScaleUi", d.autoScaleUi),
-            homeCardScale = doubleOr("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
-            compactNumbers = boolOr("compactNumbers", d.compactNumbers),
-            hideStats = boolOr("hideStats", d.hideStats),
-            hapticsEnabled = boolOr("hapticsEnabled", d.hapticsEnabled),
+            animateColorChange = optBoolean("animateColorChange", d.animateColorChange),
+            colorAnimationMs = optInt("colorAnimationMs", d.colorAnimationMs).coerceToColorAnimMs(),
+            uiScale = optDouble("uiScale", d.uiScale.toDouble()).toFloat().coerceToUiScale(),
+            fontScale = optDouble("fontScale", d.fontScale.toDouble()).toFloat().coerceToFontScale(),
+            autoScaleUi = optBoolean("autoScaleUi", d.autoScaleUi),
+            homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
+            compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
+            hideStats = optBoolean("hideStats", d.hideStats),
+            hapticsEnabled = optBoolean("hapticsEnabled", d.hapticsEnabled),
             backgroundType =
-                str("backgroundType")?.let { runCatching { BackgroundType.valueOf(it) }.getOrNull() } ?: d.backgroundType,
-            backgroundParallax = boolOr("backgroundParallax", d.backgroundParallax),
+                runCatching { BackgroundType.valueOf(optString("backgroundType")) }.getOrDefault(d.backgroundType),
+            backgroundParallax = optBoolean("backgroundParallax", d.backgroundParallax),
             randomInterval =
-                str("randomInterval")?.let { runCatching { RandomInterval.valueOf(it) }.getOrNull() } ?: d.randomInterval,
-            seasonalThemes = boolOr("seasonalThemes", d.seasonalThemes),
+                runCatching { RandomInterval.valueOf(optString("randomInterval")) }.getOrDefault(d.randomInterval),
+            seasonalThemes = optBoolean("seasonalThemes", d.seasonalThemes),
         )
     }
 }

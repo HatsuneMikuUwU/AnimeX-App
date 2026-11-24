@@ -5,8 +5,8 @@ import com.uwu.animex.core.storage.PrefKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
+import org.json.JSONArray
+import org.json.JSONObject
 
 enum class PlayerButton(
     val label: String,
@@ -384,81 +384,80 @@ object PlayerPrefs {
         return generated
     }
 
-    fun exportJson(): JsonObject =
-        JsonObject().apply {
-            addProperty("quality", quality)
-            addProperty("gesturesEnabled", _gesturesEnabled.value)
-            add("hiddenButtons", JsonArray().apply { _hiddenButtons.value.forEach { add(it.name) } })
-            add("speedPresets", JsonArray().apply { _speedPresets.value.forEach { add(it) } })
-            addProperty("progressPreference", _progressPreference.value.toDouble())
-            addProperty("switchOnFailure", _switchOnFailure.value)
-            addProperty("orientation", _defaultOrientation.value.name)
-            addProperty("showLoadingCircle", _showLoadingCircle.value)
-            addProperty("rememberLevels", _rememberLevels.value)
-            addProperty("enablePip", _enablePip.value)
-            addProperty("autoplay", _autoplayEnabled.value)
-            addProperty("controlsTimeoutMs", _controlsTimeoutMs.value)
-            addProperty("displayVolPer", _displayVolPer.value)
-            addProperty("invertDuration", _invertDuration.value)
-            addProperty("playerFullscreen", _playerFullscreen.value)
-            addProperty("reduceMotion", _reduceMotion.value)
-            addProperty("alwaysUseExternal", _alwaysUseExternal.value)
-            addProperty("externalPackage", _externalPackage.value)
-            addProperty("swapVolumeBrightness", _swapVolumeBrightness.value)
-            addProperty("swapIndicator", _swapIndicator.value)
-            addProperty("audioFocus", _audioFocus.value)
-            addProperty("pauseOnNoisy", _pauseOnNoisy.value)
-            addProperty("volumeBoost", _volumeBoost.value)
-            addProperty("backgroundPlay", _backgroundPlay.value)
-            addProperty("miniPlayerFloating", _miniPlayerFloating.value)
-            addProperty("skipIntroMs", _skipIntroMs.value)
-            addProperty("aniSkipEnabled", _aniSkipEnabled.value)
-            addProperty("autoSkipOp", _autoSkipOp.value)
-            addProperty("autoSkipEd", _autoSkipEd.value)
-            addProperty("autoSkipRecap", _autoSkipRecap.value)
-        }
+    fun exportJson(): JSONObject =
+        JSONObject()
+            .put("quality", quality)
+            .put("gesturesEnabled", _gesturesEnabled.value)
+            .put("hiddenButtons", JSONArray(_hiddenButtons.value.map { it.name }))
+            .put("speedPresets", JSONArray(_speedPresets.value.toList()))
+            .put("progressPreference", _progressPreference.value.toDouble())
+            .put("switchOnFailure", _switchOnFailure.value)
+            .put("orientation", _defaultOrientation.value.name)
+            .put("showLoadingCircle", _showLoadingCircle.value)
+            .put("rememberLevels", _rememberLevels.value)
+            .put("enablePip", _enablePip.value)
+            .put("autoplay", _autoplayEnabled.value)
+            .put("controlsTimeoutMs", _controlsTimeoutMs.value)
+            .put("displayVolPer", _displayVolPer.value)
+            .put("invertDuration", _invertDuration.value)
+            .put("playerFullscreen", _playerFullscreen.value)
+            .put("reduceMotion", _reduceMotion.value)
+            .put("alwaysUseExternal", _alwaysUseExternal.value)
+            .put("externalPackage", _externalPackage.value)
+            .put("swapVolumeBrightness", _swapVolumeBrightness.value)
+            .put("swapIndicator", _swapIndicator.value)
+            .put("audioFocus", _audioFocus.value)
+            .put("pauseOnNoisy", _pauseOnNoisy.value)
+            .put("volumeBoost", _volumeBoost.value)
+            .put("backgroundPlay", _backgroundPlay.value)
+            .put("miniPlayerFloating", _miniPlayerFloating.value)
+            .put("skipIntroMs", _skipIntroMs.value)
+            .put("aniSkipEnabled", _aniSkipEnabled.value)
+            .put("autoSkipOp", _autoSkipOp.value)
+            .put("autoSkipEd", _autoSkipEd.value)
+            .put("autoSkipRecap", _autoSkipRecap.value)
 
-    fun restoreJson(o: JsonObject) {
-        fun bool(k: String): Boolean? = o.get(k)?.takeIf { it.isJsonPrimitive }?.asBoolean
-        fun int(k: String): Int? = o.get(k)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asInt }.getOrNull() }
-        fun double(k: String): Double? = o.get(k)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble }.getOrNull() }
-        fun str(k: String): String? = o.get(k)?.takeIf { it.isJsonPrimitive }?.asString
-
-        int("quality")?.let { setQuality(it.coerceAtLeast(0)) }
-        bool("gesturesEnabled")?.let(::setGesturesEnabled)
-        o.getAsJsonArray("hiddenButtons")?.let { arr ->
-            val names = arr.mapNotNull { it.takeIf { el -> el.isJsonPrimitive }?.asString }.toSet()
+    fun restoreJson(o: JSONObject) {
+        if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
+        if (o.has("gesturesEnabled")) setGesturesEnabled(o.optBoolean("gesturesEnabled"))
+        o.optJSONArray("hiddenButtons")?.let { arr ->
+            val names = (0 until arr.length()).map { arr.optString(it) }.toSet()
             setHiddenButtons(PlayerButton.entries.filter { it.name in names }.toSet())
         }
-        o.getAsJsonArray("speedPresets")?.let { arr ->
-            val presets = arr.mapNotNull { it.takeIf { el -> el.isJsonPrimitive }?.asString }.toSet()
+        o.optJSONArray("speedPresets")?.let { arr ->
+            val presets = (0 until arr.length()).map { arr.optString(it) }.toSet()
             if (presets.isNotEmpty()) setSpeedPresets(presets)
         }
-        double("progressPreference")?.toFloat()?.let { if (it in 0.7f..1f) setProgressPreference(it) }
-        bool("switchOnFailure")?.let(::setSwitchOnFailure)
-        str("orientation")?.let { name -> PlayerOrientation.entries.firstOrNull { it.name == name }?.let(::setDefaultOrientation) }
-        bool("showLoadingCircle")?.let(::setShowLoadingCircle)
-        bool("rememberLevels")?.let(::setRememberLevels)
-        bool("enablePip")?.let(::setEnablePip)
-        bool("autoplay")?.let(::setAutoplayEnabled)
-        int("controlsTimeoutMs")?.let { setControlsTimeoutMs(it.coerceIn(2_000, 10_000)) }
-        bool("displayVolPer")?.let(::setDisplayVolPer)
-        bool("invertDuration")?.let(::setInvertDuration)
-        bool("playerFullscreen")?.let(::setPlayerFullscreen)
-        bool("reduceMotion")?.let(::setReduceMotion)
-        bool("alwaysUseExternal")?.let(::setAlwaysUseExternal)
-        str("externalPackage")?.let(::setExternalPackage)
-        bool("swapVolumeBrightness")?.let(::setSwapVolumeBrightness)
-        bool("swapIndicator")?.let(::setSwapIndicator)
-        bool("audioFocus")?.let(::setAudioFocus)
-        bool("pauseOnNoisy")?.let(::setPauseOnNoisy)
-        bool("volumeBoost")?.let(::setVolumeBoost)
-        bool("backgroundPlay")?.let(::setBackgroundPlay)
-        bool("miniPlayerFloating")?.let(::setMiniPlayerFloating)
-        int("skipIntroMs")?.let(::setSkipIntroMs)
-        bool("aniSkipEnabled")?.let(::setAniSkipEnabled)
-        bool("autoSkipOp")?.let(::setAutoSkipOp)
-        bool("autoSkipEd")?.let(::setAutoSkipEd)
-        bool("autoSkipRecap")?.let(::setAutoSkipRecap)
+        if (o.has("progressPreference")) {
+            val v = o.optDouble("progressPreference", _progressPreference.value.toDouble()).toFloat()
+            if (v in 0.7f..1f) setProgressPreference(v)
+        }
+        if (o.has("switchOnFailure")) setSwitchOnFailure(o.optBoolean("switchOnFailure"))
+        PlayerOrientation.entries.firstOrNull { it.name == o.optString("orientation") }?.let(::setDefaultOrientation)
+        if (o.has("showLoadingCircle")) setShowLoadingCircle(o.optBoolean("showLoadingCircle"))
+        if (o.has("rememberLevels")) setRememberLevels(o.optBoolean("rememberLevels"))
+        if (o.has("enablePip")) setEnablePip(o.optBoolean("enablePip"))
+        if (o.has("autoplay")) setAutoplayEnabled(o.optBoolean("autoplay"))
+        if (o.has("controlsTimeoutMs")) {
+            setControlsTimeoutMs(o.optInt("controlsTimeoutMs", _controlsTimeoutMs.value).coerceIn(2_000, 10_000))
+        }
+        if (o.has("displayVolPer")) setDisplayVolPer(o.optBoolean("displayVolPer"))
+        if (o.has("invertDuration")) setInvertDuration(o.optBoolean("invertDuration"))
+        if (o.has("playerFullscreen")) setPlayerFullscreen(o.optBoolean("playerFullscreen"))
+        if (o.has("reduceMotion")) setReduceMotion(o.optBoolean("reduceMotion"))
+        if (o.has("alwaysUseExternal")) setAlwaysUseExternal(o.optBoolean("alwaysUseExternal"))
+        if (o.has("externalPackage")) setExternalPackage(o.optString("externalPackage"))
+        if (o.has("swapVolumeBrightness")) setSwapVolumeBrightness(o.optBoolean("swapVolumeBrightness"))
+        if (o.has("swapIndicator")) setSwapIndicator(o.optBoolean("swapIndicator"))
+        if (o.has("audioFocus")) setAudioFocus(o.optBoolean("audioFocus"))
+        if (o.has("pauseOnNoisy")) setPauseOnNoisy(o.optBoolean("pauseOnNoisy"))
+        if (o.has("volumeBoost")) setVolumeBoost(o.optBoolean("volumeBoost"))
+        if (o.has("backgroundPlay")) setBackgroundPlay(o.optBoolean("backgroundPlay"))
+        if (o.has("miniPlayerFloating")) setMiniPlayerFloating(o.optBoolean("miniPlayerFloating"))
+        if (o.has("skipIntroMs")) setSkipIntroMs(o.optInt("skipIntroMs", _skipIntroMs.value))
+        if (o.has("aniSkipEnabled")) setAniSkipEnabled(o.optBoolean("aniSkipEnabled"))
+        if (o.has("autoSkipOp")) setAutoSkipOp(o.optBoolean("autoSkipOp"))
+        if (o.has("autoSkipEd")) setAutoSkipEd(o.optBoolean("autoSkipEd"))
+        if (o.has("autoSkipRecap")) setAutoSkipRecap(o.optBoolean("autoSkipRecap"))
     }
 }
